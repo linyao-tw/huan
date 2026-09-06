@@ -1,0 +1,28 @@
+{
+	"name": "@huan/protocol",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN Admin、Server、Worker 與 Device 共用的 API／WebSocket／領域結構定義",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"zod": "^4.5.4"
+	}
+}

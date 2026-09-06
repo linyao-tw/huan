@@ -1,0 +1,109 @@
+import { z } from "zod";
+
+const booleanish = z
+	.union([z.boolean(), z.string()])
+	.transform(value => (typeof value === "boolean" ? value : ["1", "true", "yes", "on"].includes(value.trim().toLowerCase())));
+
+/** RustFS 以 S3 相容 API 提供服務，因此設定名稱沿用 S3 的慣例。 */
+const StorageSchema = z.object({
+	S3_ENDPOINT: z.url(),
+	/**
+	 * 瀏覽器與 Device 實際連得到的位址。
+	 * Docker 內部走 `http://rustfs:9000`，但簽章網址要交給外部使用者，
+	 * 這兩個值不同時就得分開設定，否則簽出來的網址在容器外連不上。
+	 */
+	S3_PUBLIC_ENDPOINT: z.url().optional(),
+	S3_REGION: z.string().min(1).default("us-east-1"),
+	S3_BUCKET: z.string().min(1).default("huan"),
+	S3_ACCESS_KEY_ID: z.string().min(1),
+	S3_SECRET_ACCESS_KEY: z.string().min(1),
+	S3_FORCE_PATH_STYLE: booleanish.default(true)
+});
+
+const CommonSchema = z.object({
+	NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+	LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+	DATABASE_URL: z.string().min(1, "必須設定 DATABASE_URL")
+});
+
+export const ServerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
+	HOST: z.string().default("0.0.0.0"),
+	PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+	/** Admin 與 Device 看到的對外網址，用於組出配對連結與簽章網址。 */
+	PUBLIC_URL: z.url().default("http://localhost:4000"),
+	/** 允許的瀏覽器來源，逗號分隔。開發時 Vite 跑在另一個埠，因此預設放行 5173。 */
+	CORS_ORIGINS: z
+		.string()
+		.default("http://localhost:5173")
+		.transform(value =>
+			value
+				.split(",")
+				.map(origin => origin.trim())
+				.filter(Boolean)
+		),
+	SESSION_COOKIE_NAME: z.string().default("huan_session"),
+	SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 90).default(24 * 14),
+	/** production 一律送出 `Secure` cookie；在沒有 TLS 的本機開發環境才關閉。 */
+	SESSION_COOKIE_SECURE: booleanish.optional(),
+	TOTP_ISSUER: z.string().min(1).default("HUAN"),
+	LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+	LOGIN_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(10).default(300),
+	/** 簽章下載網址的有效時間。夠 Device 下載完一支影片，又短到撿到網址也用不了多久。 */
+	SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
+	/**
+	 * 所有目標 Device 都完成 ACK 之後，播放產物還要在 RustFS 保留多久。
+	 * 這段保留期是為了吸收 ACK 與重試之間的競態，不要設成 0。
+	 */
+	DISTRIBUTION_RETENTION_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24),
+	DEVICE_HEARTBEAT_SECONDS: z.coerce.number().int().min(10).max(600).default(60),
+	DEVICE_FALLBACK_SYNC_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
+	DEVICE_MAX_CONCURRENT_DOWNLOADS: z.coerce.number().int().min(1).max(8).default(3),
+	/** 設定後，Server 會直接靜態服務 Admin 的 production build。 */
+	ADMIN_DIST_DIR: z.string().optional()
+});
+export type ServerEnv = z.infer<typeof ServerEnvSchema>;
+
+export const WorkerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
+	WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
+	WORKER_POLL_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(2_000),
+	WORKER_JOB_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+	FFMPEG_PATH: z.string().default("ffmpeg"),
+	FFPROBE_PATH: z.string().default("ffprobe"),
+	/** 轉檔的暫存目錄。留空時使用作業系統的暫存目錄。 */
+	WORKER_TMP_DIR: z.string().optional(),
+	DISTRIBUTION_RETENTION_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24)
+});
+export type WorkerEnv = z.infer<typeof WorkerEnvSchema>;
+
+export class EnvValidationError extends Error {
+	constructor(public readonly issues: readonly string[]) {
+		super(`環境變數設定不正確：\n${issues.map(issue => `  - ${issue}`).join("\n")}`);
+		this.name = "EnvValidationError";
+	}
+}
+
+function parseEnv<Schema extends z.ZodType>(schema: Schema, source: Record<string, string | undefined>): z.infer<Schema> {
+	const result = schema.safeParse(source);
+	if (!result.success) {
+		throw new EnvValidationError(result.error.issues.map(issue => `${issue.path.join(".") || "(root)"}: ${issue.message}`));
+	}
+	return result.data;
+}
+
+export function loadServerEnv(source: Record<string, string | undefined> = process.env): ServerEnv {
+	return parseEnv(ServerEnvSchema, source);
+}
+
+export function loadWorkerEnv(source: Record<string, string | undefined> = process.env): WorkerEnv {
+	return parseEnv(WorkerEnvSchema, source);
+}
+
+/** production 預設要求 Secure cookie，開發環境沒有 TLS 時才自動放行。 */
+export function shouldUseSecureCookie(env: Pick<ServerEnv, "NODE_ENV" | "SESSION_COOKIE_SECURE">): boolean {
+	return env.SESSION_COOKIE_SECURE ?? env.NODE_ENV === "production";
+}
+
+/** 對外簽章網址使用的主機。沒有另外設定時就沿用內部端點。 */
+export function publicStorageEndpoint(env: Pick<ServerEnv, "S3_ENDPOINT" | "S3_PUBLIC_ENDPOINT">): string {
+	return env.S3_PUBLIC_ENDPOINT ?? env.S3_ENDPOINT;
+}

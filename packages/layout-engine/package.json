@@ -1,0 +1,28 @@
+{
+	"name": "@huan/layout-engine",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN 版面的遞迴分割幾何計算、樹狀操作與縮放策略；Admin 預覽與 Device 播放共用同一份實作",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@huan/protocol": "workspace:*"
+	}
+}

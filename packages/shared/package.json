@@ -1,0 +1,33 @@
+{
+	"name": "@huan/shared",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN 跨端共用的純邏輯：排程判定、重試退避、格式化與 Node 端密碼學工具",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./node": {
+			"types": "./dist/node/index.d.ts",
+			"import": "./dist/node/index.js",
+			"default": "./dist/node/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@huan/protocol": "workspace:*"
+	}
+}

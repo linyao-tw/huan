@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - "@node-rs/argon2"
+  - "@tailwindcss/oxide"
+  - electron
+  - esbuild
+  - sharp

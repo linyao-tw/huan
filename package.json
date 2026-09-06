@@ -1,20 +1,48 @@
 {
-	"name": "project",
+	"name": "huan",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN 讙 — 跨平台的雲端媒體播放與數位看板系統",
 	"type": "module",
 	"scripts": {
-		"astro": "astro",
-		"build": "astro build",
-		"dev": "astro dev",
-		"preview": "astro preview",
-		"test": "astro check",
+		"build": "pnpm build:packages && pnpm build:apps",
+		"build:apps": "pnpm --filter @huan/server --filter @huan/worker --filter @huan/admin --filter @huan/device-sim build",
+		"build:packages": "pnpm --filter \"./packages/*\" build",
+		"db:migrate": "pnpm --filter @huan/server db:migrate",
+		"db:generate": "pnpm --filter @huan/server db:generate",
+		"db:seed": "pnpm --filter @huan/server db:seed",
+		"dev": "pnpm build:packages && concurrently -n server,worker,admin -c blue,magenta,green \"pnpm dev:server\" \"pnpm dev:worker\" \"pnpm dev:admin\"",
+		"dev:admin": "pnpm --filter @huan/admin dev",
+		"dev:device": "pnpm --filter @huan/device dev",
+		"dev:device-sim": "pnpm --filter @huan/device-sim dev",
+		"dev:server": "pnpm --filter @huan/server dev",
+		"dev:worker": "pnpm --filter @huan/worker dev",
+		"docker:build": "docker compose -f docker/compose.yaml build",
+		"docker:down": "docker compose -f docker/compose.yaml down",
+		"docker:logs": "docker compose -f docker/compose.yaml logs -f",
+		"docker:up": "docker compose -f docker/compose.yaml up -d",
+		"docs:build": "pnpm --filter @huan/docs build",
+		"docs:dev": "pnpm --filter @huan/docs dev",
+		"docs:screenshots": "pnpm --filter @huan/e2e screenshots",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "sh -c 'if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then git config core.hooksPath .githooks; fi'",
-		"format": "prettier --write ."
+		"test": "pnpm build:packages && pnpm -r --if-present test",
+		"test:e2e": "pnpm --filter @huan/e2e test",
+		"typecheck": "pnpm build:packages && pnpm -r --if-present typecheck"
 	},
 	"devDependencies": {
+		"@types/node": "^24.10.1",
+		"concurrently": "^10.0.5",
 		"prettier": "^3.9.6",
 		"prettier-plugin-organize-imports": "^4.3.0",
-		"prettier-plugin-packagejson": "^3.0.2"
+		"prettier-plugin-packagejson": "^3.0.2",
+		"typescript": "^6.0.3",
+		"vitest": "^5.0.0"
 	},
-	"packageManager": "pnpm@12.3.4+sha512.961aa41fb077da3a04a441d9f8e15ebc0c96da8ef710b2eb67bf9ee7cb0610eabd48f1fd85f51cffe73846785fa0f87c56a3a872a1d893f8446741b5cce45457"
+	"packageManager": "pnpm@12.3.4+sha512.961aa41fb077da3a04a441d9f8e15ebc0c96da8ef710b2eb67bf9ee7cb0610eabd48f1fd85f51cffe73846785fa0f87c56a3a872a1d893f8446741b5cce45457",
+	"engines": {
+		"node": ">=22.13.0"
+	}
 }
