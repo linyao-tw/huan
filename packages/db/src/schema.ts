@@ -1,6 +1,6 @@
+import type { AuditAction, DesiredState, LayoutDocument, MediaProbe, ReportedState } from "@huan/protocol";
 import { relations, sql } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import type { AuditAction, DesiredState, LayoutDocument, MediaProbe, ReportedState } from "@huan/protocol";
 
 const now = sql`now()`;
 
@@ -316,7 +316,11 @@ export const devicePairingCodes = pgTable(
 		deliveredAt: timestamp("delivered_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(now)
 	},
-	table => [uniqueIndex("device_pairing_codes_code_key").on(table.code), uniqueIndex("device_pairing_codes_token_key").on(table.pairingTokenHash), index("device_pairing_codes_expires_idx").on(table.expiresAt)]
+	table => [
+		uniqueIndex("device_pairing_codes_code_key").on(table.code),
+		uniqueIndex("device_pairing_codes_token_key").on(table.pairingTokenHash),
+		index("device_pairing_codes_expires_idx").on(table.expiresAt)
+	]
 );
 
 /* ── 背景工作 ─────────────────────────────────────────────────────────── */

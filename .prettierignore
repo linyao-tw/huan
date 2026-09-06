@@ -1,1 +1,14 @@
 pnpm-lock.yaml
+
+# drizzle-kit 產生的內容，每次 db:generate 都會被重寫，交給 Prettier 只會製造 diff。
+packages/db/migrations/
+
+# 產品需求文件，維持提交時的原樣。
+code.md
+
+# 建置產物與測試報告。
+**/dist/
+**/out/
+apps/docs/doc_build/
+apps/e2e/playwright-report/
+apps/e2e/test-results/

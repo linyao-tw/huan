@@ -20,7 +20,7 @@ export function registerMediaProtocolSchemes(): void {
 	]);
 }
 
-function isSafeFileName(name: string): boolean {
+export function isSafeMediaFileName(name: string): boolean {
 	if (name.length === 0 || name.length > 128) return false;
 	if (name.includes("/") || name.includes("\\") || name.includes("\0")) return false;
 	if (name === "." || name === "..") return false;
@@ -31,7 +31,7 @@ export function registerMediaProtocol(mediaDir: string, resolveHtmlFileName: (na
 	protocol.handle(HUAN_MEDIA_SCHEME, request => {
 		const url = new URL(request.url);
 		const fileName = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
-		if (!isSafeFileName(fileName) || !resolveHtmlFileName(fileName)) {
+		if (!isSafeMediaFileName(fileName) || !resolveHtmlFileName(fileName)) {
 			return new Response("Not found", { status: 404 });
 		}
 		return net.fetch(pathToFileURL(`${mediaDir}/${fileName}`).toString());

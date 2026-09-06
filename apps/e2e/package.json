@@ -5,8 +5,8 @@
 	"description": "HUAN 端對端測試與文件截圖腳本",
 	"type": "module",
 	"scripts": {
+		"e2e": "playwright test",
 		"screenshots": "playwright test --config playwright.screenshots.config.ts",
-		"test": "playwright test",
 		"typecheck": "tsc -p tsconfig.json"
 	},
 	"devDependencies": {

@@ -8,8 +8,8 @@
 		"build": "pnpm build:packages && pnpm build:apps",
 		"build:apps": "pnpm --filter @huan/server --filter @huan/worker --filter @huan/admin --filter @huan/device-sim build",
 		"build:packages": "pnpm --filter \"./packages/*\" build",
-		"db:migrate": "pnpm --filter @huan/server db:migrate",
 		"db:generate": "pnpm --filter @huan/server db:generate",
+		"db:migrate": "pnpm --filter @huan/server db:migrate",
 		"db:seed": "pnpm --filter @huan/server db:seed",
 		"dev": "pnpm build:packages && concurrently -n server,worker,admin -c blue,magenta,green \"pnpm dev:server\" \"pnpm dev:worker\" \"pnpm dev:admin\"",
 		"dev:admin": "pnpm --filter @huan/admin dev",
@@ -28,8 +28,8 @@
 		"format:check": "prettier --check .",
 		"preinstall": "npx only-allow pnpm",
 		"prepare": "sh -c 'if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then git config core.hooksPath .githooks; fi'",
-		"test": "pnpm build:packages && pnpm -r --if-present test",
-		"test:e2e": "pnpm --filter @huan/e2e test",
+		"test": "pnpm build:packages && pnpm -r --workspace-concurrency=1 --if-present test",
+		"test:e2e": "pnpm --filter @huan/e2e e2e",
 		"typecheck": "pnpm build:packages && pnpm -r --if-present typecheck"
 	},
 	"devDependencies": {

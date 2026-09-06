@@ -48,7 +48,9 @@ export const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/, "必須是 64 位
 export type Sha256 = z.infer<typeof Sha256Schema>;
 
 /** CSS 色彩字串。限制為 hex 與 rgb()/rgba()，避免使用者輸入任意 CSS。 */
-export const ColorSchema = z.string().regex(/^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\))$/, "必須是 #RGB、#RRGGBB、#RRGGBBAA 或 rgb()/rgba() 色彩");
+export const ColorSchema = z
+	.string()
+	.regex(/^(#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\))$/, "必須是 #RGB、#RRGGBB、#RRGGBBAA 或 rgb()/rgba() 色彩");
 export type Color = z.infer<typeof ColorSchema>;
 
 /**

@@ -40,7 +40,10 @@ const ScheduleBodySchema = z.object({
 	deviceIds: z.array(IdSchema).default([])
 });
 
-export const CreateScheduleRequestSchema = ScheduleBodySchema.refine(value => value.startTime !== value.endTime, "開始與結束時間不能相同").refine(value => !value.startDate || !value.endDate || value.startDate <= value.endDate, "結束日期不能早於開始日期");
+export const CreateScheduleRequestSchema = ScheduleBodySchema.refine(value => value.startTime !== value.endTime, "開始與結束時間不能相同").refine(
+	value => !value.startDate || !value.endDate || value.startDate <= value.endDate,
+	"結束日期不能早於開始日期"
+);
 export type CreateScheduleRequest = z.infer<typeof CreateScheduleRequestSchema>;
 
 export const UpdateScheduleRequestSchema = CreateScheduleRequestSchema;

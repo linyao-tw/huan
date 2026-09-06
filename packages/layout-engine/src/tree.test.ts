@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { computeLayoutGeometry } from "./geometry.js";
-import { collectAssetIds, collectSlots, createEmptyDocument, createNodeId, findParentSplit, layoutDocumentsEqual, parseLayoutDocument, removeSlot, serializeLayoutDocument, setSlotContent, setSplitRatio, splitNode, swapSlotContent } from "./tree.js";
+import {
+	collectAssetIds,
+	collectSlots,
+	createEmptyDocument,
+	createNodeId,
+	findParentSplit,
+	layoutDocumentsEqual,
+	parseLayoutDocument,
+	removeSlot,
+	serializeLayoutDocument,
+	setSlotContent,
+	setSplitRatio,
+	splitNode,
+	swapSlotContent
+} from "./tree.js";
 
 describe("createNodeId", () => {
 	it("每次都產生不同的識別字", () => {
@@ -28,7 +42,17 @@ describe("splitNode", () => {
 
 	it("保留原本插槽的內容於第一塊", () => {
 		const empty = createEmptyDocument();
-		const withText = setSlotContent(empty, empty.root.id, { type: "text", text: "你好", backgroundColor: "#00000000", color: "#ffffff", fontSize: 48, fontWeight: 500, padding: 24, align: "center", verticalAlign: "center" });
+		const withText = setSlotContent(empty, empty.root.id, {
+			type: "text",
+			text: "你好",
+			backgroundColor: "#00000000",
+			color: "#ffffff",
+			fontSize: 48,
+			fontWeight: 500,
+			padding: 24,
+			align: "center",
+			verticalAlign: "center"
+		});
 		const document = splitNode(withText, empty.root.id, "vertical", 0.5);
 		const slots = collectSlots(document.root);
 		expect(slots[0]?.content?.type).toBe("text");
@@ -64,7 +88,17 @@ describe("removeSlot", () => {
 
 	it("只剩一個插槽時改為清空內容", () => {
 		const empty = createEmptyDocument();
-		const withText = setSlotContent(empty, empty.root.id, { type: "text", text: "只有我", backgroundColor: "#00000000", color: "#ffffff", fontSize: 48, fontWeight: 500, padding: 24, align: "center", verticalAlign: "center" });
+		const withText = setSlotContent(empty, empty.root.id, {
+			type: "text",
+			text: "只有我",
+			backgroundColor: "#00000000",
+			color: "#ffffff",
+			fontSize: 48,
+			fontWeight: 500,
+			padding: 24,
+			align: "center",
+			verticalAlign: "center"
+		});
 		const cleared = removeSlot(withText, empty.root.id);
 		expect(cleared.root.type).toBe("slot");
 		expect(collectSlots(cleared.root)[0]?.content).toBeNull();
@@ -90,7 +124,15 @@ describe("swapSlotContent", () => {
 		const empty = createEmptyDocument();
 		const document = splitNode(empty, empty.root.id, "horizontal", 0.5);
 		const slots = collectSlots(document.root);
-		const withVideo = setSlotContent(document, slots[0]!.id, { type: "video", assetId: "11111111-1111-4111-8111-111111111111", fit: "contain", loop: true, muted: true, volume: 1, backgroundColor: "#000000" });
+		const withVideo = setSlotContent(document, slots[0]!.id, {
+			type: "video",
+			assetId: "11111111-1111-4111-8111-111111111111",
+			fit: "contain",
+			loop: true,
+			muted: true,
+			volume: 1,
+			backgroundColor: "#000000"
+		});
 		const swapped = swapSlotContent(withVideo, slots[0]!.id, slots[1]!.id);
 		const result = collectSlots(swapped.root);
 		expect(result[0]?.content).toBeNull();
@@ -110,7 +152,15 @@ describe("collectAssetIds", () => {
 		const empty = createEmptyDocument();
 		const document = splitNode(empty, empty.root.id, "horizontal", 0.5);
 		const slots = collectSlots(document.root);
-		let next = setSlotContent(document, slots[0]!.id, { type: "video", assetId: "11111111-1111-4111-8111-111111111111", fit: "contain", loop: true, muted: true, volume: 1, backgroundColor: "#000000" });
+		let next = setSlotContent(document, slots[0]!.id, {
+			type: "video",
+			assetId: "11111111-1111-4111-8111-111111111111",
+			fit: "contain",
+			loop: true,
+			muted: true,
+			volume: 1,
+			backgroundColor: "#000000"
+		});
 		next = setSlotContent(next, slots[1]!.id, { type: "image", assetId: "22222222-2222-4222-8222-222222222222", fit: "cover", backgroundColor: "#00000000" });
 		next = { ...next, background: { ...next.background, imageAssetId: "33333333-3333-4333-8333-333333333333" } };
 		expect(collectAssetIds(next).sort()).toEqual(["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"]);

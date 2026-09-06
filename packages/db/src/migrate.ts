@@ -1,6 +1,6 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Database } from "./client.js";
 
 /**
