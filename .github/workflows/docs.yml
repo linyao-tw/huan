@@ -37,13 +37,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:packages
 
+      # 這一步需要 repository 已經在 Settings → Pages 把 Source 設成 GitHub Actions。
+      # 不用 `enablement: true` 自動開啟：建立 Pages 站台需要 repository 的管理權限，
+      # 而 GITHUB_TOKEN 沒有，結果只會是一句看不出原因的
+      # 「Resource not accessible by integration」。
       - name: 設定 GitHub Pages
         id: pages
         uses: actions/configure-pages@v6
-        with:
-          # repository 還沒開啟 Pages 時由 workflow 自己開，
-          # 否則第一次部署會停在「Get Pages site failed: Not Found」。
-          enablement: true
 
       - name: 建置 Rspress 靜態網站
         run: pnpm docs:build

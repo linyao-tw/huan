@@ -9,6 +9,14 @@
 1. GitHub repository → **Settings** → **Pages**
 2. **Source** 選 **GitHub Actions**
 
+這是一次性的手動步驟。workflow 刻意不使用 `configure-pages` 的 `enablement: true` 自動開啟——建立 Pages 站台需要 repository 的管理權限，而 `GITHUB_TOKEN` 沒有，失敗訊息會是一句看不出原因的 `Resource not accessible by integration`。
+
+沒有先完成這一步時，`設定 GitHub Pages` 會停在：
+
+```text
+Get Pages site failed. Error: Not Found
+```
+
 ## Workflow
 
 `.github/workflows/docs.yml` 的流程：
