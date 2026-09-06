@@ -2,6 +2,7 @@ import { unified } from "@astrojs/markdown-remark";
 import { defineConfig } from "astro/config";
 import remarkDirective from "remark-directive";
 import { remarkCallouts } from "./src/plugins/remark-callouts";
+import { remarkFigures } from "./src/plugins/remark-figures";
 import { remarkMermaid } from "./src/plugins/remark-mermaid";
 
 /**
@@ -35,7 +36,7 @@ export default defineConfig({
 		 * 因此明確選用 unified；45 頁的站台在建置時間上感覺不出差別。
 		 */
 		processor: unified({
-			remarkPlugins: [remarkDirective, remarkCallouts, remarkMermaid]
+			remarkPlugins: [remarkDirective, remarkCallouts, remarkMermaid, remarkFigures]
 		})
 	}
 });

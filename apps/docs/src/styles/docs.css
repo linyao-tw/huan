@@ -108,11 +108,14 @@ a:hover {
 	border-bottom: var(--border-width-hairline) solid var(--divider-subtle);
 }
 
+/* 跟 .shell 共用同一個 96rem 上限，否則超寬螢幕上頁首會比內容更外面。 */
 .site-header__rail {
 	display: flex;
 	align-items: center;
 	gap: var(--space-4);
+	max-width: 96rem;
 	height: 100%;
+	margin-inline: auto;
 	padding-inline: var(--space-5);
 }
 
@@ -238,6 +241,22 @@ a:hover {
 	border-right: var(--border-width-hairline) solid var(--divider-subtle);
 }
 
+/*
+ * 螢幕不夠高時，側欄最下面那幾個項目會被切掉，而切口本身看不出「還有」。
+ * 用遮罩讓底部淡出：遮罩是對邊框盒定位的，內容捲動時它會留在原地。
+ */
+.sidebar[data-less="true"] {
+	mask-image: linear-gradient(to bottom, transparent, #000 var(--space-8));
+}
+
+.sidebar[data-more="true"] {
+	mask-image: linear-gradient(to bottom, #000 calc(100% - var(--space-8)), transparent);
+}
+
+.sidebar[data-less="true"][data-more="true"] {
+	mask-image: linear-gradient(to bottom, transparent, #000 var(--space-8), #000 calc(100% - var(--space-8)), transparent);
+}
+
 /* 只在抽屜模式（手機／平板）顯示；桌機的區塊切換在頁首。 */
 .sidebar__sections {
 	display: none;
@@ -340,16 +359,26 @@ a:hover {
 
 /* ── 內容 ─────────────────────────────────────────────────────────────── */
 
+/*
+ * 軌道寬度寫死成內容寬度，不要用 1fr 或 auto。
+ *
+ * 兩者都會把軌道撐到剩餘的全部寬度，而內容自己有 max-width，結果是內容與
+ * 目錄之間出現兩百多 px 的空洞。整組（內容 + 目錄）置中比靠左好看，
+ * 側欄已經佔掉左邊了。
+ */
 .page {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) var(--toc-width);
+	grid-template-columns: minmax(0, var(--content-width)) var(--toc-width);
+	justify-content: center;
 	gap: var(--space-10);
 	padding: var(--space-10) var(--space-8) var(--space-16);
 }
 
 .content {
-	max-width: var(--content-width);
+	width: min(var(--content-width), 100%);
 	min-width: 0;
+	/* 沒有目錄的斷點下軌道是 1fr，內容要自己置中，否則整篇黏在側欄旁邊。 */
+	margin-inline: auto;
 }
 
 .content__eyebrow {
@@ -438,56 +467,42 @@ a:hover {
 	border-top: var(--border-width-hairline) solid var(--divider-subtle);
 }
 
-/* 標題錨點：滑到標題才顯示，不干擾閱讀。 */
-.heading-anchor {
-	margin-inline-start: var(--space-2);
-	color: var(--text-muted);
-	font-weight: var(--font-weight-regular);
-	opacity: 0;
-	text-decoration: none;
-	transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
-}
-
-:is(h2, h3, h4):hover .heading-anchor,
-.heading-anchor:focus-visible {
-	opacity: 1;
-}
-
 /* ── 表格 ─────────────────────────────────────────────────────────────── */
 
 /*
  * 寬表格在窄螢幕上會被裁掉右半邊，而裁切本身看不出「還有內容可以捲」。
  *
- * 漸層必須畫在捲動容器的外面：表格自己的儲存格有背景色，畫在容器上會被蓋掉。
- * 只有真的溢出時才標記 data-overflow，捲到最右邊時把提示淡出。
+ * 用遮罩而不是漸層：斑馬紋讓奇偶列的底色不同，漸層只能挑一個顏色去融，
+ * 另一半的列就會露出接縫。遮罩淡掉的是內容本身，跟底色無關。
+ * 只有真的溢出時才標記 data-overflow，捲到最右邊時提示自然消失。
  */
 .prose .table-wrap {
-	position: relative;
 	margin: 0 0 var(--space-6);
 }
 
-.prose .table-wrap::after {
-	content: "";
-	position: absolute;
-	inset-block: 0;
-	inset-inline-end: 0;
-	width: var(--space-8);
-	background: linear-gradient(to left, var(--background-main), transparent);
-	opacity: 0;
-	pointer-events: none;
-	transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
-}
-
-.prose .table-wrap[data-overflow="true"]::after {
-	opacity: 1;
+.prose .table-wrap[data-overflow="true"] .table-scroll {
+	mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
 }
 
 .prose .table-scroll {
 	overflow-x: auto;
 }
 
+/*
+ * 三個寬度缺一不可，不要簡化成 width: 100%。
+ *
+ * 在 overflow-x 的捲動容器裡，百分比是對「容器」算的，所以 width: 100% 讓表格
+ * 永遠只能縮到 min-content —— 說明欄被壓成 86px，一行放兩個字，列高變成 100px。
+ * max-content 給它自然寬度、min-width 讓窄表格仍然填滿、max-width 則是上限：
+ * 手機上最多捲到它在桌機的寬度，不會無限延伸。
+ *
+ * 註：不能寫成 min-width: min(max-content, …)，CSS 的數學函式不吃 max-content
+ * 這類固有尺寸關鍵字，整條宣告會被當成無效直接丟掉（實測 min-width 變 0px）。
+ */
 .prose table {
-	width: 100%;
+	width: max-content;
+	min-width: 100%;
+	max-width: var(--content-width);
 	border-collapse: collapse;
 	font-size: var(--font-size-sm);
 }
@@ -513,7 +528,14 @@ a:hover {
 
 /* ── 程式碼 ───────────────────────────────────────────────────────────── */
 
+/*
+ * box-decoration-break 讓斷行後的兩截各自保有完整的圓角與邊框。
+ * 沒有它，`@huan/layout-engine` 在手機上斷在斜線處，會變成一個右邊被切平、
+ * 一個左邊被切平的兩個框，看起來像渲染壞掉。
+ */
 .prose :not(pre) > code {
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
 	padding: 0.15em 0.4em;
 	background: var(--background-inset);
 	border: var(--border-width-hairline) solid var(--divider-subtle);
@@ -525,6 +547,8 @@ a:hover {
 
 .prose pre {
 	margin: 0 0 var(--space-6);
+	/* 原始碼用 tab 縮排，瀏覽器預設一個 tab 等於 8 個字元；跟 Prettier 的 tabWidth 對齊成 2。 */
+	tab-size: 2;
 	padding: var(--space-4);
 	background: var(--background-inset) !important;
 	border: var(--border-width-hairline) solid var(--divider-subtle);
@@ -542,6 +566,30 @@ a:hover {
 	position: relative;
 }
 
+/*
+ * 跟表格同一套提示：被裁掉的那一邊畫一道漸層，讓人知道右邊還有東西。
+ *
+ * 畫在 .code-block 而不是 pre 本身 —— pre 是捲動容器，提示畫在上面會跟著
+ * 內容一起捲走，剛好在最需要它的時候不見。
+ */
+.code-block::after {
+	content: "";
+	position: absolute;
+	inset-block: var(--border-width-hairline);
+	inset-inline-end: var(--border-width-hairline);
+	width: var(--space-8);
+	background: linear-gradient(to left, var(--background-inset), transparent);
+	border-start-end-radius: var(--radius-sm);
+	border-end-end-radius: var(--radius-sm);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.code-block[data-overflow="true"]::after {
+	opacity: 1;
+}
+
 .code-copy {
 	position: absolute;
 	inset-block-start: var(--space-2);
@@ -556,11 +604,30 @@ a:hover {
 	font-size: var(--font-size-xs);
 	opacity: 0;
 	transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+	z-index: 1;
 }
 
 .code-block:hover .code-copy,
 .code-copy:focus-visible {
 	opacity: 1;
+}
+
+/*
+ * 觸控裝置沒有 hover，複製鈕永遠不會浮出來，卻還是佔著一個看不見的點擊區。
+ * 沒有 hover 能力時就直接常駐顯示。
+ */
+@media (hover: none) {
+	/*
+	 * 常駐顯示的複製鈕是絕對定位，會直接蓋住第一行的尾巴 —— 而且程式碼可以橫向
+	 * 捲動，捲到哪一段都一樣被蓋住。往上空出一條專屬的空間給它。
+	 */
+	.code-block pre {
+		padding-block-start: var(--space-10);
+	}
+
+	.code-copy {
+		opacity: 1;
+	}
 }
 
 /* ── 提示框 ───────────────────────────────────────────────────────────── */
@@ -630,9 +697,36 @@ a:hover {
 .huan-figure img {
 	display: block;
 	width: 100%;
+	height: auto;
 	border: var(--border-width-hairline) solid var(--divider-subtle);
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow-low);
+}
+
+.huan-figure__zoom {
+	display: block;
+	cursor: zoom-in;
+}
+
+/*
+ * 截圖拍的是亮色介面，整片貼在深色頁面上像一塊發光的白板，
+ * 讀者的眼睛得在兩種亮度之間反覆適應。稍微壓低亮度，滑過或聚焦時還原。
+ * 只調亮度不調色相，顏色仍然是真的。
+ */
+:root[data-lyds-theme="dark"] .huan-figure img {
+	filter: brightness(0.86);
+	transition: filter var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+:root[data-lyds-theme="dark"] .huan-figure__zoom:is(:hover, :focus-visible) img {
+	filter: none;
+}
+
+/* 觸控裝置沒有 hover，可以點開這件事得直接寫出來。 */
+@media (hover: none) {
+	.huan-figure__zoom + figcaption::after {
+		content: "（點一下看原圖）";
+	}
 }
 
 .huan-figure figcaption {
@@ -642,9 +736,14 @@ a:hover {
 	text-align: center;
 }
 
+/*
+ * 圖表寧可橫向捲動，也不要縮到看不清楚。
+ *
+ * 之前 `svg { max-width: 100% }` 會把 1169px 寬的流程圖壓進 301px 的欄位，
+ * 標籤只剩 4px —— 技術上「沒有溢出」，但實際上讀不到任何字。
+ * 改成讓 SVG 保持自然寬度，由容器提供捲動。
+ */
 .mermaid {
-	display: flex;
-	justify-content: center;
 	margin: 0 0 var(--space-6);
 	padding: var(--space-5);
 	background: var(--background-secondary);
@@ -659,8 +758,33 @@ a:hover {
 }
 
 .mermaid svg {
-	max-width: 100%;
+	display: block;
 	height: auto;
+	/*
+	 * 放得下就置中，放不下就靠左後往右捲。
+	 * `justify-content: center` 在溢出時會把左半邊推到捲動範圍外，永遠捲不到。
+	 */
+	margin-inline: auto;
+}
+
+/*
+ * foreignObject 預設會裁掉超出的內容，而 mermaid 量非拉丁符號（例如 ≠）時
+ * 會少算幾 px，於是「desired 42 ≠ reported 41」被切成「…reported 4」。
+ * 寧可讓最後一個字多凸出去幾 px，也不要少一個字。
+ */
+.mermaid foreignObject {
+	overflow: visible;
+}
+
+/*
+ * 有內容被裁掉時給一點提示，和寬表格用同一套語彙。
+ *
+ * 提示必須是遮罩，不能是 background：背景畫在 SVG 底下，而且跟 .mermaid 自己的
+ * 底色是同一個顏色，等於畫了一個看不見的東西。改用 mask 讓右緣的圖形本身淡出，
+ * 深淺主題與任何節點顏色都適用。
+ */
+.mermaid[data-overflow="true"] {
+	mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
 }
 
 /* ── 目錄 ─────────────────────────────────────────────────────────────── */
@@ -755,7 +879,13 @@ a:hover {
 
 /* ── 回應式 ───────────────────────────────────────────────────────────── */
 
-@media (max-width: 1200px) {
+/*
+ * 目錄要等版面真的放得下才出現。
+ *
+ * 272 側欄 + 736 內容 + 240 目錄 + 間距大約需要 1360px；在 1201px 就顯示的話，
+ * 內容欄會被壓到 585px，每一段都變成很短的行。
+ */
+@media (max-width: 1360px) {
 	.page {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -765,9 +895,33 @@ a:hover {
 	}
 }
 
+/* 平板寬度給多一點側邊留白：內容早就被 max-width 收住了，加寬不花成本。 */
+@media (min-width: 601px) and (max-width: 900px) {
+	.page {
+		padding-inline: var(--space-8);
+	}
+}
+
 @media (max-width: 900px) {
 	.shell {
 		grid-template-columns: minmax(0, 1fr);
+	}
+
+	/*
+	 * width: max-content 是照「完全不換行」算的，所以一格 `pnpm --filter … admin:create`
+	 * 就能把指令欄撐到 315px，把說明欄整個推出畫面。給儲存格一個上限逼它換行。
+	 */
+	.prose :is(th, td) {
+		max-width: 15rem;
+	}
+
+	/*
+	 * 手機上時序圖會變成一塊一千多 px 高、只看得到四分之一寬度的空白長條。
+	 * 限制高度並允許兩軸捲動：資訊還在，但不會佔掉兩個螢幕。
+	 */
+	.mermaid {
+		max-height: 70vh;
+		overflow: auto;
 	}
 
 	.menu-button {
@@ -792,6 +946,16 @@ a:hover {
 
 	.page {
 		padding: var(--space-6) var(--space-4) var(--space-12);
+	}
+
+	/* 兩欄在 375px 各只剩 160px，中文標題會斷在詞中間。 */
+	.page-nav {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.page-nav__link--next {
+		grid-column: 1;
+		text-align: start;
 	}
 
 	/* 頁首放不下區塊切換，改由抽屜頂端提供。 */

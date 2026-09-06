@@ -29,12 +29,52 @@ function setupSidebar(): void {
 	const button = document.getElementById("menu-button");
 	if (!sidebar || !scrim || !button) return;
 
+	/*
+	 * 進站時把目前頁面捲進側欄的可視範圍。
+	 *
+	 * 側欄自己是一個捲動容器，ADR 那一段排在清單最下面 —— 不捲的話，停在
+	 * /dev/adr/0007 看到的是一份完全沒有高亮的目錄，讀者無從得知自己在哪裡。
+	 * 不用 scrollIntoView：它會連帶把整個頁面一起捲走。
+	 */
+	const revealActive = (): void => {
+		const active = sidebar.querySelector<HTMLElement>('[aria-current="page"]');
+		if (!active) return;
+		const offset = active.getBoundingClientRect().top - sidebar.getBoundingClientRect().top + sidebar.scrollTop;
+		const visible = offset >= sidebar.scrollTop && offset + active.offsetHeight <= sidebar.scrollTop + sidebar.clientHeight;
+		if (visible) return;
+		sidebar.scrollTop = Math.max(0, offset - (sidebar.clientHeight - active.offsetHeight) / 2);
+	};
+
+	/*
+	 * 側欄捲不完的時候在該側淡出，讓人知道還有項目。
+	 *
+	 * 門檻不能是 1px：側欄底下有一段內距，捲動範圍永遠比可視範圍多出那幾十 px，
+	 * 於是提示會在「其實已經到底」的時候亮著，把最後一個項目蓋成半透明。
+	 * 取一個比內距大的門檻，只有真的還有東西沒露出來才提示。
+	 */
+	const EDGE_HINT_THRESHOLD = 32;
+
+	const updateMore = (): void => {
+		sidebar.dataset.less = String(sidebar.scrollTop > EDGE_HINT_THRESHOLD);
+		sidebar.dataset.more = String(sidebar.scrollHeight - sidebar.clientHeight - sidebar.scrollTop > EDGE_HINT_THRESHOLD);
+	};
+
 	const setOpen = (open: boolean): void => {
 		sidebar.dataset.open = String(open);
 		scrim.dataset.open = String(open);
 		button.setAttribute("aria-expanded", String(open));
 		document.body.style.overflow = open ? "hidden" : "";
+		// 抽屜關著的時候量不到位置，所以每次打開都要重算一次。
+		if (open) {
+			revealActive();
+			updateMore();
+		}
 	};
+
+	revealActive();
+	updateMore();
+	sidebar.addEventListener("scroll", updateMore, { passive: true });
+	window.addEventListener("resize", updateMore, { passive: true });
 
 	button.addEventListener("click", () => setOpen(sidebar.dataset.open !== "true"));
 	scrim.addEventListener("click", () => setOpen(false));
@@ -99,6 +139,14 @@ function setupCodeCopy(): void {
 			});
 		});
 		wrapper.appendChild(button);
+
+		const update = (): void => {
+			const remaining = pre.scrollWidth - pre.clientWidth - pre.scrollLeft;
+			wrapper.dataset.overflow = String(remaining > 1);
+		};
+		update();
+		pre.addEventListener("scroll", update, { passive: true });
+		window.addEventListener("resize", update, { passive: true });
 	}
 }
 

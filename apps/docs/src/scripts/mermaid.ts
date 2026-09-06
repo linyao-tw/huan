@@ -73,9 +73,10 @@ function themeVariables(): Record<string, string> {
 		actorTextColor: text,
 		signalColor: border,
 		signalTextColor: text,
-		labelBoxBkgColor: accent,
-		labelBoxBorderColor: accent,
-		labelTextColor: onAccent,
+		/* alt / loop 的標籤只是結構標示，用主色會讓整張圖看起來像出錯了。 */
+		labelBoxBkgColor: muted,
+		labelBoxBorderColor: border,
+		labelTextColor: text,
 		loopTextColor: text,
 		noteBkgColor: muted,
 		noteBorderColor: border,
@@ -84,17 +85,54 @@ function themeVariables(): Record<string, string> {
 	};
 }
 
+/** 圖比容器寬時標記起來，讓 CSS 畫出「可以往右捲」的提示。 */
+function markOverflow(node: HTMLElement): void {
+	const update = (): void => {
+		const remaining = node.scrollWidth - node.clientWidth - node.scrollLeft;
+		node.dataset.overflow = String(remaining > 1);
+	};
+	update();
+	node.addEventListener("scroll", update, { passive: true });
+	window.addEventListener("resize", update, { passive: true });
+}
+
 let counter = 0;
 
 async function renderAll(): Promise<void> {
 	const nodes = [...document.querySelectorAll<HTMLElement>(".mermaid")];
 	if (nodes.length === 0) return;
 
+	/*
+	 * 等字型載入完再算繪。
+	 *
+	 * mermaid 是量文字的實際寬度來決定節點框要多大。字型還沒到的話它量的是後備
+	 * 字型，框就會比真正的文字窄個百分之幾 —— 畫面上看到的是「PlatformAdapte」
+	 * 這種被切掉最後一個字母的標籤。而且它是競態，每次重新整理被切到的還不一樣。
+	 */
+	if (document.fonts) await document.fonts.ready;
+
 	mermaid.initialize({
 		startOnLoad: false,
 		securityLevel: "strict",
 		theme: "base",
-		themeVariables: themeVariables()
+		themeVariables: themeVariables(),
+		/*
+		 * 關掉 useMaxWidth，讓圖保持自然寬度。
+		 *
+		 * 開著的話 mermaid 會在 SVG 上寫 inline 的 max-width，把 1169px 的流程圖
+		 * 壓進手機的 343px 欄位，標籤只剩 4px —— 技術上沒有溢出，實際上讀不到字。
+		 * 現在改由容器橫向捲動。
+		 */
+		flowchart: { useMaxWidth: false },
+		sequence: { useMaxWidth: false },
+		/*
+		 * 狀態圖的預設間距是照單行英文標籤抓的。Worker 那張圖有兩條 running → pending，
+		 * 標籤都是兩行中文，用預設值畫出來三個標籤框會黏在一起。把層距拉開，
+		 * 這比為了排版去刪掉「run_after = now() + 退避」這種真正有用的細節好。
+		 */
+		state: { useMaxWidth: false, nodeSpacing: 60, rankSpacing: 80 },
+		gantt: { useMaxWidth: false },
+		er: { useMaxWidth: false }
 	});
 
 	for (const node of nodes) {
@@ -105,6 +143,7 @@ async function renderAll(): Promise<void> {
 			const { svg } = await mermaid.render(`mermaid-${counter}`, source);
 			node.innerHTML = svg;
 			node.dataset.rendered = "true";
+			markOverflow(node);
 		} catch {
 			/* 圖畫不出來時保留原始定義，讀者至少還看得到內容，也比一塊空白好除錯。 */
 			node.textContent = source;
