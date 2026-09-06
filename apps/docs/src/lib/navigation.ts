@@ -122,12 +122,37 @@ const DEV: NavNode[] = [
 ];
 
 export const SECTIONS: Section[] = [
-	{ label: "使用教學", entry: "index", match: id => !id.startsWith("dev/"), nav: GUIDE },
-	{ label: "開發者", entry: "dev/index", match: id => id.startsWith("dev/"), nav: DEV }
+	{ label: "使用教學", entry: "index", match: id => !isDev(id), nav: GUIDE },
+	{ label: "開發者", entry: "dev/index", match: isDev, nav: DEV }
 ];
+
+/*
+ * `dev` 也算開發者區塊，不是只有 `dev/`。
+ *
+ * Astro 的 glob loader 會把 `dev/index.md` 的 id 砍成 `dev`，所以只比對
+ * `startsWith("dev/")` 的話，開發者區塊的首頁會被判成使用教學 —— 側欄、
+ * 頁首的區塊標示和上一頁／下一頁全部指向錯的那一半。
+ */
+function isDev(id: string): boolean {
+	return id === "dev" || id.startsWith("dev/");
+}
 
 export function sectionFor(id: string): Section {
 	return SECTIONS.find(section => section.match(id)) ?? SECTIONS[0]!;
+}
+
+/*
+ * 同一頁在兩處會有兩種寫法：導覽表寫的是 `dev/index`，而集合給的是 `dev`。
+ * 統一成導覽表的寫法再比對，否則首頁永遠不會被標成目前頁面。
+ */
+function normalise(id: string): string {
+	if (id === "" || id === "index") return "index";
+	return id.endsWith("/index") ? id : `${id}/index`;
+}
+
+/** 兩個 id 是否指向同一頁，容許 `dev` 與 `dev/index` 這種寫法差異。 */
+export function isSamePage(a: string, b: string): boolean {
+	return a === b || normalise(a) === normalise(b) || hrefFor(a) === hrefFor(b);
 }
 
 /** 集合 id → 網址。`index` 是根路徑，`dev/index` 是 `/dev`。 */
@@ -143,7 +168,7 @@ export function flatten(nav: NavNode[]): NavLink[] {
 /** 同一個區塊內的上一頁與下一頁。跨區塊不串接，兩邊的讀者不一樣。 */
 export function neighbours(id: string): { previous?: NavLink; next?: NavLink } {
 	const order = flatten(sectionFor(id).nav);
-	const index = order.findIndex(item => item.id === id);
+	const index = order.findIndex(item => isSamePage(item.id, id));
 	if (index === -1) return {};
 	return { previous: order[index - 1], next: order[index + 1] };
 }
