@@ -26,7 +26,7 @@ Admin (React SPA)
         WebSocket 通知 + HTTPS 取狀態 + 本機播放
 ```
 
-三個核心設計決定，詳細理由見 `apps/docs/docs/architecture/adr/`：
+三個核心設計決定，詳細理由見 <https://docs.linyao.tw/huan/dev/adr>：
 
 1. **Desired / Reported state**：Server 只宣告「這台裝置應該是哪個版面修訂」，Device 自己下載、驗證、啟用，再回報實際狀態。不使用大量命令式 RPC。
 2. **WebSocket 只送通知，REST 才是事實來源**：WebSocket 傳的是 `{"type":"desired_state_changed","version":42}`，Device 收到後再打 REST 取完整狀態。WebSocket 永遠不傳素材。
@@ -41,7 +41,6 @@ apps/
   worker/      FFmpeg 轉檔 worker，以 PostgreSQL 為工作佇列
   device/      Electron 播放器（main / preload / renderer）
   device-sim/  無 GUI 的模擬裝置，開發與測試用
-  docs/        Astro 靜態文件站
   e2e/         Playwright 端對端測試與文件截圖腳本
 packages/
   protocol/      @huan/protocol — 共用的 zod 結構與型別
@@ -74,9 +73,7 @@ pnpm build                # 建置所有套件與應用程式
 pnpm docker:up            # 啟動 postgres、rustfs、server、worker
 pnpm db:migrate           # 套用 migration
 pnpm db:seed              # 寫入開發用示範資料
-pnpm docs:dev             # 本機文件站
-pnpm docs:build           # 文件 SSG 建置
-pnpm docs:screenshots     # 以 Playwright 重新產生文件截圖
+pnpm docs:screenshots     # 以 Playwright 重新產生文件截圖到 ../docs
 ```
 
 ## 程式碼規範
@@ -181,37 +178,25 @@ pnpm --filter @huan/db db:generate
 
 ## 文件
 
-文件站在 `apps/docs`，使用 **Astro** 靜態輸出。線上位置是 <https://docs.huan.linyao.tw>，服務在根路徑，設定裡沒有子路徑處理。
+**文件不在這個 repository。** HUAN 的說明文件在 <https://github.com/linyao-tw/docs>，和其他產品的文件放在一起，線上位置是 <https://docs.linyao.tw/huan>。
 
-- 內容是 `src/content/docs/**` 的 Markdown，走 Astro content collection，每一篇都有 `title` 與 `description` frontmatter。
-- 搜尋用 Pagefind，索引在 `astro build` 之後產生，因此 `pnpm dev` 下搜尋不可用（對話框會說明）。
-- `llms.txt`、`llms-full.txt` 與每頁的 `.md` 由 `src/pages/` 底下的端點產生，順序跟著側欄走。
-- 圖表是 ```mermaid 區塊，在瀏覽器端算繪並跟著主題重畫；只有含圖的頁面才會載入 mermaid。
+改文件請到那個 repository，內容在 `src/content/docs/huan/`，寫作規範見它的 `AGENTS.md`。
 
-站台**只有兩個入口**，沒有行銷首頁：
+這裡只留下產生截圖的工具：
 
-- `docs/index.md` 與 `docs/guide/**` — 使用教學，寫給實際操作 HUAN 的人。不談程式碼、指令或部署。
-- `docs/dev/**` — 開發者，寫給要架設、修改或部署的人。
-
-新增頁面時先決定它屬於哪一邊，再放進對應目錄並加到 `src/lib/navigation.ts` 的側欄。不要建立第三個區塊。
-
-文件中的截圖必須是真實產品畫面，由 `pnpm docs:screenshots` 以 Playwright 對 seed 環境自動擷取。不放示意圖或 placeholder。
-
-文件的外觀完全由 `@linyao.tw/ui` 的設計變數驅動：`src/styles/docs.css` 匯入 `styles.css` 之後，只用語意角色（`--background-main`、`--text-secondary`、`--space-4`…）作版面，**沒有任何色碼或自訂刻度**。主題直接切 `data-lyds-theme`，和產品端同一套機制。
-
-文件站刻意不用 React：內容是靜態的，`.astro` 元件加設計變數就能完全符合設計系統，不需要為了幾個互動元件把 React 執行期帶進每一頁。圖示改用 `@phosphor-icons/core` 的原始 SVG，和產品端是同一套圖示家族。
-
-**寫作提醒：提示框要寫成獨立的段落，不要擠在同一行。**
-
-```markdown
-:::warning[標題]
-
-內容。
-
-:::
+```sh
+pnpm docs:screenshots
 ```
 
-Prettier 的 `proseWrap: "never"` 會把同一段的多行併成一行。標題和內文寫在一起的話，格式化之後標題會被黏進內文，而且沒有辦法自動還原。
+它需要一個跑起來的 seed 環境（`pnpm docker:up`、`pnpm db:seed`、`pnpm dev`），會用 Playwright 擷取真實的產品畫面，預設輸出到**同層的 `../docs` checkout**：
+
+```text
+../docs/public/huan/screenshots/
+```
+
+換一個位置用 `DOCS_SCREENSHOT_DIR` 覆寫。擷取完的圖片要在 docs repository 那邊 commit。
+
+截圖必須是真實產品畫面，不放示意圖或 placeholder——這是文件站那邊的規範，但圖是這裡產生的，所以這裡也要守。
 
 ## 安全限制
 

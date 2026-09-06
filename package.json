@@ -21,8 +21,6 @@
 		"docker:down": "docker compose -f docker/compose.yaml down",
 		"docker:logs": "docker compose -f docker/compose.yaml logs -f",
 		"docker:up": "docker compose -f docker/compose.yaml up -d",
-		"docs:build": "pnpm --filter @huan/docs build",
-		"docs:dev": "pnpm --filter @huan/docs dev",
 		"docs:screenshots": "pnpm --filter @huan/e2e screenshots",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",

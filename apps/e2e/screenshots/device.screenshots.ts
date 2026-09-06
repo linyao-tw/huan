@@ -1,3 +1,4 @@
+import { screenshotDir } from "@/screenshot-dir";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
@@ -6,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = resolve(HERE, "../../docs/public/screenshots");
+const OUTPUT_DIR = screenshotDir(HERE);
 const DEVICE_DIR = resolve(HERE, "../../device");
 const MAIN_ENTRY = join(DEVICE_DIR, "out/main/index.js");
 

@@ -89,9 +89,6 @@ jobs:
       - name: 建置
         run: pnpm build
 
-      - name: 建置文件
-        run: pnpm docs:build
-
   e2e:
     name: 端對端測試
     runs-on: ubuntu-latest

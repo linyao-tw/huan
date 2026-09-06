@@ -163,15 +163,13 @@ pnpm --filter @huan/device package:mac
 
 ## 文件
 
+線上文件：<https://docs.linyao.tw/huan>
+
+文件本身在 <https://github.com/linyao-tw/docs>，那個 repository 收錄麟曜所有產品的文件。這裡只留下產生截圖的工具：
+
 ```sh
-pnpm docs:dev          # 本機文件站
-pnpm docs:build        # 靜態建置到 apps/docs/dist（含 Pagefind 索引）
-pnpm docs:screenshots  # 以 Playwright 對種子環境重新擷取產品截圖
+pnpm docs:screenshots  # 以 Playwright 對種子環境重新擷取產品截圖到 ../docs
 ```
-
-線上文件：<https://docs.huan.linyao.tw>
-
-文件分成兩部分——**使用教學**給實際操作 HUAN 的人，**開發者**給要架設、修改或部署的人。以 Astro 建置成靜態網站並部署到 GitHub Pages，搜尋用 Pagefind，同時產生 `llms.txt`、`llms-full.txt` 與每頁的 Markdown，方便 AI 工具閱讀。
 
 ## 測試
 
