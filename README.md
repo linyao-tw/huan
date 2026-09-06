@@ -169,7 +169,9 @@ pnpm docs:build        # SSG 建置到 apps/docs/doc_build
 pnpm docs:screenshots  # 以 Playwright 對種子環境重新擷取產品截圖
 ```
 
-文件以 Rspress 建置並部署到 GitHub Pages，同時產生 `llms.txt`、`llms-full.txt` 與每頁的 Markdown，方便 AI 工具閱讀。
+線上文件：<https://docs.huan.linyao.tw>
+
+文件分成兩部分——**使用教學**給實際操作 HUAN 的人，**開發者**給要架設、修改或部署的人。以 Rspress 建置並部署到 GitHub Pages，同時產生 `llms.txt`、`llms-full.txt` 與每頁的 Markdown，方便 AI 工具閱讀。
 
 ## 測試
 

@@ -15,7 +15,7 @@
 | `preview`   | 後台排版預覽       | 長期                      |
 | `playback`  | 派送到裝置播放     | 全部 ACK 且過保留期後回收 |
 
-詳見[素材生命週期](/architecture/asset-lifecycle)。
+詳見[素材生命週期](/dev/asset-lifecycle)。
 
 ## 版面（Layout）
 
@@ -23,7 +23,7 @@
 
 任何區塊都可以被水平或垂直切成兩塊，每一塊可以放文字、跑馬燈、圖片、影片、網址或上傳的 HTML。
 
-分割用的是**比例**而不是像素，因此同一份版面在不同解析度上維持相同的構圖。詳見[版面與縮放](/architecture/layout-engine)。
+分割用的是**比例**而不是像素，因此同一份版面在不同解析度上維持相同的構圖。詳見[版面與縮放](/dev/layout-engine)。
 
 ## 修訂（Revision）
 
@@ -39,7 +39,7 @@
 
 排程綁定 IANA 時區，正確處理日光節約時間。多筆排程同時生效時依明確定義的順序決勝：優先度 → 視窗較短 → 天數較少 → 有日期區間 → 較新 → id。
 
-排程清單會下載到裝置本機，因此 **Server 離線時裝置仍會照時間切換版面**。詳見[排程與時區](/architecture/scheduling)。
+排程清單會下載到裝置本機，因此 **Server 離線時裝置仍會照時間切換版面**。詳見[排程與時區](/dev/scheduling)。
 
 ## 裝置（Device）
 
@@ -64,4 +64,4 @@ Device:  reportedVersion = 42
 
 任何一個檔案失敗，裝置就留在 41 繼續播舊內容，稍後重試。**絕不會為了下載新版本而先刪掉舊版本。**
 
-詳見 [Desired / Reported State](/architecture/desired-reported-state)。
+詳見 [Desired / Reported State](/dev/desired-reported-state)。

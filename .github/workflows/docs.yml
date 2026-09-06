@@ -48,9 +48,9 @@ jobs:
       - name: 建置 Rspress 靜態網站
         run: pnpm docs:build
         env:
-          # Pages 部署在 <owner>.github.io/<repo>/，因此 base 與 siteOrigin 必須
-          # 由 workflow 帶入，不能寫死在設定檔裡。
-          DOCS_BASE: ${{ steps.pages.outputs.base_path }}/
+          # 文件站有自己的網域且服務在根路徑，因此不需要 base。
+          # siteOrigin 仍由 workflow 帶入：它只影響 llms.txt 與各頁 Markdown 的
+          # 絕對連結，交給 configure-pages 回報比寫死可靠（例如換網域或改用 HTTPS）。
           DOCS_SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
 
       - uses: actions/upload-pages-artifact@v5

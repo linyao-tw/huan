@@ -1,35 +1,387 @@
-Copyright © Linyao Digital Studio
+Linyao Personal Use License 1.0
+Version 1.0 — 2026-09-06
 
-Free Use
+Copyright © the applicable copyright holder(s) identified in the Software.
+All rights reserved except as expressly granted below.
 
-A natural person may use, copy, modify, and create derivative
-works of the Software without charge solely for:
+IMPORTANT: THIS IS A SOURCE-AVAILABLE LICENSE, NOT AN OPEN SOURCE LICENSE
+AS DEFINED BY THE OPEN SOURCE INITIATIVE.
 
-- personal use;
-- private study;
-- education undertaken in an individual capacity;
-- research undertaken in an individual capacity;
-- hobby and non-commercial personal projects.
+1. Acceptance
 
-Organizational Use
+By exercising any right granted under this License, You accept and agree to
+be bound by its terms. If You do not agree, You receive no license under
+these terms and must not exercise rights that would otherwise require
+permission from the copyright holder.
 
-Any use by or on behalf of an Organization requires a separate
-commercial license from Linyao Digital Studio.
+2. Definitions
 
-"Organization" includes, without limitation:
+“Licensor” means the person or legal entity identified as the copyright
+holder of the Software in the applicable repository, release, package,
+NOTICE file, or other accompanying copyright notice.
 
-- companies and businesses;
-- sole proprietorships acting in a business capacity;
-- educational institutions;
-- schools and universities;
-- laboratories and research institutions;
-- government agencies;
-- nonprofit organizations;
-- associations and foundations.
+“Software” means the source code, object code, documentation, examples,
+design tokens, assets, and other materials distributed with this License,
+except for Third-Party Materials identified as being governed by other terms.
 
-A student or employee using the Software independently does not
-become an Organizational Use solely because they are affiliated
-with an Organization.
+“You” means the natural person exercising rights under this License. An
+Organization may not rely on the Individual License Grant in Section 3.
 
-Use commissioned, directed, funded, deployed, or operated by an
-Organization is Organizational Use.
+“Organization” means any legal person, company, corporation, partnership,
+sole proprietorship acting in a business capacity, school, university,
+college, educational institution, laboratory, research institution,
+government agency, public body, nonprofit organization, foundation,
+association, club, team, or other organized group, whether incorporated or
+unincorporated, and includes its employees, officers, contractors, agents,
+and representatives when acting for or on behalf of that Organization.
+
+“Permitted Individual Use” means use by a natural person solely in that
+person’s individual capacity for one or more of the following purposes:
+(a) personal use;
+(b) hobby or private projects;
+(c) self-directed learning, study, experiment, or research;
+(d) a student’s own coursework, assignment, thesis, portfolio, or academic
+    project, provided the Software is not deployed, administered, licensed,
+    procured, or operated by the educational institution itself; or
+(e) contribution to a noncommercial community project in an individual
+    capacity.
+
+Incidental educational, reputational, or portfolio benefit does not by
+itself make an otherwise Permitted Individual Use organizational or
+commercial.
+
+“Organizational Use” means any use of the Software by, for, at the direction
+of, or on behalf of an Organization, including use:
+(a) in the course of employment, contracting, consulting, or official duties;
+(b) to develop, operate, test, deliver, host, support, or maintain an
+    Organization’s product, service, website, application, infrastructure,
+    internal tool, research platform, course infrastructure, or other system;
+(c) in a laboratory, department, classroom deployment, computer lab, school
+    service, institutional server, or centrally managed environment;
+(d) for a funded, commissioned, sponsored, or institutionally administered
+    project where the Organization is a beneficiary, owner, operator, or
+    contracting party; or
+(e) to obtain direct or indirect business, institutional, governmental, or
+    organizational benefit.
+
+Mere affiliation with an Organization, use of an Organization-provided
+network, or enrollment or employment status alone does not constitute
+Organizational Use when the person is genuinely acting only in an individual
+capacity under Permitted Individual Use.
+
+“Commercial License” means a separate written license or agreement issued or
+accepted by the Licensor that expressly permits Organizational Use,
+commercial use, or other use not permitted by this License.
+
+“Distribute” means to provide a copy of all or part of the Software to
+another person or entity, whether in source or object form, by sale, transfer,
+download, package publication, repository, physical media, or any other
+means.
+
+“Modification” means any modification, adaptation, translation, derivative
+work, or other change to the Software to the extent such activity requires
+permission under applicable copyright law.
+
+“Third-Party Materials” means software, libraries, fonts, media, data,
+documentation, or other materials for which the Licensor is not the
+applicable copyright holder and that are identified as subject to separate
+license terms or notices.
+
+3. Individual License Grant
+
+Subject to full compliance with this License, the Licensor grants You a
+worldwide, royalty-free, non-exclusive, non-transferable license, for the
+duration of the applicable copyright, to:
+
+(a) access, download, reproduce, install, execute, and use the Software;
+(b) modify the Software and create Modifications; and
+(c) Distribute the Software and Your Modifications only as permitted by
+    Section 6,
+
+in each case solely for Permitted Individual Use.
+
+This grant is personal to You. It does not extend to an Organization merely
+because You are affiliated with, employed by, contracted by, enrolled in, or
+otherwise connected with that Organization.
+
+4. Organizational and Commercial Use Requires a Separate License
+
+No Organizational Use is licensed under Section 3.
+
+Without a separate Commercial License, an Organization and any person acting
+for or on behalf of an Organization may not use the Software in production,
+development, internal operations, teaching infrastructure, research
+infrastructure, commercial activity, public service, client work, sponsored
+work, or any other Organizational Use.
+
+For clarity:
+
+(a) a student independently using the Software for that student’s own
+    coursework or thesis may qualify for Permitted Individual Use;
+(b) a school or university installing, deploying, administering, requiring,
+    bundling, hosting, or operating the Software as an institutional resource
+    is Organizational Use;
+(c) a teacher, researcher, employee, contractor, or consultant using the
+    Software as part of official duties is Organizational Use;
+(d) a company using the Software for internal tools, client work, prototypes,
+    products, services, SaaS, websites, or applications is Organizational
+    Use; and
+(e) a nonprofit, government body, association, foundation, laboratory, or
+    other organized group is an Organization even if it does not operate for
+    profit.
+
+Organizational Use requires a Commercial License from the Licensor.
+
+5. Limited Organizational Evaluation
+
+An Organization may, without a Commercial License, download and reproduce
+the Software solely as technically necessary for internal evaluation of
+whether to obtain a Commercial License, for no more than thirty (30)
+consecutive days.
+
+This evaluation permission does not permit production use, public deployment,
+client work, teaching deployment, research operations, redistribution,
+publication of modified versions, or use that provides operational or
+commercial value beyond evaluation.
+
+The Licensor may extend an evaluation period in writing.
+
+6. Distribution and Modifications
+
+If You Distribute the Software or a Modification under the Individual License
+Grant:
+
+(a) the distribution must be without a license fee or other charge for the
+    Software itself;
+(b) You must include a complete copy of this License;
+(c) You must preserve all copyright, attribution, license, and Third-Party
+    Materials notices that apply to the portions You distribute;
+(d) modified files must carry a reasonable notice that You changed them and,
+    where practical, the date of the change;
+(e) You may not represent that a Modification is an official release of the
+    Licensor;
+(f) You may not remove or alter notices in a manner that falsely suggests
+    ownership, authorship, sponsorship, certification, or endorsement; and
+(g) Your distribution does not grant recipients any broader rights than this
+    License. Each recipient receives any rights under this License directly
+    from the Licensor, not by sublicense from You.
+
+You may not sell, rent, sublicense, commercially redistribute, or provide the
+Software as a paid service under the Individual License Grant.
+
+This Section applies only to the extent the distributed material is the
+Software or a Modification under applicable law. It does not impose license
+terms on a separate and independent work merely because that work is
+aggregated with, communicates with, or interoperates with the Software.
+
+7. Separate Commercial Licenses
+
+The Licensor may offer the Software under one or more separate Commercial
+Licenses on different terms, including proprietary terms.
+
+A Commercial License may grant rights broader than this License. If You have
+a valid Commercial License, that Commercial License governs to the extent of
+any conflict for the uses it covers.
+
+The public availability of source code, a public repository, package
+registry publication, or the ability to technically access or copy the
+Software does not itself grant Organizational Use or commercial rights.
+
+8. Ownership and Reservation of Rights
+
+The Software is licensed, not sold.
+
+Except for the limited rights expressly granted by this License, the
+Licensor and applicable third-party rights holders retain all right, title,
+and interest in and to their respective materials, including copyright,
+patent, trademark, trade secret, and other intellectual property rights.
+
+No implied license is granted. Any right not expressly granted is reserved.
+
+9. Third-Party Materials
+
+Third-Party Materials are governed solely by their applicable third-party
+licenses and notices, not by this License.
+
+If a Third-Party Material license grants You broader rights, this License
+does not reduce those third-party rights. If a Third-Party Material license
+imposes additional obligations, You are responsible for complying with those
+obligations.
+
+The Licensor does not represent that every combination, dependency, or use
+of the Software with third-party materials is legally compatible with Your
+intended use.
+
+10. Patent License
+
+To the extent the Licensor owns or controls patent claims that are
+necessarily infringed solely by exercising the rights expressly granted to
+You under this License, the Licensor grants You a worldwide, royalty-free,
+non-exclusive patent license under those claims solely for Your exercise of
+those expressly granted rights.
+
+This patent license does not extend to combinations with other products,
+technologies, or modifications to the extent the patent claim would not have
+been infringed by the unmodified Software alone.
+
+If You or an Organization on whose behalf You act initiate a patent claim,
+counterclaim, or other written allegation asserting that the Software or a
+Modification contributed by the Licensor infringes a patent, any patent
+license granted to You under this Section terminates upon filing or making
+that assertion, except to the extent prohibited by applicable law.
+
+11. Trademarks and Branding
+
+This License does not grant permission to use any trade name, trademark,
+service mark, logo, product name, domain name, visual identity, or other
+branding of the Licensor, except as reasonably necessary to describe the
+origin of the Software and reproduce required legal notices.
+
+You may not imply sponsorship, certification, affiliation, or endorsement by
+the Licensor.
+
+12. Contributions
+
+This License does not by itself grant the Licensor the right to relicense
+third-party contributions.
+
+Unless the Licensor expressly states otherwise, contributions intended for
+inclusion in the Licensor’s official repository are accepted only under the
+Licensor’s then-current contributor terms or Contributor License Agreement
+(“CLA”).
+
+Submitting a patch, pull request, issue attachment, or other material does
+not transfer ownership to the Licensor unless applicable contributor terms
+expressly provide the rights necessary for that contribution.
+
+13. Statutory Rights
+
+Nothing in this License is intended to restrict any right, exception,
+limitation, exhaustion doctrine, fair use or fair dealing right, or other
+permission that You have independently under applicable law and that cannot
+lawfully be restricted by contract.
+
+14. Compliance With Law
+
+You are responsible for complying with laws and regulations applicable to
+Your use and distribution of the Software.
+
+No term of this License requires conduct prohibited by applicable law. If a
+term is unenforceable in a particular jurisdiction, Section 19 applies.
+
+15. Term and Termination
+
+This License begins when You first exercise a right granted under it and
+continues for the duration of the applicable copyright unless terminated
+under this Section.
+
+Your rights under this License terminate automatically if You materially
+violate its terms.
+
+For a first unintentional violation, Your rights will be reinstated
+automatically if:
+(a) You cease the violation promptly after becoming aware of it;
+(b) You cure the violation and its reasonably curable consequences within
+    thirty (30) days after receiving written notice from the Licensor; and
+(c) the violation did not involve intentional Organizational Use,
+    intentional commercial exploitation, fraud, or knowing infringement.
+
+The Licensor may waive a violation or reinstate rights in writing.
+
+Termination does not affect obligations or liabilities that by their nature
+should survive, including ownership, accrued payment obligations under a
+separate agreement, disclaimers, limitations of liability, and governing-law
+provisions.
+
+16. Disclaimer of Warranty
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED
+“AS IS” AND “AS AVAILABLE,” WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT,
+ACCURACY, AVAILABILITY, SECURITY, OR THAT THE SOFTWARE WILL BE ERROR-FREE.
+
+THE LICENSOR DOES NOT WARRANT THAT THE SOFTWARE IS SUITABLE FOR SAFETY-
+CRITICAL, MEDICAL, FINANCIAL, LEGAL, INDUSTRIAL-CONTROL, EMERGENCY, OR OTHER
+HIGH-RISK USE.
+
+Nothing in this Section excludes or limits a warranty or right that cannot
+lawfully be excluded or limited.
+
+17. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR WILL NOT BE
+LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR
+CONSEQUENTIAL DAMAGES, OR FOR LOSS OF PROFITS, REVENUE, DATA, GOODWILL,
+BUSINESS OPPORTUNITY, OR BUSINESS INTERRUPTION, ARISING OUT OF OR RELATING TO
+THE SOFTWARE OR THIS LICENSE, UNDER ANY THEORY OF LIABILITY.
+
+FOR RIGHTS GRANTED WITHOUT PAYMENT UNDER THIS LICENSE, AND TO THE MAXIMUM
+EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR’S AGGREGATE LIABILITY
+ARISING OUT OF OR RELATING TO THIS LICENSE OR THE SOFTWARE WILL NOT EXCEED
+THE GREATER OF (A) THE AMOUNT YOU PAID TO THE LICENSOR SPECIFICALLY FOR THE
+RIGHTS GRANTED UNDER THIS LICENSE DURING THE TWELVE MONTHS BEFORE THE EVENT
+GIVING RISE TO LIABILITY, OR (B) NEW TAIWAN DOLLARS ONE THOUSAND (NT$1,000).
+
+THE LIMITATIONS IN THIS SECTION DO NOT APPLY TO LIABILITY THAT CANNOT
+LAWFULLY BE EXCLUDED OR LIMITED, INCLUDING LIABILITY FOR INTENTIONAL
+MISCONDUCT OR GROSS NEGLIGENCE TO THE EXTENT APPLICABLE LAW PROHIBITS
+ADVANCE EXCLUSION OR LIMITATION.
+
+MANDATORY CONSUMER-PROTECTION RIGHTS, IF ANY, ARE NOT WAIVED.
+
+18. Governing Law and Disputes
+
+This License is governed by the laws of the Republic of China (Taiwan),
+without regard to conflict-of-laws principles.
+
+To the extent a forum-selection agreement is legally permitted and does not
+deprive a consumer or other protected party of mandatory rights, the parties
+agree that the Taiwan Taichung District Court shall be the court of first
+instance for disputes arising out of or relating to this License.
+
+Nothing in this Section prevents either party from seeking provisional,
+injunctive, or other urgent relief from a court of competent jurisdiction
+where such relief is legally available.
+
+19. Severability, Reformation, and Waiver
+
+If any provision of this License is held invalid or unenforceable, that
+provision will be enforced to the maximum extent permitted by law and, if
+necessary, severed or narrowly reformed so that the remaining provisions
+remain in effect and the parties’ lawful intent is preserved as closely as
+possible.
+
+Failure to enforce a provision is not a waiver of that provision or any
+other provision.
+
+20. Entire License; No Retroactive Changes
+
+This License is the complete public license grant for the version of the
+Software with which it is distributed, except for applicable Third-Party
+Materials and any separate written Commercial License.
+
+The Licensor may publish revised versions of this License for future releases,
+but a revised license does not retroactively change the license terms
+attached to a version already released unless the applicable rights holder
+and licensee separately agree.
+
+21. Language
+
+The authoritative version of this License is the English-language text
+distributed with the Software.
+
+Any translation is provided for convenience only. If a translation conflicts
+with the English-language text, the English-language text controls to the
+extent permitted by applicable law.
+
+22. License Identification
+
+Recommended human-readable name:
+Linyao Personal Use License 1.0
+
+Recommended custom SPDX reference:
+LicenseRef-Linyao-Personal-Use-1.0
+
+This License is source-available and is not represented as approved by the
+Open Source Initiative or as an OSI Open Source license.

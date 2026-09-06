@@ -181,11 +181,20 @@ pnpm --filter @huan/db db:generate
 
 ## 文件
 
-文件站在 `apps/docs`，使用 Rspress SSG 並開啟 `llms: true` 以產生 `llms.txt`、`llms-full.txt` 與各頁的 Markdown。
+文件站在 `apps/docs`，使用 Rspress SSG 並開啟 `llms: true` 以產生 `llms.txt`、`llms-full.txt` 與各頁的 Markdown。線上位置是 <https://docs.huan.linyao.tw>，服務在根路徑，設定裡沒有子路徑處理。
+
+站台**只有兩個入口**，沒有行銷首頁：
+
+- `docs/index.md` 與 `docs/guide/**` — 使用教學，寫給實際操作 HUAN 的人。不談程式碼、指令或部署。
+- `docs/dev/**` — 開發者，寫給要架設、修改或部署的人。
+
+新增頁面時先決定它屬於哪一邊，再放進對應目錄並加到 `rspress.config.ts` 的側欄。不要建立第三個區塊。
 
 文件中的截圖必須是真實產品畫面，由 `pnpm docs:screenshots` 以 Playwright 對 seed 環境自動擷取。不放示意圖或 placeholder。
 
-文件裡的自訂 React 元件同樣使用 `@linyao.tw/ui`。
+文件的外觀完全由 `@linyao.tw/ui` 的設計變數驅動。Rspress 用 `html.rp-dark` 切換深色、設計系統用 `data-lyds-theme`，兩者由 `theme/theme-bridge.ts` 內嵌的腳本同步；`theme/styles.css` 則把每一個 `--rp-*` 變數接到對應的語意角色。
+
+覆寫 Rspress 變數時要用 `:root:root`：它有一部分變數也定義在 `:root`，而它的樣式表排在 `globalStyles` 後面，權重相同就由順序決勝。
 
 ## 安全限制
 

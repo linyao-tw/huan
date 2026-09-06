@@ -1,22 +1,317 @@
 /*
- * 文件站沿用 Linyao Design System 的設計變數，讓文件與產品看起來是同一套東西。
- * Rspress 自己的 CSS 變數對應到設計系統的語意角色，因此不需要再寫一份色票。
+ * HUAN 文件站的外觀。
+ *
+ * Rspress 用 `html.rp-dark` 切換深色，@linyao.tw/ui 用 `data-lyds-theme`。
+ * 兩套機制原本各走各的，結果就是 Rspress 換成深色、設計系統還停在亮色，
+ * 半邊灰半邊白。`theme/theme-bridge.ts` 負責把前者同步成後者，這裡則把
+ * Rspress 的每一個 `--rp-*` 變數接到設計系統的語意角色上。
  */
 @import "@linyao.tw/ui/styles.css";
 @import "@linyao.tw/ui/fonts.css";
 
-:root {
+/* ── 把 Rspress 的變數接到設計系統 ─────────────────────────────────────── */
+
+/*
+ * 選擇器刻意寫成 `:root:root`。
+ *
+ * Rspress 有一部分變數（提示框那一組）也定義在 `:root` 上，而它的樣式表排在
+ * globalStyles 後面——權重一樣時就由順序決勝，我們會輸。重複一次 `:root`
+ * 把權重提到 (0,2,0)，順便也蓋過深色的 `.dark { ... }` 覆寫。
+ */
+:root:root {
 	--rp-c-brand: var(--control-primary);
 	--rp-c-brand-light: var(--control-primary-hover);
+	--rp-c-brand-lighter: var(--control-selected-muted);
 	--rp-c-brand-dark: var(--control-primary-pressed);
-	--rp-c-text-1: var(--text-main);
-	--rp-c-text-2: var(--text-secondary);
+	--rp-c-brand-darker: var(--control-primary-pressed);
+	--rp-c-brand-tint: var(--background-selected);
+
 	--rp-c-bg: var(--background-main);
 	--rp-c-bg-soft: var(--background-secondary);
+	--rp-c-bg-mute: var(--background-inset);
+	--rp-c-bg-alt: var(--background-elevated);
+
 	--rp-c-divider: var(--divider-main);
+	--rp-c-divider-light: var(--divider-subtle);
+
+	--rp-c-text-0: var(--text-title);
+	--rp-c-text-1: var(--text-main);
+	--rp-c-text-2: var(--text-secondary);
+	--rp-c-text-3: var(--text-muted);
+	--rp-c-text-4: var(--text-disabled);
+	--rp-c-text-code: var(--text-accent);
+	--rp-c-text-code-bg: var(--background-inset);
+	--rp-c-text-code-border: var(--border-width-hairline) solid var(--divider-subtle);
+	--rp-c-link: var(--text-link);
+
+	--rp-c-gray: var(--text-muted);
+	--rp-c-gray-light-1: var(--divider-strong);
+	--rp-c-gray-light-2: var(--divider-main);
+	--rp-c-gray-light-3: var(--divider-subtle);
+	--rp-c-gray-light-4: var(--background-inset);
+	--rp-c-gray-light-5: var(--background-secondary);
+
+	--rp-shadow-1: var(--shadow-low);
+	--rp-shadow-2: var(--shadow-low);
+	--rp-shadow-3: var(--shadow-medium);
+	--rp-shadow-4: var(--shadow-medium);
+	--rp-shadow-5: var(--shadow-overlay);
+
+	--rp-radius: var(--radius-md);
+	--rp-radius-small: var(--radius-sm);
+	--rp-radius-large: var(--radius-lg);
+
+	--rp-code-font-size: var(--font-size-sm);
+	--rp-code-title-bg: var(--background-secondary);
+	--rp-code-block-color: var(--text-main);
+	--rp-code-block-bg: var(--background-inset);
+	--rp-code-block-border: var(--border-width-hairline) solid var(--divider-subtle);
+	--rp-code-block-shadow: none;
+
 	--rp-font-family-base: var(--font-family-sans);
 	--rp-font-family-mono: var(--font-family-mono);
+
+	/* 文件內容的最大寬度。中文在寬版面下很難讀，收窄到接近一行 40 個字。 */
+	--huan-content-width: 46rem;
 }
+
+/*
+ * Rspress 的預設值寫在 `:where(...)` 裡（權重 0），因此上面的 `:root` 已經
+ * 蓋過亮色與深色兩組。深色下我們的語意變數由 data-lyds-theme 重新計算，
+ * 這些對應關係不需要再寫第二份。
+ */
+
+/* ── 版面 ─────────────────────────────────────────────────────────────── */
+
+html {
+	font-family: var(--font-family-sans);
+}
+
+body {
+	background: var(--background-main);
+	color: var(--text-main);
+	font-family: var(--font-family-sans);
+	letter-spacing: var(--letter-spacing-body);
+}
+
+.rp-doc {
+	max-width: var(--huan-content-width);
+}
+
+.rp-doc h1,
+.rp-doc h2,
+.rp-doc h3,
+.rp-doc h4 {
+	color: var(--text-title);
+	font-weight: var(--font-weight-semibold);
+	letter-spacing: var(--letter-spacing-tight);
+	line-height: var(--line-height-heading);
+}
+
+.rp-doc h1 {
+	font-size: var(--font-size-2xl);
+	margin-bottom: var(--space-6);
+}
+
+/*
+ * 章節之間用留白分隔，不畫線。
+ * h2 前面常常是提示框、表格或程式碼區塊，它們本來就有邊框，
+ * 再加一條規則線就會變成兩條靠在一起的細線。
+ */
+.rp-doc h2 {
+	margin-top: var(--space-12);
+	font-size: var(--font-size-xl);
+}
+
+.rp-doc h3 {
+	margin-top: var(--space-8);
+	font-size: var(--font-size-lg);
+}
+
+.rp-doc p,
+.rp-doc li {
+	color: var(--text-main);
+	line-height: var(--line-height-body);
+}
+
+.rp-doc a {
+	color: var(--text-link);
+	text-decoration-color: var(--divider-main);
+	text-underline-offset: 0.2em;
+}
+
+.rp-doc a:hover {
+	color: var(--text-link-hover);
+	text-decoration-color: currentColor;
+}
+
+.rp-doc strong {
+	color: var(--text-title);
+	font-weight: var(--font-weight-semibold);
+}
+
+.rp-doc blockquote {
+	border-left: var(--border-width-strong) solid var(--divider-main);
+	color: var(--text-secondary);
+}
+
+/* ── 表格 ─────────────────────────────────────────────────────────────── */
+
+.rp-doc table {
+	display: table;
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size-sm);
+}
+
+.rp-doc th {
+	background: var(--background-secondary);
+	color: var(--text-title);
+	font-weight: var(--font-weight-semibold);
+	text-align: start;
+}
+
+.rp-doc th,
+.rp-doc td {
+	padding: var(--space-2) var(--space-3);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	vertical-align: top;
+}
+
+.rp-doc tr:nth-child(2n) {
+	background: var(--background-secondary);
+}
+
+/* ── 程式碼 ───────────────────────────────────────────────────────────── */
+
+.rp-doc :not(pre) > code {
+	padding: 0.15em 0.4em;
+	background: var(--background-inset);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-xs);
+	color: var(--text-accent);
+	font-family: var(--font-family-mono);
+	font-size: 0.875em;
+}
+
+.rp-doc pre {
+	font-family: var(--font-family-mono);
+}
+
+/* ── 導覽與側欄 ───────────────────────────────────────────────────────── */
+
+.rp-nav {
+	background: var(--background-main);
+	border-bottom: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+.rp-sidebar {
+	background: var(--background-main);
+	border-right: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+.rp-sidebar a,
+.rp-aside a {
+	border-radius: var(--radius-sm);
+	color: var(--text-secondary);
+	transition:
+		color var(--motion-duration-fast) var(--motion-ease-out),
+		background var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.rp-sidebar a:hover,
+.rp-aside a:hover {
+	color: var(--text-main);
+}
+
+/* 目前所在頁面必須一眼看得出來，不能只有淡淡的顏色差別。 */
+.rp-sidebar .rp-sidebar-item--active,
+.rp-sidebar a[aria-current="page"] {
+	background: var(--background-selected);
+	color: var(--text-accent);
+	font-weight: var(--font-weight-medium);
+}
+
+/* ── 鍵盤焦點 ─────────────────────────────────────────────────────────── */
+
+.rp-doc a:focus-visible,
+.rp-nav a:focus-visible,
+.rp-sidebar a:focus-visible,
+.rp-aside a:focus-visible,
+button:focus-visible {
+	outline: var(--border-width-strong) solid var(--focus-ring);
+	outline-offset: 2px;
+	border-radius: var(--radius-xs);
+}
+
+/* ── 提示框 ───────────────────────────────────────────────────────────── */
+
+/*
+ * Rspress 的提示框自己一組顏色（tip 是綠色），和設計系統的狀態色完全不同。
+ * 全部接到 --status-* 上，這樣提示框的語意色和產品裡的 Alert 才是同一套。
+ */
+:root:root {
+	--rp-container-note-bg: var(--status-neutral-background);
+	--rp-container-note-border: var(--status-neutral-border);
+	--rp-container-note-text: var(--status-neutral-foreground);
+	--rp-container-note-code-bg: var(--background-inset);
+
+	--rp-container-tip-bg: var(--status-info-background);
+	--rp-container-tip-border: var(--status-info-border);
+	--rp-container-tip-text: var(--status-info-foreground);
+	--rp-container-tip-code-bg: var(--background-inset);
+
+	--rp-container-info-bg: var(--status-info-background);
+	--rp-container-info-border: var(--status-info-border);
+	--rp-container-info-text: var(--status-info-foreground);
+	--rp-container-info-code-bg: var(--background-inset);
+
+	--rp-container-important-bg: var(--status-info-background);
+	--rp-container-important-border: var(--status-info-border);
+	--rp-container-important-text: var(--status-info-foreground);
+	--rp-container-important-code-bg: var(--background-inset);
+
+	--rp-container-warning-bg: var(--status-warning-background);
+	--rp-container-warning-border: var(--status-warning-border);
+	--rp-container-warning-text: var(--status-warning-foreground);
+	--rp-container-warning-code-bg: var(--background-inset);
+
+	--rp-container-caution-bg: var(--status-warning-background);
+	--rp-container-caution-border: var(--status-warning-border);
+	--rp-container-caution-text: var(--status-warning-foreground);
+	--rp-container-caution-code-bg: var(--background-inset);
+
+	--rp-container-danger-bg: var(--status-danger-background);
+	--rp-container-danger-border: var(--status-danger-border);
+	--rp-container-danger-text: var(--status-danger-foreground);
+	--rp-container-danger-code-bg: var(--background-inset);
+
+	--rp-container-details-bg: var(--background-secondary);
+	--rp-container-details-border: var(--divider-subtle);
+	--rp-container-details-text: var(--text-main);
+	--rp-container-details-code-bg: var(--background-inset);
+}
+
+.rp-callout {
+	padding: var(--space-4) var(--space-5);
+	border-radius: var(--radius-md);
+}
+
+.rp-callout__title {
+	font-size: var(--font-size-md);
+	font-weight: var(--font-weight-semibold);
+}
+
+.rp-callout__content {
+	color: var(--text-main);
+	font-size: var(--font-size-sm);
+}
+
+.rp-callout__content > :last-child {
+	margin-bottom: 0;
+}
+
+/* ── 截圖 ─────────────────────────────────────────────────────────────── */
 
 .huan-figure {
 	margin: var(--space-6) 0;
@@ -25,7 +320,7 @@
 .huan-figure img {
 	display: block;
 	width: 100%;
-	border: 1px solid var(--border-subtle);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
 	border-radius: var(--radius-md);
 	box-shadow: var(--shadow-low);
 }

@@ -1,16 +1,17 @@
 import { defineConfig } from "@rspress/core";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { THEME_BRIDGE_SCRIPT } from "./theme/theme-bridge";
 
 const here = (relative: string): string => resolve(fileURLToPath(new URL(".", import.meta.url)), relative);
 
 /**
- * GitHub Pages 會把站台放在 `<owner>.github.io/<repo>/` 之下，
- * 因此 base 與 siteOrigin 必須由 workflow 帶進來，不能寫死在這裡；
- * 本機開發時兩者都退回根路徑。
+ * 文件站有自己的網域，服務在根路徑，因此 base 固定是 `/`。
+ *
+ * `siteOrigin` 只影響 `llms.txt` 與各頁 Markdown 裡的絕對連結；
+ * fork 出去換網域時覆寫 `DOCS_SITE_ORIGIN` 即可。
  */
-const base = process.env.DOCS_BASE ?? "/";
-const siteOrigin = process.env.DOCS_SITE_ORIGIN;
+const siteOrigin = process.env.DOCS_SITE_ORIGIN ?? "https://docs.huan.linyao.tw";
 
 const THEME_TEXT_ZH_TW: Record<string, string> = {
 	languagesText: "語言",
@@ -38,17 +39,112 @@ const THEME_TEXT_ZH_TW: Record<string, string> = {
 	codeButtonGroupCopyButtonText: "複製",
 	codeButtonGroupWrapButtonText: "自動換行",
 	notFoundText: "找不到這個頁面",
-	takeMeHomeText: "回到首頁",
+	takeMeHomeText: "回到快速開始",
 	promptCopyText: "複製提示詞",
 	promptCopiedText: "已複製",
 	promptExpandText: "展開",
 	promptCollapseText: "收合"
 };
 
+/** 使用教學：面向實際操作 HUAN 的人，不談程式碼與部署。 */
+const GUIDE_SIDEBAR = [
+	{
+		text: "開始使用",
+		items: [
+			{ text: "快速開始", link: "/index" },
+			{ text: "核心概念", link: "/guide/concepts" }
+		]
+	},
+	{
+		text: "日常操作",
+		items: [
+			{ text: "上傳素材", link: "/guide/media" },
+			{ text: "設計版面", link: "/guide/layouts" },
+			{ text: "安排播放時段", link: "/guide/schedules" },
+			{ text: "管理裝置", link: "/guide/devices" }
+		]
+	},
+	{
+		text: "播放裝置",
+		items: [
+			{ text: "配對裝置", link: "/guide/pairing" },
+			{ text: "離線播放", link: "/guide/offline" },
+			{ text: "解除綁定", link: "/guide/unbind" },
+			{ text: "在 Raspberry Pi 上安裝", link: "/guide/install-raspberry-pi" },
+			{ text: "在 Ubuntu 上安裝", link: "/guide/install-ubuntu" },
+			{ text: "在 Windows 上安裝", link: "/guide/install-windows" },
+			{ text: "在 macOS 上安裝", link: "/guide/install-macos" }
+		]
+	},
+	{
+		text: "帳號",
+		items: [
+			{ text: "登入", link: "/guide/account" },
+			{ text: "兩步驟驗證", link: "/guide/two-factor" },
+			{ text: "使用者與權限", link: "/guide/users" }
+		]
+	},
+	{ text: "疑難排解", link: "/guide/troubleshooting" }
+];
+
+/** 開發者：架設、擴充與理解系統怎麼運作。 */
+const DEV_SIDEBAR = [
+	{
+		text: "開發環境",
+		items: [
+			{ text: "開始開發", link: "/dev/index" },
+			{ text: "Monorepo", link: "/dev/monorepo" },
+			{ text: "指令", link: "/dev/commands" },
+			{ text: "測試", link: "/dev/testing" }
+		]
+	},
+	{
+		text: "架構",
+		items: [
+			{ text: "系統架構", link: "/dev/architecture" },
+			{ text: "Server", link: "/dev/server" },
+			{ text: "Worker", link: "/dev/worker" },
+			{ text: "Device", link: "/dev/device" },
+			{ text: "素材生命週期", link: "/dev/asset-lifecycle" },
+			{ text: "Desired / Reported State", link: "/dev/desired-reported-state" },
+			{ text: "版面與縮放", link: "/dev/layout-engine" },
+			{ text: "排程與時區", link: "/dev/scheduling" },
+			{ text: "協定", link: "/dev/protocol" }
+		]
+	},
+	{
+		text: "部署",
+		items: [
+			{ text: "Docker", link: "/dev/deploy/docker" },
+			{ text: "環境變數", link: "/dev/deploy/environment" },
+			{ text: "PostgreSQL", link: "/dev/deploy/postgresql" },
+			{ text: "RustFS", link: "/dev/deploy/rustfs" },
+			{ text: "GitHub Pages", link: "/dev/deploy/github-pages" },
+			{ text: "發布", link: "/dev/release" }
+		]
+	},
+	{
+		text: "架構決策紀錄",
+		collapsible: true,
+		collapsed: true,
+		items: [
+			{ text: "總覽", link: "/dev/adr/index" },
+			{ text: "0001 WebSocket 加 REST", link: "/dev/adr/0001-websocket-plus-rest" },
+			{ text: "0002 Desired / Reported State", link: "/dev/adr/0002-desired-reported-state" },
+			{ text: "0003 物件儲存只做暫存", link: "/dev/adr/0003-temporary-object-storage" },
+			{ text: "0004 遞迴分割版面", link: "/dev/adr/0004-recursive-split-layout" },
+			{ text: "0005 本機優先播放", link: "/dev/adr/0005-local-first-playback" },
+			{ text: "0006 選擇 Electron", link: "/dev/adr/0006-electron" },
+			{ text: "0007 PostgreSQL 工作佇列", link: "/dev/adr/0007-postgres-job-queue" }
+		]
+	},
+	{ text: "疑難排解", link: "/dev/troubleshooting" }
+];
+
 export default defineConfig({
 	root: "docs",
-	base,
-	...(siteOrigin ? { siteOrigin } : {}),
+	base: "/",
+	siteOrigin,
 	lang: "zh-TW",
 	title: "HUAN 讙",
 	description: "跨平台的雲端媒體播放與數位看板系統",
@@ -62,20 +158,17 @@ export default defineConfig({
 	globalStyles: here("theme/styles.css"),
 
 	/**
-	 * 產生 llms.txt、llms-full.txt 與每一頁的 Markdown 版本，
-	 * 讓 AI 工具不必解析 HTML 就能讀懂整份文件。
+	 * Rspress 用 `html.rp-dark` 切換深色，@linyao.tw/ui 用 `data-lyds-theme`。
+	 * 這段內嵌腳本在第一次繪製前就把兩者對齊，避免出現框架已經變黑、
+	 * 內容還是亮色的半套畫面。
 	 */
+	head: [`<script>${THEME_BRIDGE_SCRIPT}</script>`],
+
+	/** 產生 llms.txt、llms-full.txt 與每頁的 Markdown，讓 AI 工具直接讀得懂。 */
 	llms: true,
 
 	ssg: true,
 
-	/**
-	 * 佈景主題的介面字串。Rspress 內建的翻譯只到英文與簡體中文，
-	 * 少了這一份，繁體中文站台的側欄與搜尋框會混進英文。
-	 *
-	 * 用函式形式合併而不是直接給物件：內建型別要求每個項目同時提供 `zh` 與 `en`，
-	 * 但我們只需要補上 `zh-TW` 這個地區，其餘沿用預設。
-	 */
 	i18nSource: defaults => {
 		const merged: Record<string, Record<string, string>> = { ...defaults };
 		for (const [key, value] of Object.entries(THEME_TEXT_ZH_TW)) {
@@ -93,107 +186,15 @@ export default defineConfig({
 		footer: {
 			message: "HUAN 讙 — 麟曜數位工作室。採購請來信 contact@linyao.tw。"
 		},
+		/** 整份文件只有兩個入口：給使用者的，和給開發者的。 */
 		nav: [
-			{ text: "快速開始", link: "/guide/getting-started" },
-			{ text: "架構", link: "/architecture/overview" },
-			{ text: "部署", link: "/deployment/docker" },
-			{ text: "管理員", link: "/admin/login" },
-			{ text: "Device", link: "/device/raspberry-pi" },
-			{ text: "開發", link: "/development/monorepo" }
+			{ text: "使用教學", link: "/index", activeMatch: "^/(index|guide)" },
+			{ text: "開發者", link: "/dev/index", activeMatch: "^/dev" }
 		],
 		sidebar: {
-			"/guide/": [
-				{
-					text: "開始使用",
-					items: [
-						{ text: "HUAN 是什麼", link: "/guide/index" },
-						{ text: "快速開始", link: "/guide/getting-started" },
-						{ text: "核心概念", link: "/guide/concepts" }
-					]
-				}
-			],
-			"/architecture/": [
-				{
-					text: "架構",
-					items: [
-						{ text: "系統架構", link: "/architecture/overview" },
-						{ text: "Server", link: "/architecture/server" },
-						{ text: "Worker", link: "/architecture/worker" },
-						{ text: "Device", link: "/architecture/device" },
-						{ text: "素材生命週期", link: "/architecture/asset-lifecycle" },
-						{ text: "Desired / Reported State", link: "/architecture/desired-reported-state" },
-						{ text: "版面與縮放", link: "/architecture/layout-engine" },
-						{ text: "排程與時區", link: "/architecture/scheduling" }
-					]
-				},
-				{
-					text: "架構決策紀錄",
-					collapsible: true,
-					items: [
-						{ text: "總覽", link: "/architecture/adr/index" },
-						{ text: "ADR-0001 WebSocket 加 REST", link: "/architecture/adr/0001-websocket-plus-rest" },
-						{ text: "ADR-0002 Desired / Reported State", link: "/architecture/adr/0002-desired-reported-state" },
-						{ text: "ADR-0003 物件儲存只做暫存", link: "/architecture/adr/0003-temporary-object-storage" },
-						{ text: "ADR-0004 遞迴分割版面", link: "/architecture/adr/0004-recursive-split-layout" },
-						{ text: "ADR-0005 本機優先播放", link: "/architecture/adr/0005-local-first-playback" },
-						{ text: "ADR-0006 選擇 Electron", link: "/architecture/adr/0006-electron" },
-						{ text: "ADR-0007 PostgreSQL 工作佇列", link: "/architecture/adr/0007-postgres-job-queue" }
-					]
-				}
-			],
-			"/deployment/": [
-				{
-					text: "部署",
-					items: [
-						{ text: "Docker", link: "/deployment/docker" },
-						{ text: "環境變數", link: "/deployment/environment" },
-						{ text: "PostgreSQL", link: "/deployment/postgresql" },
-						{ text: "RustFS", link: "/deployment/rustfs" },
-						{ text: "GitHub Pages", link: "/deployment/github-pages" }
-					]
-				}
-			],
-			"/admin/": [
-				{
-					text: "管理員手冊",
-					items: [
-						{ text: "登入", link: "/admin/login" },
-						{ text: "兩步驟驗證", link: "/admin/two-factor" },
-						{ text: "使用者", link: "/admin/users" },
-						{ text: "素材", link: "/admin/media" },
-						{ text: "排版", link: "/admin/layouts" },
-						{ text: "排程", link: "/admin/schedules" },
-						{ text: "裝置", link: "/admin/devices" }
-					]
-				}
-			],
-			"/device/": [
-				{
-					text: "Device",
-					items: [
-						{ text: "Raspberry Pi", link: "/device/raspberry-pi" },
-						{ text: "Windows", link: "/device/windows" },
-						{ text: "Ubuntu", link: "/device/ubuntu" },
-						{ text: "macOS", link: "/device/macos" },
-						{ text: "配對", link: "/device/pairing" },
-						{ text: "離線播放", link: "/device/offline" },
-						{ text: "解除綁定", link: "/device/unbind" }
-					]
-				}
-			],
-			"/development/": [
-				{
-					text: "開發",
-					items: [
-						{ text: "Monorepo", link: "/development/monorepo" },
-						{ text: "指令", link: "/development/commands" },
-						{ text: "測試", link: "/development/testing" },
-						{ text: "協定", link: "/development/protocol" },
-						{ text: "發布", link: "/development/release" }
-					]
-				}
-			],
-			"/troubleshooting": []
+			"/dev/": DEV_SIDEBAR,
+			"/guide/": GUIDE_SIDEBAR,
+			"/": GUIDE_SIDEBAR
 		}
 	}
 });
