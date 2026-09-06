@@ -1,0 +1,65 @@
+---
+import { hrefFor, isGroup, type NavNode } from "@/lib/navigation";
+
+interface Props {
+	nav: NavNode[];
+	currentId: string;
+}
+
+const { nav, currentId } = Astro.props;
+
+function containsCurrent(node: NavNode): boolean {
+	return isGroup(node) ? node.items.some(item => item.id === currentId) : node.id === currentId;
+}
+---
+
+<aside class="sidebar" id="sidebar" data-open="false">
+	<nav aria-label="文件導覽">
+		{
+			nav.map(node =>
+				isGroup(node) ? (
+					<div class="sidebar__group">
+						{node.collapsed ? (
+							<details open={containsCurrent(node) || undefined}>
+								<summary class="sidebar__group-label sidebar__summary">
+									<svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
+										<path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+									</svg>
+									{node.label}
+								</summary>
+								<ul class="sidebar__list">
+									{node.items.map(item => (
+										<li>
+											<a class="sidebar__link" href={hrefFor(item.id)} aria-current={item.id === currentId ? "page" : undefined}>
+												{item.label}
+											</a>
+										</li>
+									))}
+								</ul>
+							</details>
+						) : (
+							<>
+								<p class="sidebar__group-label">{node.label}</p>
+								<ul class="sidebar__list">
+									{node.items.map(item => (
+										<li>
+											<a class="sidebar__link" href={hrefFor(item.id)} aria-current={item.id === currentId ? "page" : undefined}>
+												{item.label}
+											</a>
+										</li>
+									))}
+								</ul>
+							</>
+						)}
+					</div>
+				) : (
+					<a class="sidebar__leaf" href={hrefFor(node.id)} aria-current={node.id === currentId ? "page" : undefined}>
+						{node.label}
+					</a>
+				)
+			)
+		}
+	</nav>
+</aside>
+
+<div class="scrim" id="sidebar-scrim" data-open="false"></div>

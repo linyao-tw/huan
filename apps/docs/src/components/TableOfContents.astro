@@ -1,0 +1,27 @@
+---
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+	headings: MarkdownHeading[];
+}
+
+/** 只列 h2 與 h3。再深一層的標題在窄欄裡讀起來只是雜訊。 */
+const headings = Astro.props.headings.filter(heading => heading.depth === 2 || heading.depth === 3);
+---
+
+{
+	headings.length > 0 && (
+		<nav class="toc" aria-label="本頁內容">
+			<p class="toc__title">本頁內容</p>
+			<ul class="toc__list" id="toc-list">
+				{headings.map(heading => (
+					<li class={`toc__item toc__item--${heading.depth}`}>
+						<a class="toc__link" href={`#${heading.slug}`} data-toc-target={heading.slug}>
+							{heading.text}
+						</a>
+					</li>
+				))}
+			</ul>
+		</nav>
+	)
+}

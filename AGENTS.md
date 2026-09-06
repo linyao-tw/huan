@@ -181,7 +181,12 @@ pnpm --filter @huan/db db:generate
 
 ## 文件
 
-文件站在 `apps/docs`，使用 Rspress SSG 並開啟 `llms: true` 以產生 `llms.txt`、`llms-full.txt` 與各頁的 Markdown。線上位置是 <https://docs.huan.linyao.tw>，服務在根路徑，設定裡沒有子路徑處理。
+文件站在 `apps/docs`，使用 **Astro** 靜態輸出。線上位置是 <https://docs.huan.linyao.tw>，服務在根路徑，設定裡沒有子路徑處理。
+
+- 內容是 `src/content/docs/**` 的 Markdown，走 Astro content collection，每一篇都有 `title` 與 `description` frontmatter。
+- 搜尋用 Pagefind，索引在 `astro build` 之後產生，因此 `pnpm dev` 下搜尋不可用（對話框會說明）。
+- `llms.txt`、`llms-full.txt` 與每頁的 `.md` 由 `src/pages/` 底下的端點產生，順序跟著側欄走。
+- 圖表是 ```mermaid 區塊，在瀏覽器端算繪並跟著主題重畫；只有含圖的頁面才會載入 mermaid。
 
 站台**只有兩個入口**，沒有行銷首頁：
 
@@ -192,9 +197,21 @@ pnpm --filter @huan/db db:generate
 
 文件中的截圖必須是真實產品畫面，由 `pnpm docs:screenshots` 以 Playwright 對 seed 環境自動擷取。不放示意圖或 placeholder。
 
-文件的外觀完全由 `@linyao.tw/ui` 的設計變數驅動。Rspress 用 `html.rp-dark` 切換深色、設計系統用 `data-lyds-theme`，兩者由 `theme/theme-bridge.ts` 內嵌的腳本同步；`theme/styles.css` 則把每一個 `--rp-*` 變數接到對應的語意角色。
+文件的外觀完全由 `@linyao.tw/ui` 的設計變數驅動：`src/styles/docs.css` 匯入 `styles.css` 之後，只用語意角色（`--background-main`、`--text-secondary`、`--space-4`…）作版面，**沒有任何色碼或自訂刻度**。主題直接切 `data-lyds-theme`，和產品端同一套機制。
 
-覆寫 Rspress 變數時要用 `:root:root`：它有一部分變數也定義在 `:root`，而它的樣式表排在 `globalStyles` 後面，權重相同就由順序決勝。
+文件站刻意不用 React：內容是靜態的，`.astro` 元件加設計變數就能完全符合設計系統，不需要為了幾個互動元件把 React 執行期帶進每一頁。圖示改用 `@phosphor-icons/core` 的原始 SVG，和產品端是同一套圖示家族。
+
+**寫作提醒：提示框要寫成獨立的段落，不要擠在同一行。**
+
+```markdown
+:::warning[標題]
+
+內容。
+
+:::
+```
+
+Prettier 的 `proseWrap: "never"` 會把同一段的多行併成一行。標題和內文寫在一起的話，格式化之後標題會被黏進內文，而且沒有辦法自動還原。
 
 ## 安全限制
 

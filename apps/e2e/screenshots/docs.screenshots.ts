@@ -5,7 +5,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const OUTPUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../docs/docs/public/screenshots");
+const OUTPUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../docs/public/screenshots");
 
 /**
  * 文件截圖跑在 `pnpm db:seed` 建立的環境上。

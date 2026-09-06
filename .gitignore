@@ -16,7 +16,8 @@ doc_build
 .env.*
 !.env.example
 
-apps/docs/doc_build
+apps/docs/dist
+apps/docs/.astro
 
 playwright-report
 test-results

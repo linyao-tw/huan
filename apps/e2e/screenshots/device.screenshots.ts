@@ -6,7 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUTPUT_DIR = resolve(HERE, "../../docs/docs/public/screenshots");
+const OUTPUT_DIR = resolve(HERE, "../../docs/public/screenshots");
 const DEVICE_DIR = resolve(HERE, "../../device");
 const MAIN_ENTRY = join(DEVICE_DIR, "out/main/index.js");
 

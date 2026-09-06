@@ -1,0 +1,35 @@
+---
+/**
+ * 從 @phosphor-icons/core 讀原始 SVG 並內嵌。
+ *
+ * 產品端用的是同一套圖示的 React 版本，文件站沒有 React，因此直接內嵌 ——
+ * 圖示家族一致，又不必為了幾個圖示把 React 執行期帶進每一頁。
+ */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+
+type Weight = "bold" | "regular" | "fill" | "light" | "thin" | "duotone";
+
+interface Props {
+	name: string;
+	weight?: Weight;
+	size?: string;
+}
+
+const { name, weight = "regular", size = "1.25rem" } = Astro.props;
+
+/** 檔名慣例是 `<name>-<weight>.svg`，只有 regular 沒有後綴。 */
+const fileName = weight === "regular" ? `${name}.svg` : `${name}-${weight}.svg`;
+const require = createRequire(import.meta.url);
+const raw = readFileSync(require.resolve(`@phosphor-icons/core/assets/${weight}/${fileName}`), "utf8");
+
+const svg = raw
+	.replace(/<\?xml[^>]*\?>/, "")
+	.replace(/<!--[\s\S]*?-->/g, "")
+	.replace(/\swidth="[^"]*"/, "")
+	.replace(/\sheight="[^"]*"/, "")
+	.replace(/<svg /, `<svg width="${size}" height="${size}" fill="currentColor" aria-hidden="true" focusable="false" `)
+	.trim();
+---
+
+<Fragment set:html={svg} />

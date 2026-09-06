@@ -45,17 +45,17 @@ jobs:
         id: pages
         uses: actions/configure-pages@v6
 
-      - name: 建置 Rspress 靜態網站
+      - name: 建置靜態網站
         run: pnpm docs:build
         env:
-          # 文件站有自己的網域且服務在根路徑，因此不需要 base。
-          # siteOrigin 仍由 workflow 帶入：它只影響 llms.txt 與各頁 Markdown 的
-          # 絕對連結，交給 configure-pages 回報比寫死可靠（例如換網域或改用 HTTPS）。
+          # 站台服務在根路徑，因此不需要 base。
+          # site 只影響 canonical、sitemap 與 llms.txt 的絕對連結，交給
+          # configure-pages 回報比寫死可靠（換網域或改用 HTTPS 都會自動跟上）。
           DOCS_SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
 
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: apps/docs/doc_build
+          path: apps/docs/dist
 
   deploy:
     name: 部署到 GitHub Pages

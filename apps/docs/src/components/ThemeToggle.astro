@@ -1,0 +1,20 @@
+---
+import Icon from "@/components/Icon.astro";
+---
+
+<button class="icon-button" id="theme-toggle" type="button" aria-label="切換亮色或深色主題">
+	<span class="theme-toggle__icon" data-theme-icon="light"><Icon name="sun" weight="bold" /></span>
+	<span class="theme-toggle__icon" data-theme-icon="dark"><Icon name="moon" weight="bold" /></span>
+</button>
+
+<style>
+	.theme-toggle__icon {
+		display: none;
+		line-height: 0;
+	}
+
+	:global(html[data-lyds-theme="light"]) .theme-toggle__icon[data-theme-icon="light"],
+	:global(html[data-lyds-theme="dark"]) .theme-toggle__icon[data-theme-icon="dark"] {
+		display: inline-flex;
+	}
+</style>
