@@ -118,6 +118,12 @@ pnpm format
 
 `packages/*` 是共用套件，`apps/*` 依賴它們的建置產物，因此 `pnpm dev` 與 `pnpm test` 都會先跑 `pnpm build:packages`。
 
+`pnpm docker:up` 會一併啟動 `server` 容器，和 `pnpm dev` 搶同一個 4000 埠。本機開發時只啟動資料庫與物件儲存即可：
+
+```sh
+docker compose -f docker/compose.yaml up -d postgres rustfs
+```
+
 ## Docker 部署
 
 ```sh

@@ -20,6 +20,21 @@ repository 只接受 pnpm。`npm install` 或 `yarn` 會被 `preinstall` 腳本�
 corepack enable pnpm
 ```
 
+### `pnpm dev` 報 `EADDRINUSE: port 4000`
+
+`pnpm docker:up` 會啟動 `server` 容器，它同樣佔用 4000 埠。兩者只能擇一：
+
+```sh
+docker compose -f docker/compose.yaml stop server worker
+pnpm dev
+```
+
+只需要資料庫與物件儲存時，啟動這兩個服務就好：
+
+```sh
+docker compose -f docker/compose.yaml up -d postgres rustfs
+```
+
 ### Server 啟動時報環境變數錯誤
 
 `@huan/config` 會在啟動時驗證所有環境變數，並明確指出哪一個有問題。對照 `.env.example` 補齊，特別是 `DATABASE_URL`、`S3_ENDPOINT`、`S3_ACCESS_KEY_ID` 與 `S3_SECRET_ACCESS_KEY`。
@@ -120,6 +135,22 @@ S3_PUBLIC_ENDPOINT=https://storage.example.com
 第一版只支援**單一自帶資源**的 HTML 檔案。外部的 `<script src>`、`<link href>` 與圖片都不會載入。需要資源時請用 `data:` URI 內嵌。
 
 HTML 在 sandbox iframe 裡執行，沒有 Node、沒有檔案系統、沒有 Electron API。
+
+## 測試
+
+### `pnpm test:e2e` 找不到資料
+
+端對端測試會自己執行種子（`globalSetup`），所以通常不需要手動 seed。
+
+前提是 Admin 與 Server 都在跑。預設對 <http://localhost:5173> 測試；要改測 Docker 直接提供的 Admin：
+
+```sh
+HUAN_E2E_BASE_URL=http://localhost:4000 pnpm test:e2e
+```
+
+### 端對端測試出現 429
+
+`/auth/*` 有速率限制，這是產品該有的行為。測試已經改成整份只登入兩次並共用 cookie；如果你新增的測試每個都自己登入，就會撞到這個限制。請改用 `storageState`。
 
 ## 部署
 
