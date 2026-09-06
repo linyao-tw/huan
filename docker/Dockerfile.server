@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+
+# ── 建置階段 ─────────────────────────────────────────────────────────────
+# 整個 workspace 一起建置：Server 依賴 @huan/protocol、@huan/db 等本地套件，
+# 只複製單一 app 的原始碼是組不出可執行的產物的。
+FROM node:24.20-bookworm-slim AS builder
+
+ENV PNPM_HOME="/pnpm" \
+	PATH="/pnpm:$PATH" \
+	CI=true
+RUN corepack enable
+
+WORKDIR /app
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm build:packages \
+	&& pnpm --filter @huan/admin build \
+	&& pnpm --filter @huan/server build
+
+# 建置完成後移除開發相依，讓 runtime 階段只帶走實際需要的東西。
+RUN pnpm install --frozen-lockfile --prod
+
+# ── 執行階段 ─────────────────────────────────────────────────────────────
+FROM node:24.20-bookworm-slim AS runtime
+
+ENV NODE_ENV=production \
+	PNPM_HOME="/pnpm" \
+	PATH="/pnpm:$PATH" \
+	PORT=4000 \
+	HOST=0.0.0.0 \
+	ADMIN_DIST_DIR=/app/apps/admin/dist
+RUN corepack enable
+
+WORKDIR /app
+COPY --from=builder --chown=node:node /app /app
+
+# 以非 root 執行。Server 只需要讀取自己的檔案，不需要任何寫入權限。
+USER node
+
+EXPOSE 4000
+
+# node:slim 沒有 curl 或 wget，直接用 Node 自己發請求最不需要額外相依。
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+	CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/server/dist/main.js"]

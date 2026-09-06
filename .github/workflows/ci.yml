@@ -1,0 +1,199 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI 用的憑證只存在於這個 job 的生命週期內，不是任何環境的真實密碼。
+  POSTGRES_PASSWORD: huan-ci
+  S3_ACCESS_KEY_ID: huanadmin
+  S3_SECRET_ACCESS_KEY: huan-ci-secret
+
+jobs:
+  verify:
+    name: 型別、測試與建置
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:18.2-alpine
+        env:
+          POSTGRES_USER: huan
+          POSTGRES_PASSWORD: huan-ci
+          POSTGRES_DB: huan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U huan -d huan" --health-interval 5s --health-timeout 5s --health-retries 20
+
+      rustfs:
+        image: rustfs/rustfs:1.0.0-rc.5
+        env:
+          RUSTFS_ACCESS_KEY: huanadmin
+          RUSTFS_SECRET_KEY: huan-ci-secret
+          RUSTFS_ADDRESS: ":9000"
+          RUSTFS_VOLUMES: /data
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health || exit 1" --health-interval 10s --health-timeout 5s --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://huan:huan-ci@localhost:5432/huan
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: huan
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 安裝 ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: 格式檢查
+        run: pnpm format:check
+
+      - name: 建置共用套件
+        run: pnpm build:packages
+
+      - name: 套用資料庫 migration
+        run: pnpm db:migrate
+
+      - name: 型別檢查
+        run: pnpm typecheck
+
+      - name: 測試
+        run: pnpm test
+
+      - name: 建置
+        run: pnpm build
+
+      - name: 建置文件
+        run: pnpm docs:build
+
+  e2e:
+    name: 端對端測試
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:18.2-alpine
+        env:
+          POSTGRES_USER: huan
+          POSTGRES_PASSWORD: huan-ci
+          POSTGRES_DB: huan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U huan -d huan" --health-interval 5s --health-timeout 5s --health-retries 20
+
+      rustfs:
+        image: rustfs/rustfs:1.0.0-rc.5
+        env:
+          RUSTFS_ACCESS_KEY: huanadmin
+          RUSTFS_SECRET_KEY: huan-ci-secret
+          RUSTFS_ADDRESS: ":9000"
+          RUSTFS_VOLUMES: /data
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health || exit 1" --health-interval 10s --health-timeout 5s --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://huan:huan-ci@localhost:5432/huan
+      S3_ENDPOINT: http://localhost:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_BUCKET: huan
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+      PUBLIC_URL: http://localhost:4000
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 安裝 ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:packages
+      - run: pnpm db:migrate
+
+      - name: 安裝 Playwright 瀏覽器
+        run: pnpm --filter @huan/e2e exec playwright install --with-deps chromium
+
+      - run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/e2e/playwright-report
+          retention-days: 7
+
+  docker:
+    name: Docker 映像建置驗證
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 建置 Server 映像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.server
+          push: false
+          load: true
+          tags: huan/server:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 建置 Worker 映像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.worker
+          push: false
+          load: true
+          tags: huan/worker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 冒煙驗證
+        run: |
+          docker run --rm huan/server:ci node --version
+          docker run --rm huan/worker:ci ffmpeg -version | head -1

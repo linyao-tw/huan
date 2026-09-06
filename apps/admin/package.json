@@ -1,0 +1,36 @@
+{
+	"name": "@huan/admin",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN Admin：官網、登入、素材、版面編輯器、排程與裝置管理的 React 前端",
+	"type": "module",
+	"scripts": {
+		"build": "tsc -p tsconfig.json && vite build",
+		"dev": "vite",
+		"preview": "vite preview",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@huan/layout-engine": "workspace:*",
+		"@huan/protocol": "workspace:*",
+		"@huan/shared": "workspace:*",
+		"@linyao.tw/ui": "1.3.0",
+		"@phosphor-icons/react": "^2.1.10",
+		"@tanstack/react-query": "^5.102.8",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"react-router": "^8.3.1",
+		"zod": "^4.5.4"
+	},
+	"devDependencies": {
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.3",
+		"@testing-library/user-event": "^14.6.7",
+		"@types/react": "^19.2.18",
+		"@types/react-dom": "^19.2.7",
+		"@vitejs/plugin-react": "^6.1.1",
+		"jsdom": "^30.0.1",
+		"vite": "^8.2.2"
+	}
+}

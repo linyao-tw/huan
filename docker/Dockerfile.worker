@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24.20-bookworm-slim AS builder
+
+ENV PNPM_HOME="/pnpm" \
+	PATH="/pnpm:$PATH" \
+	CI=true
+RUN corepack enable
+
+WORKDIR /app
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm build:packages && pnpm --filter @huan/worker build
+RUN pnpm install --frozen-lockfile --prod
+
+FROM node:24.20-bookworm-slim AS runtime
+
+ENV NODE_ENV=production \
+	PNPM_HOME="/pnpm" \
+	PATH="/pnpm:$PATH" \
+	FFMPEG_PATH=/usr/bin/ffmpeg \
+	FFPROBE_PATH=/usr/bin/ffprobe \
+	WORKER_TMP_DIR=/var/tmp/huan \
+	WORKER_HEALTH_PORT=4001
+RUN corepack enable
+
+# ffmpeg 是 Worker 唯一的系統相依。用 apt 安裝發行版套件，避免把靜態編譯的
+# 二進位檔綁進映像後在 arm64 上找不到對應版本。
+RUN apt-get update \
+	&& apt-get install --no-install-recommends -y ffmpeg \
+	&& rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder --chown=node:node /app /app
+
+RUN mkdir -p /var/tmp/huan && chown node:node /var/tmp/huan
+USER node
+
+EXPOSE 4001
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+	CMD node -e "fetch('http://127.0.0.1:'+(process.env.WORKER_HEALTH_PORT||4001)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/worker/dist/main.js"]

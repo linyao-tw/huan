@@ -1,0 +1,65 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/docs/**"
+      - "packages/**"
+      - ".github/workflows/docs.yml"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 建置文件
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:packages
+
+      - name: 設定 GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: 建置 Rspress 靜態網站
+        run: pnpm docs:build
+        env:
+          # Pages 部署在 <owner>.github.io/<repo>/，因此 base 與 siteOrigin 必須
+          # 由 workflow 帶入，不能寫死在設定檔裡。
+          DOCS_BASE: ${{ steps.pages.outputs.base_path }}/
+          DOCS_SITE_ORIGIN: ${{ steps.pages.outputs.origin }}
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/docs/doc_build
+
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

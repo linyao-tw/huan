@@ -1,0 +1,82 @@
+name: Device Release
+
+on:
+  push:
+    tags:
+      - "device-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 要打包的版本號（省略時使用 package.json 的版本）
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux x64 與 ARM64
+            command: pnpm --filter @huan/device package:linux
+          - os: windows-latest
+            label: Windows x64 與 ARM64
+            command: pnpm --filter @huan/device package:win
+          - os: macos-latest
+            label: macOS x64 與 ARM64
+            command: pnpm --filter @huan/device package:mac
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:packages
+
+      - name: 打包
+        run: ${{ matrix.command }}
+        env:
+          # 未設定簽章憑證時明確關閉，讓失敗原因是「沒有憑證」而不是難懂的簽章錯誤。
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: huan-device-${{ runner.os }}
+          path: |
+            apps/device/release/**/*.AppImage
+            apps/device/release/**/*.deb
+            apps/device/release/**/*.exe
+            apps/device/release/**/*.dmg
+            apps/device/release/**/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: 發布 Release
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/device-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          fail_on_unmatched_files: true

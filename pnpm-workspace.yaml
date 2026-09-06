@@ -5,5 +5,9 @@ packages:
 allowBuilds:
   "@node-rs/argon2": true
   electron: true
+  electron-winstaller: false
   esbuild: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - "@linyao.tw/ui@1.3.0"

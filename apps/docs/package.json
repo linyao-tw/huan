@@ -1,0 +1,24 @@
+{
+	"name": "@huan/docs",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN 文件站，以 Rspress SSG 建置並部署到 GitHub Pages",
+	"type": "module",
+	"scripts": {
+		"build": "rspress build",
+		"dev": "rspress dev",
+		"preview": "rspress preview",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@linyao.tw/ui": "1.3.0",
+		"@phosphor-icons/react": "^2.1.10",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8"
+	},
+	"devDependencies": {
+		"@rspress/core": "2.0.21",
+		"@types/react": "^19.2.18",
+		"@types/react-dom": "^19.2.7"
+	}
+}

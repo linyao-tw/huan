@@ -1,0 +1,33 @@
+{
+	"name": "@huan/device-core",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN 裝置同步引擎：身分、狀態調和、下載佇列、排程執行與本機儲存；Electron 播放器與模擬裝置共用",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@huan/protocol": "workspace:*",
+		"@huan/shared": "workspace:*",
+		"ws": "^8.21.3"
+	},
+	"devDependencies": {
+		"@types/ws": "^8.18.1"
+	}
+}
