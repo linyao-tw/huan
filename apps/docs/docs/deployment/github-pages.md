@@ -82,13 +82,18 @@ llms: true;
 
 ## 自訂網域
 
-在 `apps/docs/public/` 放一個 `CNAME` 檔案：
+HUAN 的文件站部署在 <https://docs.huan.linyao.tw>。
 
-```text
-docs.example.com
+自訂網域在 **Settings → Pages → Custom domain** 設定即可，**不需要**在 `public/` 放 `CNAME` 檔案——用 GitHub Actions 部署時，網域設定存在 repository 的 Pages 設定裡，不是從產物讀出來的。
+
+設定完成後：
+
+- `configure-pages` 的 `base_path` 會變成空字串，`DOCS_BASE` 因此是 `/`，站台服務在根路徑而不是 `/huan/`。
+- 記得把 **Enforce HTTPS** 打開。這不只是安全性問題：`configure-pages` 回報的 `origin` 會跟著變成 `https://`，而那個值會寫進 `llms.txt` 與各頁 Markdown 的絕對連結。沒打開的話，AI 工具拿到的會是一整份 `http://` 連結。
+
+```sh
+gh api repos/<owner>/<repo>/pages | jq '{cname, https_enforced, html_url}'
 ```
-
-然後把 `DOCS_BASE` 改成 `/`（自訂網域沒有子路徑）。
 
 ## 本機預覽
 
