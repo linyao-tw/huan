@@ -8,9 +8,8 @@
 		"noEmit": true,
 		"noUnusedLocals": false,
 		"types": ["node"],
-		"baseUrl": ".",
 		"paths": {
-			"@/*": ["theme/*"]
+			"@/*": ["./theme/*"]
 		}
 	},
 	"include": ["theme", "rspress.config.ts", "docs/**/*.tsx"]

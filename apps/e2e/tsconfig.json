@@ -5,9 +5,8 @@
 		"moduleResolution": "bundler",
 		"noEmit": true,
 		"types": ["node"],
-		"baseUrl": ".",
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["./src/*"]
 		}
 	},
 	"include": ["tests", "screenshots", "src", "*.config.ts"]

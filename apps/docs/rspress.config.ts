@@ -12,6 +12,39 @@ const here = (relative: string): string => resolve(fileURLToPath(new URL(".", im
 const base = process.env.DOCS_BASE ?? "/";
 const siteOrigin = process.env.DOCS_SITE_ORIGIN;
 
+const THEME_TEXT_ZH_TW: Record<string, string> = {
+	languagesText: "語言",
+	themeText: "佈景主題",
+	versionsText: "版本",
+	menuTitle: "選單",
+	outlineTitle: "本頁內容",
+	scrollToTopText: "回到頂部",
+	lastUpdatedText: "最後更新",
+	lastUpdatedAuthorText: "最後更新者",
+	prevPageText: "上一頁",
+	nextPageText: "下一頁",
+	sourceCodeText: "原始碼",
+	searchPlaceholderText: "搜尋文件",
+	searchPanelCancelText: "取消",
+	searchNoResultsText: "找不到符合的結果",
+	searchSuggestedQueryText: "請換個關鍵字再試一次",
+	"overview.filterNameText": "篩選",
+	"overview.filterPlaceholderText": "輸入關鍵字",
+	"overview.filterNoResultText": "找不到符合的標題",
+	openInText: "開啟於",
+	copyMarkdownText: "複製 Markdown",
+	copyMarkdownLinkText: "複製 Markdown 連結",
+	editLinkText: "編輯此頁",
+	codeButtonGroupCopyButtonText: "複製",
+	codeButtonGroupWrapButtonText: "自動換行",
+	notFoundText: "找不到這個頁面",
+	takeMeHomeText: "回到首頁",
+	promptCopyText: "複製提示詞",
+	promptCopiedText: "已複製",
+	promptExpandText: "展開",
+	promptCollapseText: "收合"
+};
+
 export default defineConfig({
 	root: "docs",
 	base,
@@ -36,15 +69,26 @@ export default defineConfig({
 
 	ssg: true,
 
+	/**
+	 * 佈景主題的介面字串。Rspress 內建的翻譯只到英文與簡體中文，
+	 * 少了這一份，繁體中文站台的側欄與搜尋框會混進英文。
+	 *
+	 * 用函式形式合併而不是直接給物件：內建型別要求每個項目同時提供 `zh` 與 `en`，
+	 * 但我們只需要補上 `zh-TW` 這個地區，其餘沿用預設。
+	 */
+	i18nSource: defaults => {
+		const merged: Record<string, Record<string, string>> = { ...defaults };
+		for (const [key, value] of Object.entries(THEME_TEXT_ZH_TW)) {
+			merged[key] = { ...(merged[key] ?? {}), "zh-TW": value };
+		}
+		return merged;
+	},
+
 	themeConfig: {
 		darkMode: true,
 		search: true,
 		enableScrollToTop: true,
-		outlineTitle: "本頁內容",
 		lastUpdated: true,
-		lastUpdatedText: "最後更新",
-		prevPageText: "上一頁",
-		nextPageText: "下一頁",
 		socialLinks: [{ icon: "github", mode: "link", content: "https://github.com/linyao-tw/huan" }],
 		footer: {
 			message: "HUAN 讙 — 麟曜數位工作室。採購請來信 contact@linyao.tw。"
