@@ -8,7 +8,7 @@ import { defineConfig } from "tsup";
  * 硬塞進單一檔案而在執行期爆炸。
  */
 export default defineConfig({
-	entry: ["src/main.ts"],
+	entry: ["src/main.ts", "src/cli/migrate.ts", "src/cli/create-admin.ts", "src/cli/seed.ts"],
 	format: ["esm"],
 	target: "node24",
 	platform: "node",
