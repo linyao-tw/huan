@@ -34,11 +34,11 @@ jobs:
             command: pnpm --filter @huan/device package:mac
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -53,7 +53,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: huan-device-${{ runner.os }}
           path: |
@@ -71,12 +71,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/device-v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: artifacts/**/*
           fail_on_unmatched_files: true
