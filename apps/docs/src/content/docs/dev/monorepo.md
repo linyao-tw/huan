@@ -14,7 +14,7 @@ apps/
 	worker/      FFmpeg 轉檔 worker
 	device/      Electron 播放器
 	device-sim/  無 GUI 的模擬裝置
-	docs/        Rspress 文件站
+	docs/        Astro 靜態文件站
 	e2e/         Playwright 端對端測試與文件截圖
 packages/
 	protocol/      @huan/protocol — 共用的 zod 結構與型別
@@ -98,7 +98,7 @@ import { clampRatio } from "./geometry.js"; // ✓
 | `server`、`worker`、`device-sim` | `tsup`        | 只打包自己的原始碼，npm 相依維持 external |
 | `admin`                          | Vite          |                                           |
 | `device`                         | electron-vite | main / preload / renderer 三段各自建置    |
-| `docs`                           | Rspress       | SSG                                       |
+| `docs`                           | Astro         | SSG，另跑 Pagefind 產生搜尋索引           |
 
 `tsup` 刻意只打包應用程式自己的程式碼：`@/` 別名在打包時就被解析掉，而第三方套件保持原樣，避免把有動態 `require` 的函式庫硬塞進單一檔案而在執行期爆炸。
 

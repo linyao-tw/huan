@@ -41,7 +41,7 @@ apps/
   worker/      FFmpeg 轉檔 worker，以 PostgreSQL 為工作佇列
   device/      Electron 播放器（main / preload / renderer）
   device-sim/  無 GUI 的模擬裝置，開發與測試用
-  docs/        Rspress SSG 文件站
+  docs/        Astro 靜態文件站
   e2e/         Playwright 端對端測試與文件截圖腳本
 packages/
   protocol/      @huan/protocol — 共用的 zod 結構與型別
@@ -193,7 +193,7 @@ pnpm --filter @huan/db db:generate
 - `docs/index.md` 與 `docs/guide/**` — 使用教學，寫給實際操作 HUAN 的人。不談程式碼、指令或部署。
 - `docs/dev/**` — 開發者，寫給要架設、修改或部署的人。
 
-新增頁面時先決定它屬於哪一邊，再放進對應目錄並加到 `rspress.config.ts` 的側欄。不要建立第三個區塊。
+新增頁面時先決定它屬於哪一邊，再放進對應目錄並加到 `src/lib/navigation.ts` 的側欄。不要建立第三個區塊。
 
 文件中的截圖必須是真實產品畫面，由 `pnpm docs:screenshots` 以 Playwright 對 seed 環境自動擷取。不放示意圖或 placeholder。
 

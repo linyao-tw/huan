@@ -1,9 +1,9 @@
 ---
 title: "GitHub Pages"
-description: "文件站以 Rspress 建置成靜態網站，由 GitHub Actions 部署到 GitHub Pages。"
+description: "文件站以 Astro 建置成靜態網站，由 GitHub Actions 部署到 GitHub Pages。"
 ---
 
-文件站以 Rspress 建置成靜態網站，由 GitHub Actions 部署到 GitHub Pages。
+文件站以 Astro 建置成靜態網站，由 GitHub Actions 部署到 GitHub Pages。
 
 :::warning[只有文件放在 Pages]
 
@@ -62,31 +62,27 @@ HUAN 的文件站部署在 <https://docs.huan.linyao.tw>，服務在**根路徑*
 gh api repos/<owner>/<repo>/pages | jq '{cname, https_enforced, html_url}'
 ```
 
-`siteOrigin` 由 workflow 從 `configure-pages` 的輸出帶入，只有它會影響絕對連結；fork 出去換網域時覆寫 `DOCS_SITE_ORIGIN` 即可，設定檔裡不需要動。
+`site` 由 workflow 從 `configure-pages` 的輸出帶入，只有它會影響絕對連結；fork 出去換網域時覆寫 `DOCS_SITE_ORIGIN` 即可，設定檔裡不需要動。
 
 ## AI 可讀的輸出
 
-`rspress.config.ts` 裡開啟了：
+`src/pages/` 底下有三個端點，在建置時一起輸出：
 
-```ts
-llms: true;
-```
+| 檔案            | 產生者             | 內容                       |
+| --------------- | ------------------ | -------------------------- |
+| `llms.txt`      | `llms.txt.ts`      | 全站結構化索引             |
+| `llms-full.txt` | `llms-full.txt.ts` | 全站內容的單一 Markdown 檔 |
+| `<route>.md`    | `[...slug].md.ts`  | 每一頁的 Markdown 版本     |
 
-建置後會額外產生：
+順序跟著 `src/lib/navigation.ts` 的側欄走，因此索引的結構和讀者看到的目錄一致。
 
-| 檔案            | 內容                       |
-| --------------- | -------------------------- |
-| `llms.txt`      | 全站結構化索引             |
-| `llms-full.txt` | 全站內容的單一 Markdown 檔 |
-| `<route>.md`    | 每一頁的 Markdown 版本     |
-
-這讓 AI 工具不必解析 HTML 就能讀懂整份文件。`siteOrigin` 與 `base` 設定正確時，這些檔案裡的連結才會指向真實可存取的網址——這也是為什麼那兩個值必須由 workflow 帶入。
+這讓 AI 工具不必解析 HTML 就能讀懂整份文件。`site` 設定正確時，這些檔案裡的連結才會指向真實可存取的網址——這也是為什麼它必須由 workflow 帶入。
 
 ## 本機預覽
 
 ```sh
-pnpm docs:dev              # 開發伺服器
-pnpm docs:build            # SSG 建置到 apps/docs/doc_build
+pnpm docs:dev                      # 開發伺服器（搜尋不可用，索引要建置後才有）
+pnpm docs:build                    # SSG 建置到 apps/docs/dist，並產生 Pagefind 索引
 pnpm --filter @huan/docs preview   # 預覽建置結果
 ```
 

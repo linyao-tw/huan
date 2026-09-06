@@ -59,11 +59,11 @@ Server 與 Worker 的測試需要 PostgreSQL 與 RustFS，請先 `pnpm docker:up
 
 ## 文件
 
-| 指令                    | 說明                             |
-| ----------------------- | -------------------------------- |
-| `pnpm docs:dev`         | 本機文件站                       |
-| `pnpm docs:build`       | SSG 建置到 `apps/docs/doc_build` |
-| `pnpm docs:screenshots` | 以 Playwright 重新擷取產品截圖   |
+| 指令                    | 說明                           |
+| ----------------------- | ------------------------------ |
+| `pnpm docs:dev`         | 本機文件站                     |
+| `pnpm docs:build`       | SSG 建置到 `apps/docs/dist`    |
+| `pnpm docs:screenshots` | 以 Playwright 重新擷取產品截圖 |
 
 ## 格式
 
