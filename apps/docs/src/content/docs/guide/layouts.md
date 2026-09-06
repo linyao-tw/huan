@@ -82,9 +82,9 @@ description: "/app/layouts 是版面列表，/app/layouts/:id 是編輯器。"
 
 外部網站可以用 `X-Frame-Options` 或 `Content-Security-Policy: frame-ancestors` 明確禁止被嵌入。遇到這種網站，區塊會顯示空白。
 
-:::
+這是對方網站的安全設定，**HUAN 不會也不應該繞過它**。改用可嵌入的來源，或把內容做成上傳的 HTML。
 
-這是對方網站的安全設定，**HUAN 不會也不應該繞過它**。改用可嵌入的來源，或把內容做成上傳的 HTML。:::
+:::
 
 ## 全域設定
 

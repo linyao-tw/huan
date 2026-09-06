@@ -21,15 +21,15 @@ description: "支援 Intel（x64）與 Apple Silicon（arm64）。"
 
 目前的版本沒有經過 Apple 公證，第一次開啟時 Gatekeeper 會擋下來。
 
-:::
-
 在 Finder 裡對應用程式按右鍵 → 開啟，然後在對話框中確認。或者：
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/HUAN\ Device.app
 ```
 
-要消除這個步驟需要 Apple Developer 帳號與公證流程，可以在 CI 的 secrets 裡設定後啟用。:::
+要消除這個步驟需要 Apple Developer 帳號與公證流程，可以在 CI 的 secrets 裡設定後啟用。
+
+:::
 
 ## 開機自動啟動
 
