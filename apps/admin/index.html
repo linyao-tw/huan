@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-Hant-TW" data-lyds-theme="light">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="HUAN 讙 — 跨平台的雲端媒體播放與數位看板系統，支援影片、圖片與文字內容，並可從遠端集中上傳、排程、同步與管理多台播放裝置。" />
+		<title>HUAN 讙 — 雲端數位看板系統</title>
+		<script>
+			/* 主題必須在第一次繪製前決定，否則深色使用者會先看到一閃而過的亮色畫面。 */
+			(function () {
+				try {
+					var stored = window.localStorage.getItem("huan.theme");
+					var choice = stored === "light" || stored === "dark" ? stored : null;
+					var system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+					document.documentElement.dataset.lydsTheme = choice || system;
+				} catch (error) {
+					document.documentElement.dataset.lydsTheme = "light";
+				}
+			})();
+		</script>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
+	</body>
+</html>

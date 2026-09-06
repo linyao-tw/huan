@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-const booleanish = z
-	.union([z.boolean(), z.string()])
-	.transform(value => (typeof value === "boolean" ? value : ["1", "true", "yes", "on"].includes(value.trim().toLowerCase())));
+const booleanish = z.union([z.boolean(), z.string()]).transform(value => (typeof value === "boolean" ? value : ["1", "true", "yes", "on"].includes(value.trim().toLowerCase())));
 
 /** RustFS 以 S3 相容 API 提供服務，因此設定名稱沿用 S3 的慣例。 */
 const StorageSchema = z.object({
@@ -42,7 +40,12 @@ export const ServerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
 				.filter(Boolean)
 		),
 	SESSION_COOKIE_NAME: z.string().default("huan_session"),
-	SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 90).default(24 * 14),
+	SESSION_TTL_HOURS: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(24 * 90)
+		.default(24 * 14),
 	/** production 一律送出 `Secure` cookie；在沒有 TLS 的本機開發環境才關閉。 */
 	SESSION_COOKIE_SECURE: booleanish.optional(),
 	TOTP_ISSUER: z.string().min(1).default("HUAN"),
@@ -54,7 +57,12 @@ export const ServerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
 	 * 所有目標 Device 都完成 ACK 之後，播放產物還要在 RustFS 保留多久。
 	 * 這段保留期是為了吸收 ACK 與重試之間的競態，不要設成 0。
 	 */
-	DISTRIBUTION_RETENTION_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24),
+	DISTRIBUTION_RETENTION_HOURS: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(24 * 30)
+		.default(24),
 	DEVICE_HEARTBEAT_SECONDS: z.coerce.number().int().min(10).max(600).default(60),
 	DEVICE_FALLBACK_SYNC_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
 	DEVICE_MAX_CONCURRENT_DOWNLOADS: z.coerce.number().int().min(1).max(8).default(3),
@@ -67,11 +75,18 @@ export const WorkerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
 	WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
 	WORKER_POLL_INTERVAL_MS: z.coerce.number().int().min(200).max(60_000).default(2_000),
 	WORKER_JOB_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+	/** Worker 沒有對外 API，這個埠只用來提供容器編排需要的存活探針。 */
+	WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(4001),
 	FFMPEG_PATH: z.string().default("ffmpeg"),
 	FFPROBE_PATH: z.string().default("ffprobe"),
 	/** 轉檔的暫存目錄。留空時使用作業系統的暫存目錄。 */
 	WORKER_TMP_DIR: z.string().optional(),
-	DISTRIBUTION_RETENTION_HOURS: z.coerce.number().int().min(1).max(24 * 30).default(24)
+	DISTRIBUTION_RETENTION_HOURS: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(24 * 30)
+		.default(24)
 });
 export type WorkerEnv = z.infer<typeof WorkerEnvSchema>;
 

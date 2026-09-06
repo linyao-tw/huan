@@ -99,6 +99,11 @@ export class WorkerRunner {
 		return this.inFlight.size;
 	}
 
+	/** 存活探針要看的不是「process 還在」，而是「輪詢迴圈還在跑」。 */
+	get isPolling(): boolean {
+		return this.running;
+	}
+
 	/** 走完一次完整流程並等進行中的工作結束。測試用，不參與正式輪詢。 */
 	async runOnce(): Promise<boolean> {
 		this.running = true;

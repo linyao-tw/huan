@@ -1,4 +1,5 @@
 import { describeError } from "@/errors";
+import { startHealthServer } from "@/health";
 import { createLogger } from "@/logger";
 import { JobQueue } from "@/queue";
 import { WorkerRunner } from "@/runner";
@@ -15,6 +16,12 @@ async function main(): Promise<void> {
 	const storage = new ObjectStorage(env);
 	const queue = new JobQueue(db);
 	const runner = new WorkerRunner({ db, storage, queue, env, logger });
+
+	const health = startHealthServer({
+		port: env.WORKER_HEALTH_PORT,
+		logger,
+		isHealthy: () => runner.isPolling
+	});
 
 	let forced = false;
 	const shutdown = (signal: NodeJS.Signals): void => {
@@ -36,6 +43,7 @@ async function main(): Promise<void> {
 	try {
 		await runner.start();
 	} finally {
+		health.close();
 		storage.destroy();
 		await close();
 		logger.info("已關閉資料庫連線池");

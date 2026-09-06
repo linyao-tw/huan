@@ -6,6 +6,11 @@ import { deviceCredentials, devices, layoutRevisions, layouts, mediaAssets, medi
 import { LayoutDocumentSchema, type LayoutDocument, type MediaProbe, type ReportedState } from "@huan/protocol";
 import { hashToken, sha256Hex } from "@huan/shared/node";
 import { eq, sql, type SQL } from "drizzle-orm";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * 開發用的示範資料。
@@ -80,6 +85,54 @@ const ONE_PIXEL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 function placeholderBytes(label: string, sizeBytes: number): Buffer {
 	const seed = Buffer.from(`HUAN seed placeholder: ${label}\n`, "utf8");
 	return Buffer.alloc(sizeBytes, seed);
+}
+
+/**
+ * 用 FFmpeg 的 testsrc 產生一段真的可以解碼的短片。
+ *
+ * 「轉檔中」那筆示範素材如果放的是佔位位元組，Worker 取到工作後只會反覆
+ * ffprobe 失敗然後變成「轉檔失敗」——示範資料就示範不到成功的那條路徑。
+ * 系統上沒有 FFmpeg 時回傳 `null`，呼叫端會改成不排入工作。
+ */
+async function generateSampleVideo(): Promise<Buffer | null> {
+	const output = join(tmpdir(), `huan-seed-${randomUUID()}.mp4`);
+	const args = [
+		"-hide_banner",
+		"-loglevel",
+		"error",
+		"-y",
+		"-f",
+		"lavfi",
+		"-i",
+		"testsrc=duration=3:size=640x360:rate=15",
+		"-f",
+		"lavfi",
+		"-i",
+		"sine=frequency=440:duration=3",
+		"-c:v",
+		"libx264",
+		"-pix_fmt",
+		"yuv420p",
+		"-c:a",
+		"aac",
+		"-shortest",
+		"-movflags",
+		"+faststart",
+		output
+	];
+	try {
+		await new Promise<void>((resolve, reject) => {
+			const child = spawn(process.env.FFMPEG_PATH ?? "ffmpeg", args, { stdio: "ignore" });
+			child.once("error", reject);
+			child.once("close", code => (code === 0 ? resolve() : reject(new Error(`ffmpeg 以代碼 ${code} 結束`))));
+		});
+		const bytes = await readFile(output);
+		await rm(output, { force: true });
+		return bytes;
+	} catch {
+		await rm(output, { force: true }).catch(() => {});
+		return null;
+	}
 }
 
 function banner(): void {
@@ -279,6 +332,9 @@ try {
 		durationMs: number | null;
 	}
 
+	/** 有 FFmpeg 時放一段真的能解碼的短片，讓「轉檔中」這筆示範素材會真的轉檔成功。 */
+	const sampleVideo = await generateSampleVideo();
+
 	const seedVariants: SeedVariant[] = [
 		{
 			id: ID.variantVideoReadyPlayback,
@@ -301,7 +357,7 @@ try {
 			assetId: ID.assetVideoProcessing,
 			role: "original",
 			contentType: "video/mp4",
-			body: placeholderBytes("轉檔中的影片 original", 48 * 1024),
+			body: sampleVideo ?? placeholderBytes("轉檔中的影片 original", 48 * 1024),
 			available: true,
 			width: null,
 			height: null,
@@ -620,10 +676,20 @@ try {
 
 	/* ── 背景工作 ─────────────────────────────────────────────────────── */
 
-	await db
-		.insert(workerJobs)
-		.values({ id: ID.jobProcessing, kind: "transcode_video", status: "pending", assetId: ID.assetVideoProcessing, payload: { assetId: ID.assetVideoProcessing }, maxAttempts: 3 })
-		.onConflictDoUpdate({ target: workerJobs.id, set: { status: "pending", attempt: 0, error: null, updatedAt: new Date() } });
+	/**
+	 * 只有在放進去的是真的影片時才排入轉檔工作。
+	 *
+	 * 對佔位位元組排工作，Worker 只會 ffprobe 失敗三次然後把素材標成「轉檔失敗」；
+	 * 那不是示範，那是製造一筆看起來像故障的資料。
+	 */
+	if (sampleVideo) {
+		await db
+			.insert(workerJobs)
+			.values({ id: ID.jobProcessing, kind: "transcode_video", status: "pending", assetId: ID.assetVideoProcessing, payload: { assetId: ID.assetVideoProcessing }, maxAttempts: 3 })
+			.onConflictDoUpdate({ target: workerJobs.id, set: { status: "pending", attempt: 0, error: null, updatedAt: new Date() } });
+	} else {
+		await db.delete(workerJobs).where(eq(workerJobs.id, ID.jobProcessing));
+	}
 
 	/* ── 目標狀態 ─────────────────────────────────────────────────────── */
 
@@ -649,7 +715,12 @@ try {
 	console.log(`    大廳主螢幕：${ID.deviceLobby}.${lobbySecret}`);
 	console.log(`    櫃檯螢幕：  ${ID.deviceCounter}.${counterSecret}`);
 	console.log("");
-	console.log("  影片素材在 RustFS 裡是佔位檔：可以完成下載與 SHA-256 驗證，但不是真的能播放的影片。");
+	if (sampleVideo) {
+		console.log("  「轉檔中」的示範影片是 FFmpeg 產生的真實短片，Worker 啟動後會真的完成轉檔。");
+	} else {
+		console.log("  系統上找不到 FFmpeg，因此沒有排入轉檔工作，該筆素材會停在「處理中」。");
+	}
+	console.log("  已就緒的影片素材在 RustFS 裡是佔位檔：可以完成下載與 SHA-256 驗證，但不是真的能播放的影片。");
 	console.log("  需要真實影片時請從 Admin 上傳，走完整的轉檔流程。");
 	if (usingFallbackSecrets) {
 		console.log("");
