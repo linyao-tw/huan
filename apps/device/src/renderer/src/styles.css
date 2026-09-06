@@ -1,0 +1,179 @@
+/*
+ * 播放器的版面容器。顏色與間距沿用設計系統的變數，
+ * 只有播放畫布本身是純黑，那是內容區域的背景，不是介面色。
+ */
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	background: #000000;
+}
+
+.huan-stage {
+	position: relative;
+	width: 100vw;
+	height: 100vh;
+	overflow: hidden;
+}
+
+/* 設計畫布。位置與尺寸由 layout engine 算出來，這裡只負責定位。 */
+.huan-canvas {
+	position: absolute;
+	transform-origin: top left;
+	overflow: hidden;
+}
+
+.huan-region {
+	position: absolute;
+	overflow: hidden;
+}
+
+.huan-region > * {
+	width: 100%;
+	height: 100%;
+}
+
+.huan-region iframe {
+	border: 0;
+}
+
+.huan-text {
+	display: flex;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	font-family: sans-serif;
+	line-height: 1.25;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.huan-ticker {
+	display: flex;
+	align-items: center;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	font-family: sans-serif;
+	white-space: nowrap;
+}
+
+/*
+ * 跑馬燈用 CSS 動畫，不是每一幀都更新 React 狀態。
+ * 內容重複兩份，位移一半即可無縫循環，合成器全程在 GPU 上跑。
+ */
+.huan-ticker__track {
+	display: flex;
+	flex: none;
+	will-change: transform;
+	animation-name: huan-ticker-scroll;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+
+.huan-ticker__track[data-direction="right"] {
+	animation-direction: reverse;
+}
+
+.huan-ticker__item {
+	flex: none;
+}
+
+@keyframes huan-ticker-scroll {
+	from {
+		transform: translate3d(0, 0, 0);
+	}
+	to {
+		transform: translate3d(-50%, 0, 0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.huan-ticker__track {
+		animation: none;
+	}
+}
+
+/* 未綁定與待命畫面沿用設計系統的表面與文字角色。 */
+.huan-shell {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100vw;
+	height: 100vh;
+	background: var(--background-main);
+	color: var(--text-main);
+}
+
+.huan-shell__inner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-6);
+	align-items: center;
+	max-width: 44rem;
+	padding: var(--space-8);
+	text-align: center;
+}
+
+.huan-brand {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	align-items: center;
+	letter-spacing: var(--letter-spacing-tight);
+}
+
+.huan-brand__latin {
+	font-size: var(--font-size-4xl);
+	font-weight: var(--font-weight-bold);
+}
+
+.huan-brand__han {
+	font-size: var(--font-size-2xl);
+	color: var(--text-secondary);
+}
+
+.huan-code {
+	font-family: var(--font-family-mono);
+	font-size: clamp(3rem, 9vw, 7rem);
+	font-variant-numeric: tabular-nums lining-nums;
+	letter-spacing: var(--letter-spacing-technical);
+	color: var(--text-accent);
+}
+
+.huan-qr {
+	width: 15rem;
+	height: 15rem;
+	padding: var(--space-3);
+	background: var(--palette-warm-25, #ffffff);
+	border-radius: var(--radius-md);
+}
+
+.huan-panel {
+	position: fixed;
+	inset-block-start: var(--space-4);
+	inset-inline-end: var(--space-4);
+	z-index: var(--z-overlay, 40);
+	width: min(26rem, calc(100vw - var(--space-8)));
+	max-height: calc(100vh - var(--space-8));
+	overflow-y: auto;
+}
+
+.huan-panel__grid {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--space-2) var(--space-4);
+	font-size: var(--font-size-sm);
+}
+
+.huan-panel__label {
+	color: var(--text-secondary);
+}
+
+.huan-panel__value {
+	color: var(--text-main);
+	overflow-wrap: anywhere;
+}
