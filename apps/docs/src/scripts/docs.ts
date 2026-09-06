@@ -102,15 +102,43 @@ function setupCodeCopy(): void {
 	}
 }
 
-/** 寬表格在窄螢幕上會撐破版面，包一層可捲動的容器。 */
+/**
+ * 寬表格在窄螢幕上會撐破版面，包一層可捲動的容器。
+ *
+ * 外面再包一層是為了畫「還可以往右捲」的提示：提示不能畫在捲動容器上，
+ * 表格儲存格有自己的背景色，會直接蓋掉。
+ */
 function setupTables(): void {
+	const scrollers: HTMLElement[] = [];
+
 	for (const table of document.querySelectorAll<HTMLTableElement>(".prose table")) {
-		if (table.parentElement?.classList.contains("table-scroll")) continue;
-		const wrapper = document.createElement("div");
-		wrapper.className = "table-scroll";
-		table.parentElement?.insertBefore(wrapper, table);
-		wrapper.appendChild(table);
+		let scroller = table.parentElement;
+		if (!scroller?.classList.contains("table-scroll")) {
+			const wrap = document.createElement("div");
+			wrap.className = "table-wrap";
+			const inner = document.createElement("div");
+			inner.className = "table-scroll";
+			table.parentElement?.insertBefore(wrap, table);
+			wrap.appendChild(inner);
+			inner.appendChild(table);
+			scroller = inner;
+		}
+		scrollers.push(scroller);
 	}
+
+	if (scrollers.length === 0) return;
+
+	const update = (): void => {
+		for (const scroller of scrollers) {
+			const remaining = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
+			const wrap = scroller.parentElement;
+			if (wrap) wrap.dataset.overflow = String(remaining > 1);
+		}
+	};
+
+	update();
+	for (const scroller of scrollers) scroller.addEventListener("scroll", update, { passive: true });
+	window.addEventListener("resize", update, { passive: true });
 }
 
 /** 只有真的有圖的頁面才載入 mermaid，它比整個文件站的其他 JS 加起來還大。 */

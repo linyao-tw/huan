@@ -455,8 +455,34 @@ a:hover {
 
 /* ── 表格 ─────────────────────────────────────────────────────────────── */
 
-.prose .table-scroll {
+/*
+ * 寬表格在窄螢幕上會被裁掉右半邊，而裁切本身看不出「還有內容可以捲」。
+ *
+ * 漸層必須畫在捲動容器的外面：表格自己的儲存格有背景色，畫在容器上會被蓋掉。
+ * 只有真的溢出時才標記 data-overflow，捲到最右邊時把提示淡出。
+ */
+.prose .table-wrap {
+	position: relative;
 	margin: 0 0 var(--space-6);
+}
+
+.prose .table-wrap::after {
+	content: "";
+	position: absolute;
+	inset-block: 0;
+	inset-inline-end: 0;
+	width: var(--space-8);
+	background: linear-gradient(to left, var(--background-main), transparent);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.prose .table-wrap[data-overflow="true"]::after {
+	opacity: 1;
+}
+
+.prose .table-scroll {
 	overflow-x: auto;
 }
 
