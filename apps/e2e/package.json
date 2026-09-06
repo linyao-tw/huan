@@ -10,7 +10,9 @@
 		"typecheck": "tsc -p tsconfig.json"
 	},
 	"devDependencies": {
+		"@huan/layout-engine": "workspace:*",
 		"@huan/protocol": "workspace:*",
+		"@huan/shared": "workspace:*",
 		"@playwright/test": "^1.63.0",
 		"@types/node": "^24.10.1"
 	}

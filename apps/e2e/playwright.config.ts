@@ -18,6 +18,8 @@ export default defineConfig({
 	reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
 	use: {
 		baseURL,
+		/** 裝置協定的測試直接打 Fastify，不經過 Vite 的代理。 */
+		extraHTTPHeaders: {},
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 		locale: "zh-TW",
