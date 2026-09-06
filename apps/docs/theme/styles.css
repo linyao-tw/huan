@@ -1,0 +1,38 @@
+/*
+ * 文件站沿用 Linyao Design System 的設計變數，讓文件與產品看起來是同一套東西。
+ * Rspress 自己的 CSS 變數對應到設計系統的語意角色，因此不需要再寫一份色票。
+ */
+@import "@linyao.tw/ui/styles.css";
+@import "@linyao.tw/ui/fonts.css";
+
+:root {
+	--rp-c-brand: var(--control-primary);
+	--rp-c-brand-light: var(--control-primary-hover);
+	--rp-c-brand-dark: var(--control-primary-pressed);
+	--rp-c-text-1: var(--text-main);
+	--rp-c-text-2: var(--text-secondary);
+	--rp-c-bg: var(--background-main);
+	--rp-c-bg-soft: var(--background-secondary);
+	--rp-c-divider: var(--divider-main);
+	--rp-font-family-base: var(--font-family-sans);
+	--rp-font-family-mono: var(--font-family-mono);
+}
+
+.huan-figure {
+	margin: var(--space-6) 0;
+}
+
+.huan-figure img {
+	display: block;
+	width: 100%;
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow-low);
+}
+
+.huan-figure figcaption {
+	margin-top: var(--space-2);
+	color: var(--text-secondary);
+	font-size: var(--font-size-sm);
+	text-align: center;
+}
