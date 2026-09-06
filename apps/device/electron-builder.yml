@@ -1,0 +1,57 @@
+appId: tw.linyao.huan.device
+productName: HUAN Device
+copyright: Copyright © 2026 Linyao Digital Studio
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+
+# 產物名稱固定格式，讓下載頁與部署腳本能直接對應平台架構。
+artifactName: HUAN-Device-${version}-${os}-${arch}.${ext}
+
+# 共用套件是 workspace 相依，必須讓 electron-builder 一起打包進去。
+npmRebuild: false
+
+linux:
+  category: AudioVideo
+  synopsis: HUAN 讙 數位看板播放器
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64, arm64]
+
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libsecret-1-0
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+mac:
+  category: public.app-category.video
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  # 沒有設定簽章憑證時明確關閉，讓失敗原因是「沒有憑證」而不是難懂的簽章錯誤。
+  identity: null

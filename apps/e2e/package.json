@@ -6,10 +6,12 @@
 	"type": "module",
 	"scripts": {
 		"screenshots": "playwright test --config playwright.screenshots.config.ts",
-		"test": "playwright test"
+		"test": "playwright test",
+		"typecheck": "tsc -p tsconfig.json"
 	},
 	"devDependencies": {
 		"@huan/protocol": "workspace:*",
-		"@playwright/test": "^1.63.0"
+		"@playwright/test": "^1.63.0",
+		"@types/node": "^24.10.1"
 	}
 }
