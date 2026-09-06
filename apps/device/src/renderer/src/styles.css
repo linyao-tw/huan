@@ -104,6 +104,7 @@ body,
 	justify-content: center;
 	width: 100vw;
 	height: 100vh;
+	overflow: auto;
 	background: var(--background-main);
 	color: var(--text-main);
 }
@@ -111,10 +112,10 @@ body,
 .huan-shell__inner {
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-6);
+	gap: var(--space-4);
 	align-items: center;
 	max-width: 44rem;
-	padding: var(--space-8);
+	padding: var(--space-6);
 	text-align: center;
 }
 
@@ -127,26 +128,28 @@ body,
 }
 
 .huan-brand__latin {
-	font-size: var(--font-size-4xl);
+	font-size: var(--font-size-3xl);
 	font-weight: var(--font-weight-bold);
 }
 
 .huan-brand__han {
-	font-size: var(--font-size-2xl);
+	font-size: var(--font-size-xl);
 	color: var(--text-secondary);
 }
 
 .huan-code {
+	margin: 0;
 	font-family: var(--font-family-mono);
-	font-size: clamp(3rem, 9vw, 7rem);
+	/* 以視窗高度而不是寬度為基準：1280x720 的看板機也必須一眼看得完整。 */
+	font-size: clamp(2.5rem, min(9vw, 11vh), 6rem);
 	font-variant-numeric: tabular-nums lining-nums;
 	letter-spacing: var(--letter-spacing-technical);
 	color: var(--text-accent);
 }
 
 .huan-qr {
-	width: 15rem;
-	height: 15rem;
+	width: min(15rem, 34vh);
+	height: min(15rem, 34vh);
 	padding: var(--space-3);
 	background: var(--palette-warm-25, #ffffff);
 	border-radius: var(--radius-md);
