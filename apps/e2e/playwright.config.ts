@@ -7,6 +7,7 @@ const baseURL = process.env.HUAN_E2E_BASE_URL ?? "http://localhost:5173";
  * `pnpm docker:up && pnpm db:migrate && pnpm dev` 之後就可以直接執行。
  */
 export default defineConfig({
+	globalSetup: "./src/global-setup.ts",
 	testDir: "./tests",
 	testMatch: /.*\.spec\.ts/,
 	fullyParallel: false,
@@ -26,8 +27,12 @@ export default defineConfig({
 		timezoneId: "Asia/Taipei"
 	},
 	projects: [
+		/** 只登入兩次，其餘測試重用 cookie，避免撞上 /auth/* 的速率限制。 */
+		{ name: "setup", testMatch: /auth\.setup\.ts/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
 		{
 			name: "chromium",
+			dependencies: ["setup"],
+			testIgnore: /auth\.setup\.ts/,
 			use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } }
 		}
 	]

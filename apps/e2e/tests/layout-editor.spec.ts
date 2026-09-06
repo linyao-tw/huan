@@ -1,4 +1,4 @@
-import { login } from "@/fixtures";
+import { ADMIN_STATE } from "@/auth-state";
 import { computeLayoutGeometry } from "@huan/layout-engine";
 import { LayoutDocumentSchema } from "@huan/protocol";
 import { expect, test } from "@playwright/test";
@@ -6,12 +6,12 @@ import { expect, test } from "@playwright/test";
 const LAYOUT_NAME = `E2E 版面 ${Date.now()}`;
 
 test.describe.configure({ mode: "serial" });
+test.use({ storageState: ADMIN_STATE });
 
 test.describe("版面編輯器", () => {
 	let layoutId = "";
 
 	test("建立版面", async ({ page }) => {
-		await login(page);
 		await page.goto("/app/layouts");
 		await page.getByRole("button", { name: "建立版面" }).click();
 
@@ -25,7 +25,6 @@ test.describe("版面編輯器", () => {
 	});
 
 	test("水平分割並調整比例到 70/30", async ({ page }) => {
-		await login(page);
 		await page.goto(`/app/layouts/${layoutId}`);
 
 		await page.getByRole("button", { name: "水平分割" }).click();
@@ -46,7 +45,6 @@ test.describe("版面編輯器", () => {
 	});
 
 	test("放入文字內容並發布", async ({ page }) => {
-		await login(page);
 		await page.goto(`/app/layouts/${layoutId}`);
 
 		await page.getByRole("button", { name: "放入文字" }).click();

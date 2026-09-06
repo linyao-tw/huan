@@ -7,6 +7,8 @@ const baseURL = process.env.HUAN_E2E_BASE_URL ?? "http://localhost:5173";
  * 文件不會因為重新截圖而整份變動。
  */
 export default defineConfig({
+	/** 截圖同樣需要固定的種子資料，否則文件裡的圖片會隨資料庫狀態變動。 */
+	globalSetup: "./src/global-setup.ts",
 	testDir: "./screenshots",
 	testMatch: /.*\.screenshots\.ts/,
 	fullyParallel: false,
@@ -22,8 +24,10 @@ export default defineConfig({
 		colorScheme: "light"
 	},
 	projects: [
+		{ name: "setup", testDir: "./tests", testMatch: /auth\.setup\.ts/, use: { ...devices["Desktop Chrome"] } },
 		{
 			name: "chromium",
+			dependencies: ["setup"],
 			use: { ...devices["Desktop Chrome"] }
 		}
 	]

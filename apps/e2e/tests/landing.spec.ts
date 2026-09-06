@@ -1,4 +1,8 @@
+import { ANONYMOUS_STATE } from "@/auth-state";
 import { expect, test } from "@playwright/test";
+
+/** 官網是公開頁面，必須在完全沒有登入狀態的情況下也正確呈現。 */
+test.use({ storageState: ANONYMOUS_STATE });
 
 test.describe("官網", () => {
 	test("呈現品牌、支援平台與 Email 洽詢方式", async ({ page }) => {
