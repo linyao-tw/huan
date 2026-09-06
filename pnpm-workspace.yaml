@@ -2,9 +2,8 @@ packages:
   - "apps/*"
   - "packages/*"
 
-onlyBuiltDependencies:
-  - "@node-rs/argon2"
-  - "@tailwindcss/oxide"
-  - electron
-  - esbuild
-  - sharp
+allowBuilds:
+  "@node-rs/argon2": true
+  electron: true
+  esbuild: true
+  sharp: true

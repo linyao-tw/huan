@@ -1,0 +1,31 @@
+{
+	"name": "@huan/db",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN 的 PostgreSQL schema、連線與 migration；Server 與 Worker 共用",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": ["dist", "migrations"],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"db:generate": "drizzle-kit generate",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@huan/protocol": "workspace:*",
+		"drizzle-orm": "^0.45.2",
+		"postgres": "^3.4.9"
+	},
+	"devDependencies": {
+		"drizzle-kit": "^0.31.10"
+	}
+}
