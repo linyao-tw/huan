@@ -37,4 +37,12 @@ import Icon from "@/components/Icon.astro";
 		font-family: var(--font-family-mono);
 		font-size: var(--font-size-xs);
 	}
+
+	/* 窄螢幕只留放大鏡：標籤與快捷鍵在手機上都沒有意義，還會擠掉其他操作。 */
+	@media (max-width: 900px) {
+		.search-trigger__label,
+		.search-trigger__key {
+			display: none;
+		}
+	}
 </style>

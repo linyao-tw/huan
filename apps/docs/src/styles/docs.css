@@ -238,6 +238,31 @@ a:hover {
 	border-right: var(--border-width-hairline) solid var(--divider-subtle);
 }
 
+/* 只在抽屜模式（手機／平板）顯示；桌機的區塊切換在頁首。 */
+.sidebar__sections {
+	display: none;
+	gap: var(--space-1);
+	margin-block-end: var(--space-5);
+	padding-block-end: var(--space-4);
+	border-block-end: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+.sidebar__section-link {
+	flex: 1;
+	padding: var(--space-2) var(--space-3);
+	border-radius: var(--radius-sm);
+	color: var(--text-secondary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	text-align: center;
+	text-decoration: none;
+}
+
+.sidebar__section-link[aria-current="true"] {
+	background: var(--background-selected);
+	color: var(--text-accent);
+}
+
 .sidebar__group + .sidebar__group,
 .sidebar__group + .sidebar__leaf,
 .sidebar__leaf + .sidebar__group {
@@ -743,8 +768,18 @@ a:hover {
 		padding: var(--space-6) var(--space-4) var(--space-12);
 	}
 
+	/* 頁首放不下區塊切換，改由抽屜頂端提供。 */
 	.site-sections {
-		margin-inline-start: 0;
+		display: none;
+	}
+
+	.sidebar__sections {
+		display: flex;
+	}
+
+	.site-header__rail {
+		gap: var(--space-2);
+		padding-inline: var(--space-3);
 	}
 }
 

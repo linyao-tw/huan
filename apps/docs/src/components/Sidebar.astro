@@ -1,12 +1,13 @@
 ---
-import { hrefFor, isGroup, type NavNode } from "@/lib/navigation";
+import { hrefFor, isGroup, SECTIONS, type NavNode, type Section } from "@/lib/navigation";
 
 interface Props {
 	nav: NavNode[];
 	currentId: string;
+	section: Section;
 }
 
-const { nav, currentId } = Astro.props;
+const { nav, currentId, section } = Astro.props;
 
 function containsCurrent(node: NavNode): boolean {
 	return isGroup(node) ? node.items.some(item => item.id === currentId) : node.id === currentId;
@@ -14,6 +15,23 @@ function containsCurrent(node: NavNode): boolean {
 ---
 
 <aside class="sidebar" id="sidebar" data-open="false">
+	{
+		/*
+		區塊切換在手機上從頁首移到這裡。
+		375px 的頁首放不下「選單 + 品牌 + 兩個區塊 + 搜尋 + 主題 + GitHub」，
+		硬擠的結果是整頁被撐到 449px 寬。
+	*/
+	}
+	<nav class="sidebar__sections" aria-label="文件區塊">
+		{
+			SECTIONS.map(item => (
+				<a class="sidebar__section-link" href={hrefFor(item.entry)} aria-current={item.label === section.label ? "true" : undefined}>
+					{item.label}
+				</a>
+			))
+		}
+	</nav>
+
 	<nav aria-label="文件導覽">
 		{
 			nav.map(node =>
