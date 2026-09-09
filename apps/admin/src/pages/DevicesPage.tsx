@@ -1,4 +1,4 @@
-import { deviceNeedsAttention, DeviceOnlineBadge, DiskMeter, PLATFORM_LABELS } from "@/components/DeviceStatus";
+import { deviceNeedsAttention, DeviceOnlineBadge, DiskMeter, PlatformLabel } from "@/components/DeviceStatus";
 import { PageHeader } from "@/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/components/QueryState";
 import { useDeviceListQuery } from "@/lib/devices";
@@ -71,7 +71,9 @@ export function DevicesPage() {
 										<TableCell>
 											<DeviceOnlineBadge device={device} />
 										</TableCell>
-										<TableCell>{device.reported ? `${PLATFORM_LABELS[device.reported.platform]} · ${device.reported.arch}` : "—"}</TableCell>
+										<TableCell>
+											<PlatformLabel platform={device.reported?.platform} arch={device.reported?.arch} />
+										</TableCell>
 										<TableCell numeric>{formatResolution(display?.width, display?.height)}</TableCell>
 										<TableCell>{device.reported?.appVersion ?? "—"}</TableCell>
 										<TableCell>{device.defaultLayoutName ?? <span className="huan-caption">未指定預設版面</span>}</TableCell>

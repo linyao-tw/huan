@@ -1,4 +1,4 @@
-import { DeviceOnlineBadge, DiskMeter, PLATFORM_LABELS } from "@/components/DeviceStatus";
+import { DeviceOnlineBadge, DiskMeter, PlatformLabel } from "@/components/DeviceStatus";
 import { PageHeader } from "@/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/components/QueryState";
 import { useDeviceQuery } from "@/lib/devices";
@@ -101,7 +101,9 @@ export function DeviceDetailPage() {
 								<dt>裝置 ID</dt>
 								<dd className="huan-truncate">{current.id}</dd>
 								<dt>平台</dt>
-								<dd>{reported ? `${PLATFORM_LABELS[reported.platform]} · ${reported.arch}` : "—"}</dd>
+								<dd>
+									<PlatformLabel platform={reported?.platform} arch={reported?.arch} />
+								</dd>
 								<dt>作業系統</dt>
 								<dd>{reported?.osVersion ?? "—"}</dd>
 								<dt>播放器版本</dt>

@@ -1,8 +1,27 @@
+import { OsIcon, osForPlatform } from "@/components/OsIcon";
 import type { Device, DevicePlatform } from "@huan/protocol";
 import { formatBytes } from "@huan/shared";
 import { Badge, Meter } from "@linyao.tw/ui";
 
 export const PLATFORM_LABELS: Record<DevicePlatform, string> = { linux: "Linux", win32: "Windows", darwin: "macOS", unknown: "未知" };
+
+/**
+ * 平台 + 架構的統一寫法。
+ *
+ * 列表、詳情與配對三個地方原本各自拼一次字串，加上標誌之後只會拼得更不一樣，
+ * 所以收成一個元件。沒有回報平台時顯示破折號，不要留空白讓人以為是壞掉。
+ */
+export function PlatformLabel({ platform, arch }: { platform?: DevicePlatform | undefined; arch?: string | undefined }) {
+	if (!platform) return <span aria-hidden="true">—</span>;
+	const os = osForPlatform(platform);
+	return (
+		<span className="huan-row huan-row--tight">
+			{os && <OsIcon os={os} />}
+			<span>{PLATFORM_LABELS[platform]}</span>
+			{arch && <span className="huan-caption huan-numeric">{arch}</span>}
+		</span>
+	);
+}
 
 /**
  * 「需要注意」的定義只寫在這裡。

@@ -1,3 +1,4 @@
+import { PlatformLabel } from "@/components/DeviceStatus";
 import { QueryErrorAlert } from "@/components/QueryState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { isApiError } from "@/lib/api";
@@ -7,13 +8,11 @@ import { useLayoutListQuery } from "@/lib/layouts";
 import { useSessionQuery } from "@/lib/session";
 import { PairingCodeSchema } from "@huan/protocol";
 import { formatPairingCode } from "@huan/shared";
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardBody, EmptyState, Loader, SectionHeading, Select, TextField } from "@linyao.tw/ui";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardBody, EmptyState, Loader, SectionHeading, Select, TextField } from "@linyao.tw/ui";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { PlugsIcon } from "@phosphor-icons/react/dist/csr/Plugs";
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, Link as RouterLink, useSearchParams } from "react-router";
-
-const PLATFORM_LABELS: Record<string, string> = { linux: "Linux", win32: "Windows", darwin: "macOS", unknown: "未知" };
 
 export function PairPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -178,7 +177,7 @@ export function PairPage() {
 									<dd>{lookup.data.deviceName}</dd>
 									<dt>平台</dt>
 									<dd>
-										<Badge variant="neutral">{PLATFORM_LABELS[lookup.data.platform] ?? lookup.data.platform}</Badge> <span className="huan-caption">{lookup.data.arch}</span>
+										<PlatformLabel platform={lookup.data.platform} arch={lookup.data.arch} />
 									</dd>
 									<dt>播放器版本</dt>
 									<dd>{lookup.data.appVersion}</dd>
