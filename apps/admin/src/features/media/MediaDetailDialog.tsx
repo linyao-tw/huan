@@ -1,4 +1,5 @@
 import { useDeleteMediaMutation, useMediaUsageQuery, useRenameMediaMutation } from "@/features/media/hooks";
+import "@/features/media/media.css";
 import { MediaStatusBadge, mediaStatusDetail } from "@/features/media/MediaStatus";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { formatDateTime, formatResolution } from "@/shared/utils/format";

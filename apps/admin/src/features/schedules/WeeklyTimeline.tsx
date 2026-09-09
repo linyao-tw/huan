@@ -1,4 +1,5 @@
 import { buildTimelineBlocks } from "@/features/schedules/form";
+import "@/features/schedules/schedules.css";
 import { WEEKDAY_LABELS } from "@/shared/utils/format";
 import type { Schedule } from "@huan/protocol";
 import { useMemo } from "react";

@@ -1,6 +1,7 @@
 import { DRAG_MEDIA_TYPE, DRAG_SLOT_TYPE, describeContent } from "@/features/layouts/editor/content";
 import { ratioFromClientPoint, ratioFromKeyboard, type CanvasProjection } from "@/features/layouts/editor/ratio";
 import { SlotPreview } from "@/features/layouts/editor/SlotPreview";
+import "@/features/layouts/layouts.css";
 import { computeFitTransform, computeLayoutGeometry, type DividerRect } from "@huan/layout-engine";
 import type { LayoutDocument, MediaAsset } from "@huan/protocol";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";

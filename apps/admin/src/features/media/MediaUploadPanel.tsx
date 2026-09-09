@@ -1,3 +1,4 @@
+import "@/features/media/media.css";
 import { ACCEPTED_UPLOAD_TYPES, useMediaUploader } from "@/features/media/use-media-uploader";
 import { UPLOAD_PHASE_LABELS } from "@/shared/services/upload";
 import { formatBytes } from "@huan/shared";

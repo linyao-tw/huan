@@ -4,6 +4,7 @@ import { LayoutCanvas } from "@/features/layouts/editor/LayoutCanvas";
 import { MediaPalette } from "@/features/layouts/editor/MediaPalette";
 import { useDocumentHistory } from "@/features/layouts/editor/useDocumentHistory";
 import { useLayoutDetailQuery, usePublishLayoutMutation, useUpdateLayoutMutation } from "@/features/layouts/hooks";
+import "@/features/layouts/layouts.css";
 import { useMediaListQuery } from "@/features/media/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";

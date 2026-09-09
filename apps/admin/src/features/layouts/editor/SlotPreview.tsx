@@ -1,3 +1,4 @@
+import "@/features/layouts/layouts.css";
 import type { MediaAsset, SlotContent, TickerContent } from "@huan/protocol";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 

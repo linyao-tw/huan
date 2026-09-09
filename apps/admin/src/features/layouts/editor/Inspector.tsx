@@ -9,6 +9,7 @@ import {
 	describeContent
 } from "@/features/layouts/editor/content";
 import { ContentForm } from "@/features/layouts/editor/ContentForm";
+import "@/features/layouts/layouts.css";
 import { ColorControl } from "@/shared/components/ColorControl";
 import { computeLayoutGeometry, findParentSplit } from "@huan/layout-engine";
 import {

@@ -1,0 +1,42 @@
+/* ── 排程週視圖 ───────────────────────────────────────────── */
+
+.huan-week {
+	display: grid;
+	grid-template-columns: minmax(3rem, auto) repeat(7, minmax(0, 1fr));
+	gap: var(--space-1);
+	min-width: 40rem;
+}
+
+.huan-week__label {
+	font-size: var(--font-size-xs);
+	color: var(--text-secondary);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.huan-week__column {
+	position: relative;
+	block-size: 12rem;
+	border-radius: var(--radius-2xs);
+	background: var(--background-inset);
+	overflow: hidden;
+}
+
+.huan-week__block {
+	position: absolute;
+	inset-inline: 0;
+	border-radius: var(--radius-2xs);
+	background: var(--background-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-size-xs);
+	padding: var(--space-05);
+	overflow: hidden;
+	opacity: 0.85;
+}
+
+.huan-week__hour {
+	position: absolute;
+	inset-inline: 0;
+	border-top: var(--border-width-hairline) solid var(--divider-subtle);
+}

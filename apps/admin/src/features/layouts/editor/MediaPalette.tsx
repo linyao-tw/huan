@@ -1,4 +1,5 @@
 import { DRAG_MEDIA_TYPE } from "@/features/layouts/editor/content";
+import "@/features/layouts/layouts.css";
 import { useMediaListQuery } from "@/features/media/hooks";
 import { QueryErrorAlert } from "@/shared/components/QueryState";
 import { formatResolution } from "@/shared/utils/format";

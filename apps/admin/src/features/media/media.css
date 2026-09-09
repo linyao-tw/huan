@@ -1,0 +1,69 @@
+/* ── 素材庫 ───────────────────────────────────────────────── */
+
+.huan-media-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+	gap: var(--space-4);
+}
+
+.huan-media-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	height: 100%;
+}
+
+.huan-media-thumb {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	border-radius: var(--radius-sm);
+	background: var(--background-inset);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--icon-secondary);
+	font-size: var(--icon-size-lg);
+}
+
+.huan-media-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.huan-media-select {
+	appearance: none;
+	background: none;
+	border: var(--border-width-hairline) solid transparent;
+	padding: 0;
+	text-align: start;
+	cursor: pointer;
+	color: inherit;
+	font: inherit;
+	border-radius: var(--radius-sm);
+	width: 100%;
+}
+
+.huan-media-select:focus-visible {
+	outline: var(--border-width-strong) solid var(--focus-ring);
+	outline-offset: var(--space-05);
+}
+
+.huan-upload-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	list-style: none;
+}
+
+.huan-upload-item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding: var(--space-3);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-sm);
+	background: var(--background-secondary);
+}

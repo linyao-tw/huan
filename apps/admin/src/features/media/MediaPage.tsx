@@ -1,4 +1,5 @@
 import { useMediaListQuery, type MediaListFilters } from "@/features/media/hooks";
+import "@/features/media/media.css";
 import { MediaDetailDialog } from "@/features/media/MediaDetailDialog";
 import { MediaStatusBadge, mediaStatusDetail } from "@/features/media/MediaStatus";
 import { MediaUploadPanel } from "@/features/media/MediaUploadPanel";

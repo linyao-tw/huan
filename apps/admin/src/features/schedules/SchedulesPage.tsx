@@ -3,6 +3,7 @@ import { useLayoutListQuery } from "@/features/layouts/hooks";
 import { scheduleToForm, toScheduleRequest, type ScheduleFormValues } from "@/features/schedules/form";
 import { useCreateScheduleMutation, useDeleteScheduleMutation, useScheduleListQuery, useUpdateScheduleMutation } from "@/features/schedules/hooks";
 import { ScheduleDialog } from "@/features/schedules/ScheduleDialog";
+import "@/features/schedules/schedules.css";
 import { WeeklyTimeline } from "@/features/schedules/WeeklyTimeline";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PageHeader } from "@/shared/components/PageHeader";

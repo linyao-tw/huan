@@ -1,3 +1,4 @@
+import "@/features/devices/devices.css";
 import { OsIcon, osForPlatform } from "@/shared/components/OsIcon";
 import type { Device, DevicePlatform } from "@huan/protocol";
 import { formatBytes } from "@huan/shared";

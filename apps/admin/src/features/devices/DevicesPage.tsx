@@ -1,3 +1,4 @@
+import "@/features/devices/devices.css";
 import { deviceNeedsAttention, DeviceOnlineBadge, DiskMeter, PlatformLabel } from "@/features/devices/DeviceStatus";
 import { useDeviceListQuery } from "@/features/devices/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
