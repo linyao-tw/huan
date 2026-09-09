@@ -206,6 +206,27 @@ body {
 	border-top: var(--border-width-hairline) solid var(--divider-subtle);
 }
 
+.huan-shell__account {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--space-2);
+	min-inline-size: 0;
+}
+
+.huan-shell__account-name {
+	color: var(--text-primary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+}
+
+.huan-shell__footer-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+}
+
 .huan-skip-link {
 	position: absolute;
 	inset-inline-start: var(--space-4);
@@ -246,21 +267,89 @@ body {
 	max-width: none;
 }
 
+/*
+ * 1024 的側欄要瘦一點。
+ *
+ * 17rem 的側欄在 1024 會把內容欄壓到 702px —— 比 768 的 734px 還窄，也就是
+ * 把視窗拉寬反而更難用。在側欄回來到夠寬之間先給它一個較窄的尺寸。
+ */
+@media (min-width: 60.0625rem) and (max-width: 78rem) {
+	.huan-shell {
+		grid-template-columns: 13rem minmax(0, 1fr);
+	}
+
+	.huan-shell__nav-link {
+		padding-inline: var(--space-3);
+	}
+}
+
+/*
+ * 窄螢幕：側欄收成一條頂欄。
+ *
+ * 原本是把整個側欄攤平放在內容上面，導覽折成三排藥丸、底下再直著堆主題鈕、
+ * 姓名、信箱、角色與登出 —— 在 360 下總高 493px，第一個螢幕全部被它吃掉，
+ * 使用者要捲一整頁才看得到自己點進來要看的東西。
+ */
 @media (max-width: 60rem) {
 	.huan-shell {
 		grid-template-columns: minmax(0, 1fr);
 	}
 
 	.huan-shell__sidebar {
-		position: static;
+		position: sticky;
+		top: 0;
+		z-index: 10;
 		height: auto;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-4);
+		overflow: visible;
 		border-inline-end: none;
 		border-bottom: var(--border-width-hairline) solid var(--divider-subtle);
+		display: grid;
+		grid-template-areas: "brand actions" "nav nav";
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
 	}
 
+	.huan-shell__brand {
+		grid-area: brand;
+	}
+
+	/*
+	 * 導覽橫向捲動而不是折行：七個項目折成三排會長高 120px，橫捲只佔一排。
+	 * 捲動條藏起來，靠內容被裁切的邊緣本身提示還有東西。
+	 */
 	.huan-shell__nav {
+		grid-area: nav;
 		flex-direction: row;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+		margin-inline: calc(var(--space-4) * -1);
+		padding-inline: var(--space-4);
+	}
+
+	.huan-shell__nav::-webkit-scrollbar {
+		display: none;
+	}
+
+	.huan-shell__nav-link {
+		flex: none;
+	}
+
+	.huan-shell__footer {
+		grid-area: actions;
+		flex-direction: row;
+		align-items: center;
+		gap: var(--space-2);
+		margin-top: 0;
+		padding-top: 0;
+		border-top: 0;
+	}
+
+	/* 姓名與角色在頂欄上是雜訊，需要的時候點進安全設定就看得到。 */
+	.huan-shell__account {
+		display: none;
 	}
 
 	.huan-shell__content {

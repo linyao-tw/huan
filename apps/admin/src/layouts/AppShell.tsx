@@ -66,27 +66,29 @@ export function AppShell() {
 				</nav>
 
 				<div className="huan-shell__footer">
-					<ThemeToggle />
 					{user ? (
-						<div className="huan-stack huan-stack--sm">
-							<span className="huan-truncate">{user.displayName}</span>
-							<span className="huan-caption huan-truncate">{user.email}</span>
+						<div className="huan-shell__account">
+							<span className="huan-shell__account-name huan-truncate">{user.displayName}</span>
+							{/* 角色寫成人話：super_admin 是資料庫裡的值，不是給人看的。 */}
 							<Badge variant={isSuperAdmin ? "accent" : "neutral"} size="sm">
-								{isSuperAdmin ? "super_admin" : "user"}
+								{isSuperAdmin ? "系統管理員" : "一般使用者"}
 							</Badge>
 						</div>
 					) : null}
-					<Button
-						variant="quiet"
-						size="sm"
-						startIcon={<SignOutIcon weight="bold" />}
-						loading={logout.isPending}
-						onClick={() => {
-							logout.mutate(undefined, { onSettled: () => void navigate("/login", { replace: true }) });
-						}}
-					>
-						登出
-					</Button>
+					<div className="huan-shell__footer-actions">
+						<ThemeToggle />
+						<Button
+							variant="quiet"
+							size="sm"
+							startIcon={<SignOutIcon weight="bold" />}
+							loading={logout.isPending}
+							onClick={() => {
+								logout.mutate(undefined, { onSettled: () => void navigate("/login", { replace: true }) });
+							}}
+						>
+							登出
+						</Button>
+					</div>
 				</div>
 			</aside>
 

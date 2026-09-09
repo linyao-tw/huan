@@ -37,6 +37,10 @@ Admin (React SPA)
 ```text
 apps/
   admin/       Vite + React 19 + TanStack Query + React Router 的後台與官網（CSR，不做 SSR）
+               src/features/<功能>/  該功能的頁面、元件、hooks 與樣式，全部在一起
+               src/shared/           跨功能且沒有業務語意的東西（元件、utils、services）
+               src/layouts/          後台外框
+               src/app/              路由、providers、404
   server/      Fastify + Drizzle 的 API、WebSocket 與靜態檔案服務
   worker/      FFmpeg 轉檔 worker，以 PostgreSQL 為工作佇列
   device/      Electron 播放器（main / preload / renderer）
@@ -105,6 +109,8 @@ import { DeviceSchema } from "@huan/protocol"; // ✓ 跨套件
 ```
 
 `@/` 別名只在 `apps/*` 使用，由各自的 bundler（Vite、electron-vite、tsup）與 `tsconfig.json` 的 `paths` 同時設定，因此開發、型別檢查與 production build 三邊都解析得到。
+
+`apps/admin` 的功能之間不互相匯入：需要共用的東西往 `shared/` 提，不要從 `features/a` 直接拉 `features/b` 的檔案——那會讓「刪掉一個功能」重新變成一件要全域搜尋的事。`shared/` 的判準是「一看名字就知道屬於哪個業務就不該放這裡」。
 
 `packages/*` 內部維持扁平結構並使用同層的 `./module.js` 相對匯入。這些套件以 `tsc` 直接輸出 ESM，沒有 bundler 可以改寫別名，硬要加 `@/` 只會在 Node 執行時炸掉。注意副檔名要寫 `.js`，那是 `NodeNext` 模組解析的要求。
 
