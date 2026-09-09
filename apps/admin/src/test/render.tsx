@@ -1,5 +1,5 @@
 import { AppProviders } from "@/app/AppProviders";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/shared/services/query-keys";
 import type { SessionResponse, User } from "@huan/protocol";
 import { QueryClient } from "@tanstack/react-query";
 import { render, type RenderResult } from "@testing-library/react";

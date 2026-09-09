@@ -1,6 +1,6 @@
-import { ApiError, setUnauthorizedHandler } from "@/lib/api";
-import { queryKeys } from "@/lib/query-keys";
-import { ThemeProvider } from "@/lib/theme";
+import { ApiError, setUnauthorizedHandler } from "@/shared/services/http";
+import { queryKeys } from "@/shared/services/query-keys";
+import { ThemeProvider } from "@/shared/theme";
 import { LinyaoProvider, ToastProvider } from "@linyao.tw/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";

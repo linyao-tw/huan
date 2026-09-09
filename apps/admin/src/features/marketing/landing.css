@@ -1,0 +1,556 @@
+/*
+ * 官網（首頁）樣式。
+ *
+ * 和後台分成兩個檔案，因為兩者的設計目標不同：後台要密、要可掃描；官網要有
+ * 節奏、要能停下來讀。放在一起的時候，改其中一邊很容易誤傷另一邊。
+ */
+
+.huan-landing {
+	display: flex;
+	flex-direction: column;
+	min-height: 100dvh;
+	background: var(--background-main);
+}
+
+/* ── 共用的欄寬與區段節奏 ─────────────────────────────────── */
+
+/*
+ * 頁首、每個區段與頁尾共用同一條欄寬。
+ *
+ * 原本只有區段與頁尾有 max-width，頁首沒有，所以 1920 下左上角的字標比底下
+ * 所有內容再往左突出 288px —— 整頁看起來像沒對齊，因為它確實沒有。
+ */
+.huan-landing__inner {
+	width: 100%;
+	max-width: var(--huan-content-max);
+	margin-inline: auto;
+	padding-inline: var(--space-6);
+}
+
+/*
+ * 區段的上下留白刻意不一致。
+ *
+ * 六個區段給一樣的份量，讀者就無從判斷哪一段重要。首屏與結尾的行動呼籲是
+ * 頁面的兩個高點，中間的區段安靜一點。
+ */
+.huan-landing__section {
+	padding-block: var(--space-20);
+}
+
+.huan-landing__section--hero {
+	padding-block: var(--space-24) var(--space-20);
+}
+
+.huan-landing__section--cta {
+	padding-block: var(--space-24);
+}
+
+/* 交替的底色是唯一的區段分野，所以它必須真的看得出來。 */
+.huan-landing__band {
+	background: var(--background-secondary);
+}
+
+@media (max-width: 60rem) {
+	.huan-landing__section,
+	.huan-landing__section--hero,
+	.huan-landing__section--cta {
+		padding-block: var(--space-12);
+	}
+}
+
+/* ── 標題階梯 ─────────────────────────────────────────────── */
+
+/*
+ * 區段標題不用 SectionHeading。
+ *
+ * 那個元件在設計系統裡是後台的列表軌道標籤：12px、regular、大寫，而且會畫出
+ * 自己的背景盒。拿來當區段標題的結果是 h2 比它底下的 h3 還小、還輕，而那個
+ * 背景盒在 band 上讀起來像一個停用的輸入框。
+ */
+.huan-section__eyebrow {
+	display: block;
+	margin-block-end: var(--space-2);
+	color: var(--text-accent);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	letter-spacing: var(--letter-spacing-technical);
+}
+
+.huan-section__title {
+	margin: 0;
+	color: var(--text-title);
+	font-family: var(--font-family-serif);
+	font-size: clamp(var(--font-size-xl), 3vw, var(--font-size-2xl));
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-tight);
+	line-height: var(--line-height-tight);
+}
+
+.huan-section__lede {
+	margin: var(--space-3) 0 0;
+	max-width: var(--huan-prose-max);
+	color: var(--text-secondary);
+	font-size: var(--font-size-lg);
+	line-height: var(--line-height-body);
+}
+
+/* 標題群組和它的內容之間要比群組內部大，才看得出從屬關係。 */
+.huan-section__body {
+	margin-block-start: var(--space-10);
+}
+
+/* ── 首屏 ─────────────────────────────────────────────────── */
+
+.huan-hero {
+	display: grid;
+	/* 圖比文字寬：首屏最該被看到的是產品長什麼樣子。 */
+	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	align-items: center;
+	gap: var(--space-12);
+}
+
+@media (max-width: 60rem) {
+	.huan-hero {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-10);
+	}
+}
+
+.huan-hero__copy {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--space-5);
+}
+
+/*
+ * 上限用 --font-size-3xl 推導而不是寫死 px：離散刻度最大只到 40px，在 1440 的
+ * 首屏撐不起來，而 --font-size-display 最大 128px 又太大。
+ */
+.huan-hero__title {
+	margin: 0;
+	color: var(--text-title);
+	font-family: var(--font-family-serif);
+	font-size: clamp(var(--font-size-2xl), 5vw, calc(var(--font-size-3xl) * 1.6));
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-tight);
+	line-height: var(--line-height-tight);
+}
+
+.huan-hero__lede {
+	margin: 0;
+	max-width: var(--huan-prose-max);
+	color: var(--text-secondary);
+	font-size: clamp(var(--font-size-md), 1.5vw, var(--font-size-xl));
+	line-height: var(--line-height-body);
+}
+
+.huan-hero__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-3);
+	margin-block-start: var(--space-2);
+}
+
+/* ── 產品畫面 ─────────────────────────────────────────────── */
+
+/*
+ * 截圖一律包在這個框裡。
+ *
+ * 直接放一張圖會浮在頁面上沒有著落；加一條標題列之後它讀起來像一個視窗，
+ * 也順便說明了那是哪一個畫面。
+ */
+.huan-shot {
+	overflow: hidden;
+	background: var(--background-elevated);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-medium);
+}
+
+.huan-shot__bar {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	border-block-end: var(--border-width-hairline) solid var(--divider-subtle);
+	color: var(--text-muted);
+	font-size: var(--font-size-xs);
+}
+
+.huan-shot__image {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	object-position: top left;
+}
+
+/* ── 支援平台 ─────────────────────────────────────────────── */
+
+/*
+ * 用等寬格線而不是 flex-wrap。
+ *
+ * flex 讓每一格照內容決定寬度，四格加起來只佔 862px，右邊空掉 434px（33%），
+ * 而且四個框寬度都不一樣，右緣參差像沒做完。
+ */
+.huan-platform-strip {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background: var(--background-elevated);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--elevation-1);
+	list-style: none;
+}
+
+.huan-platform-strip > li {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	padding: var(--space-6);
+	border-inline-start: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+.huan-platform-strip > li:first-child {
+	border-inline-start: 0;
+}
+
+@media (max-width: 60rem) {
+	.huan-platform-strip {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	/* 換成兩欄之後，左欄的分隔線會變成整條帶子的左邊界。 */
+	.huan-platform-strip > li:nth-child(odd) {
+		border-inline-start: 0;
+	}
+
+	.huan-platform-strip > li:nth-child(n + 3) {
+		border-block-start: var(--border-width-hairline) solid var(--divider-subtle);
+	}
+}
+
+/*
+ * 品牌標誌一律單色。
+ *
+ * 四個品牌原色（Ubuntu 橘、Raspberry Pi 桃紅…）會和頁面唯一的朱紅打架，
+ * 而且 Raspberry Pi 的桃紅和主色太接近，看起來像它也是可點的。
+ */
+.huan-platform-strip__icon {
+	color: var(--icon-secondary);
+	line-height: 0;
+}
+
+.huan-platform-strip__name {
+	color: var(--text-title);
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+}
+
+.huan-platform-strip__note {
+	color: var(--text-muted);
+	font-size: var(--font-size-xs);
+}
+
+/* ── 怎麼運作：三個步驟 ───────────────────────────────────── */
+
+.huan-steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-16);
+}
+
+.huan-step {
+	display: grid;
+	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	align-items: center;
+	gap: var(--space-10);
+}
+
+/* 左右交錯，讓三個步驟不會讀起來像同一件事重複三次。 */
+.huan-step:nth-child(even) > .huan-step__copy {
+	order: 2;
+}
+
+@media (max-width: 60rem) {
+	.huan-steps {
+		gap: var(--space-12);
+	}
+
+	.huan-step {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-6);
+	}
+
+	.huan-step:nth-child(even) > .huan-step__copy {
+		order: 0;
+	}
+}
+
+.huan-step__copy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+/* 等寬字只用在計數器與數值，這是本頁唯一符合的地方。 */
+.huan-step__number {
+	color: var(--text-muted);
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-2xl);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.huan-step__title {
+	margin: 0;
+	color: var(--text-title);
+	font-size: var(--font-size-xl);
+	font-weight: var(--font-weight-semibold);
+}
+
+.huan-step__text {
+	margin: 0;
+	max-width: var(--huan-prose-max);
+	color: var(--text-secondary);
+	line-height: var(--line-height-body);
+}
+
+/* ── 離線與多裝置 ─────────────────────────────────────────── */
+
+.huan-split {
+	display: grid;
+	grid-template-columns: minmax(0, 6fr) minmax(0, 4fr);
+	align-items: center;
+	gap: var(--space-12);
+}
+
+@media (max-width: 60rem) {
+	.huan-split {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-8);
+	}
+}
+
+.huan-points {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.huan-points > li {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	gap: var(--space-3);
+	color: var(--text-secondary);
+	line-height: var(--line-height-body);
+}
+
+.huan-points__icon {
+	color: var(--icon-accent);
+	line-height: 0;
+	/* 圖示對齊第一行文字的視覺中線，不是它的頂端。 */
+	padding-block-start: 0.15em;
+}
+
+/* ── 功能 ─────────────────────────────────────────────────── */
+
+/*
+ * 固定三欄，不用 auto-fit。
+ *
+ * auto-fit 在 1200 以上會排成四欄，六個項目就變成 4 + 2 的孤行，右邊空兩格；
+ * 同時卡片被壓到 312px，中文內文只剩 19 字一行，六張並排像一堆碎紙。
+ */
+.huan-feature-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--space-8) var(--space-6);
+}
+
+@media (max-width: 64rem) {
+	.huan-feature-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 40rem) {
+	.huan-feature-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/*
+ * 不用卡片。
+ *
+ * 這一區是次要的，用來掃描而不是細讀。整頁已經有太多一樣的矩形，再加六個
+ * 只會讓真正重要的東西更難被看到；靠 grid 的間距分開就夠了。
+ */
+.huan-feature {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.huan-feature__icon {
+	color: var(--icon-accent);
+	line-height: 0;
+}
+
+.huan-feature__title {
+	margin: 0;
+	color: var(--text-title);
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+}
+
+.huan-feature__text {
+	margin: 0;
+	color: var(--text-secondary);
+	font-size: var(--font-size-sm);
+	line-height: var(--line-height-body);
+}
+
+/* ── 使用情境 ─────────────────────────────────────────────── */
+
+/*
+ * 兩欄而不是四欄：四欄時每格只有 312px，敘述會被切成四段碎行。
+ * 也不用 auto-fit —— 它在 1440 會折出一條 0px 的死軌，讓右緣多 16px 空隙。
+ */
+.huan-usecase-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-5);
+}
+
+@media (max-width: 48rem) {
+	.huan-usecase-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* ── 我們把話說清楚 ───────────────────────────────────────── */
+
+.huan-caveats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--space-6);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+@media (max-width: 60rem) {
+	.huan-caveats {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.huan-caveat__title {
+	margin: 0 0 var(--space-2);
+	color: var(--text-title);
+	font-size: var(--font-size-md);
+	font-weight: var(--font-weight-semibold);
+}
+
+.huan-caveat__text {
+	margin: 0;
+	color: var(--text-secondary);
+	font-size: var(--font-size-sm);
+	line-height: var(--line-height-body);
+}
+
+/* ── 行動呼籲 ─────────────────────────────────────────────── */
+
+.huan-cta {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-5);
+	max-width: var(--huan-prose-max);
+	margin-inline: auto;
+	text-align: center;
+}
+
+.huan-cta__title {
+	margin: 0;
+	color: var(--text-title);
+	font-family: var(--font-family-serif);
+	font-size: clamp(var(--font-size-xl), 3vw, var(--font-size-3xl));
+	font-weight: var(--font-weight-bold);
+	letter-spacing: var(--letter-spacing-tight);
+	line-height: var(--line-height-tight);
+}
+
+.huan-cta__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-4);
+}
+
+/* ── 頁首與頁尾 ───────────────────────────────────────────── */
+
+.huan-landing__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-4);
+	padding-block: var(--space-4);
+}
+
+.huan-landing__footer {
+	margin-block-start: auto;
+	padding-block: var(--space-10) var(--space-8);
+	background: var(--background-secondary);
+	border-block-start: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+.huan-landing__footer-top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-8);
+}
+
+.huan-landing__footer-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2) var(--space-6);
+}
+
+.huan-landing__footer-bottom {
+	margin-block-start: var(--space-6);
+	padding-block-start: var(--space-5);
+	border-block-start: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+/*
+ * 文字連結的命中區。
+ *
+ * 設計系統自己把最小命中區訂在 --control-target-min，但純文字連結只有行高
+ * 那麼高（實測 18px）。撐開高度而不是加內距，才不會把行距一起撐開。
+ */
+.huan-landing a:not([class*="lyds-button"]) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--control-target-min);
+}
+
+.huan-landing__caption {
+	margin: 0;
+	/* caption 比內文更該限制行長：12px 的字排到 56 字一行會找不到下一行開頭。 */
+	max-width: 34rem;
+	color: var(--text-muted);
+	font-size: var(--font-size-xs);
+	line-height: var(--line-height-body);
+}

@@ -1,8 +1,8 @@
 import { AppProviders } from "@/app/AppProviders";
-import { RequireAuth, RequireSuperAdmin } from "@/app/RequireAuth";
-import { LandingPage } from "@/pages/LandingPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { NotFoundPage } from "@/pages/NotFoundPage";
+import { NotFoundPage } from "@/app/NotFoundPage";
+import { LoginPage } from "@/features/auth/LoginPage";
+import { RequireAuth, RequireSuperAdmin } from "@/features/auth/RequireAuth";
+import { LandingPage } from "@/features/marketing/LandingPage";
 import { Loader } from "@linyao.tw/ui";
 import { lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Route, Routes } from "react-router";
@@ -11,17 +11,17 @@ import { BrowserRouter, Route, Routes } from "react-router";
  * 官網、登入與 404 直接打包進入口：它們是未登入訪客唯一會看到的畫面，
  * 不應該為了載入後台的編輯器程式碼而多等一次網路往返。後台則整包延後載入。
  */
-const AppShell = lazy(async () => ({ default: (await import("@/app/AppShell")).AppShell }));
-const DashboardPage = lazy(async () => ({ default: (await import("@/pages/DashboardPage")).DashboardPage }));
-const MediaPage = lazy(async () => ({ default: (await import("@/pages/MediaPage")).MediaPage }));
-const LayoutsPage = lazy(async () => ({ default: (await import("@/pages/LayoutsPage")).LayoutsPage }));
-const LayoutEditorPage = lazy(async () => ({ default: (await import("@/pages/LayoutEditorPage")).LayoutEditorPage }));
-const SchedulesPage = lazy(async () => ({ default: (await import("@/pages/SchedulesPage")).SchedulesPage }));
-const DevicesPage = lazy(async () => ({ default: (await import("@/pages/DevicesPage")).DevicesPage }));
-const DeviceDetailPage = lazy(async () => ({ default: (await import("@/pages/DeviceDetailPage")).DeviceDetailPage }));
-const SecurityPage = lazy(async () => ({ default: (await import("@/pages/SecurityPage")).SecurityPage }));
-const UsersPage = lazy(async () => ({ default: (await import("@/pages/UsersPage")).UsersPage }));
-const PairPage = lazy(async () => ({ default: (await import("@/pages/PairPage")).PairPage }));
+const AppShell = lazy(async () => ({ default: (await import("@/layouts/AppShell")).AppShell }));
+const DashboardPage = lazy(async () => ({ default: (await import("@/features/dashboard/DashboardPage")).DashboardPage }));
+const MediaPage = lazy(async () => ({ default: (await import("@/features/media/MediaPage")).MediaPage }));
+const LayoutsPage = lazy(async () => ({ default: (await import("@/features/layouts/LayoutsPage")).LayoutsPage }));
+const LayoutEditorPage = lazy(async () => ({ default: (await import("@/features/layouts/LayoutEditorPage")).LayoutEditorPage }));
+const SchedulesPage = lazy(async () => ({ default: (await import("@/features/schedules/SchedulesPage")).SchedulesPage }));
+const DevicesPage = lazy(async () => ({ default: (await import("@/features/devices/DevicesPage")).DevicesPage }));
+const DeviceDetailPage = lazy(async () => ({ default: (await import("@/features/devices/DeviceDetailPage")).DeviceDetailPage }));
+const SecurityPage = lazy(async () => ({ default: (await import("@/features/security/SecurityPage")).SecurityPage }));
+const UsersPage = lazy(async () => ({ default: (await import("@/features/users/UsersPage")).UsersPage }));
+const PairPage = lazy(async () => ({ default: (await import("@/features/devices/PairPage")).PairPage }));
 
 function RouteFallback({ label }: { label: string }) {
 	return (
