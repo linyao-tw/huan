@@ -1,40 +1,44 @@
+import "@/features/dashboard/dashboard.css";
 import { deviceNeedsAttention } from "@/features/devices/DeviceStatus";
 import { useDeviceListQuery } from "@/features/devices/hooks";
 import { useLayoutListQuery } from "@/features/layouts/hooks";
 import { useMediaListQuery } from "@/features/media/hooks";
 import { useScheduleListQuery } from "@/features/schedules/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
-import { CardsSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
 import { formatRelativeTime } from "@/shared/utils/format";
-import type { Device } from "@huan/protocol";
-import { Badge, Button, Card, CardBody, EmptyState, ListCell, SectionHeading } from "@linyao.tw/ui";
+import { Badge, Button, Card, CardBody, EmptyState, ListCell, SectionHeading, Skeleton } from "@linyao.tw/ui";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { WarningIcon } from "@phosphor-icons/react/dist/csr/Warning";
+import { WarningCircleIcon } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router";
 
-function StatCard({ label, value, hint, to, tone }: { label: string; value: ReactNode; hint?: string; to: string; tone?: "danger" | "warning" | "success" }) {
+/** 每一張卡都是「標籤 / 數字 / 一句補充」，三行都在，同一列的高度才會一致。 */
+function StatCard({ label, value, hint, to }: { label: string; value: ReactNode; hint: string; to: string }) {
 	return (
 		<RouterLink to={to} className="huan-stat-link">
-			<Card variant={tone ? "elevated" : "material"} size="sm">
+			<Card variant="material" size="sm">
 				<CardBody>
 					<div className="huan-stat">
 						<span className="huan-stat__label">{label}</span>
 						<span className="huan-stat__value">{value}</span>
-						{hint ? <span className="huan-caption">{hint}</span> : null}
-						{tone ? (
-							<span>
-								<Badge variant={tone === "success" ? "success" : tone === "warning" ? "warning" : "danger"} size="sm">
-									{tone === "success" ? "正常" : "需要處理"}
-								</Badge>
-							</span>
-						) : null}
+						<span className="huan-caption">{hint}</span>
 					</div>
 				</CardBody>
 			</Card>
 		</RouterLink>
 	);
+}
+
+interface AttentionItem {
+	id: string;
+	title: string;
+	description: string;
+	metadata?: string;
+	to: string;
+	kind: "device" | "media";
 }
 
 export function DashboardPage() {
@@ -52,18 +56,31 @@ export function DashboardPage() {
 	const scheduleItems = schedules.data?.items ?? [];
 
 	const online = deviceItems.filter(device => device.online).length;
-	const offline = deviceItems.length - online;
 	const processing = mediaItems.filter(asset => asset.status === "processing" || asset.status === "uploaded" || asset.status === "uploading").length;
 	const failed = mediaItems.filter(asset => asset.status === "failed").length;
 	const needsReupload = mediaItems.filter(asset => asset.status === "needs_reupload").length;
 	const published = layoutItems.filter(layout => layout.publishedRevisionId !== null).length;
 	const enabledSchedules = scheduleItems.filter(schedule => schedule.enabled).length;
 
-	const attention = deviceItems.map(device => ({ device, reason: deviceNeedsAttention(device) })).filter((entry): entry is { device: Device; reason: string } => entry.reason !== null);
+	/*
+	 * 裝置排在素材前面：螢幕沒在播是現場看得到的問題，素材轉檔失敗只是還沒能用。
+	 * 這一段就是這一頁的重點，其餘數字都只是背景資訊。
+	 */
+	const attention: AttentionItem[] = [
+		...deviceItems.flatMap(device => {
+			const reason = deviceNeedsAttention(device);
+			if (!reason) return [];
+			return [{ id: device.id, title: device.name, description: reason, metadata: `最後回報 ${formatRelativeTime(device.lastSeenAt)}`, to: `/app/devices/${device.id}`, kind: "device" as const }];
+		}),
+		...(failed > 0 ? [{ id: "media-failed", title: `${failed} 個素材轉檔失敗`, description: "檔案格式可能不支援，換一個檔案重新上傳。", to: "/app/media", kind: "media" as const }] : []),
+		...(needsReupload > 0
+			? [{ id: "media-reupload", title: `${needsReupload} 個素材要重新上傳`, description: "這些檔案在伺服器上已經清掉了，要給新裝置播就得再上傳一次。", to: "/app/media", kind: "media" as const }]
+			: [])
+	];
 
 	return (
 		<>
-			<PageHeader title="總覽" description="這個工作區目前的狀態。每一張卡片都可以點進去處理。" />
+			<PageHeader title="總覽" description="這個工作區現在的狀況。要處理的事都放在最上面。" />
 
 			{firstError ? (
 				<QueryErrorAlert
@@ -78,55 +95,64 @@ export function DashboardPage() {
 				/>
 			) : null}
 
-			{isPending ? (
-				<CardsSkeleton cards={6} label="正在載入總覽" />
-			) : (
-				<div className="huan-card-grid">
-					<StatCard
-						label="裝置線上"
-						value={online}
-						hint={`共 ${deviceItems.length} 台已配對`}
-						to="/app/devices"
-						tone={deviceItems.length > 0 && online === deviceItems.length ? "success" : undefined}
-					/>
-					<StatCard label="裝置離線" value={offline} hint={offline > 0 ? "離線裝置仍會播放本機內容" : "全部裝置都在線上"} to="/app/devices" tone={offline > 0 ? "danger" : undefined} />
-					<StatCard label="素材處理中" value={processing} hint="上傳、排隊與轉檔中的素材" to="/app/media" />
-					<StatCard label="素材轉檔失敗" value={failed} hint={failed > 0 ? "需要確認檔案格式後重新上傳" : "沒有失敗的素材"} to="/app/media" tone={failed > 0 ? "danger" : undefined} />
-					<StatCard label="需重新上傳" value={needsReupload} hint="播放產物已回收，原始檔不再保存" to="/app/media" tone={needsReupload > 0 ? "warning" : undefined} />
-					<StatCard label="已發布版面" value={published} hint={`共 ${layoutItems.length} 個版面`} to="/app/layouts" />
-					<StatCard label="啟用中排程" value={enabledSchedules} hint={`共 ${scheduleItems.length} 個排程`} to="/app/schedules" />
-				</div>
-			)}
-
-			<section className="huan-stack" aria-label="需要注意的裝置">
-				<SectionHeading level={2} size="md" description="離線、版本落後、同步未完成或有儲存空間問題的裝置。">
-					需要注意的裝置
+			<section className="huan-stack" aria-label="需要處理">
+				<SectionHeading
+					level={2}
+					size="md"
+					description="沒在播的螢幕、還不能用的素材。處理完就會從這裡消失。"
+					annotation={isPending || attention.length === 0 ? undefined : <Badge variant="danger">{attention.length} 件</Badge>}
+				>
+					需要處理
 				</SectionHeading>
 
 				{isPending ? (
-					<CardsSkeleton cards={3} label="正在載入裝置狀態" />
+					<ListSkeleton rows={3} label="正在讀取需要處理的項目" />
 				) : attention.length === 0 ? (
-					<EmptyState status="success" icon={<CheckCircleIcon weight="bold" />} title="所有裝置都正常" description="沒有離線、落後或同步失敗的裝置。" />
+					<EmptyState status="success" icon={<CheckCircleIcon weight="bold" />} title="目前沒有要處理的事" description="裝置都在線上，素材也都轉好了。" />
 				) : (
 					<div className="huan-stack huan-stack--sm">
-						{attention.map(({ device, reason }) => (
+						{attention.map(item => (
 							<ListCell
-								key={device.id}
-								leading={
-									<span aria-hidden="true">
-										<WarningIcon weight="bold" />
-									</span>
-								}
-								title={device.name}
-								description={reason}
-								metadata={`最後回報 ${formatRelativeTime(device.lastSeenAt)}`}
+								key={item.id}
+								leading={<span aria-hidden="true">{item.kind === "device" ? <WarningIcon weight="bold" /> : <WarningCircleIcon weight="bold" />}</span>}
+								title={item.title}
+								description={item.description}
+								metadata={item.metadata}
 								trailing={
-									<Button render={<RouterLink to={`/app/devices/${device.id}`} />} nativeButton={false} variant="quiet" size="sm" endIcon={<ArrowRightIcon weight="bold" />}>
-										查看
+									<Button render={<RouterLink to={item.to} />} nativeButton={false} variant="quiet" size="sm" endIcon={<ArrowRightIcon weight="bold" />}>
+										去處理
 									</Button>
 								}
 							/>
 						))}
+					</div>
+				)}
+			</section>
+
+			<section className="huan-stack" aria-label="目前狀態">
+				<SectionHeading level={2} size="md" description="點任何一張卡片可以進去看細節。">
+					目前狀態
+				</SectionHeading>
+
+				{isPending ? (
+					/* 骨架用同一個網格，資料進來時卡片不會換位置。 */
+					<div className="huan-card-grid huan-stat-grid" aria-busy="true" aria-live="polite">
+						<span className="huan-visually-hidden">正在讀取目前狀態</span>
+						{Array.from({ length: 4 }, (_value, index) => (
+							<Skeleton key={index} shape="rectangular" style={{ blockSize: "var(--space-24)" }} />
+						))}
+					</div>
+				) : (
+					<div className="huan-card-grid huan-stat-grid">
+						<StatCard label="裝置在線上" value={`${online} / ${deviceItems.length}`} hint={deviceItems.length === 0 ? "還沒有配對任何裝置" : "離線的裝置會繼續播已經下載好的內容"} to="/app/devices" />
+						<StatCard
+							label="素材"
+							value={mediaItems.length}
+							hint={processing > 0 ? `${processing} 個還在上傳或轉檔` : failed + needsReupload > 0 ? `${failed + needsReupload} 個現在不能播` : "全部都可以播"}
+							to="/app/media"
+						/>
+						<StatCard label="已發布的版面" value={published} hint={`共 ${layoutItems.length} 個版面，只有發布過的才會播`} to="/app/layouts" />
+						<StatCard label="啟用中的排程" value={enabledSchedules} hint={`共 ${scheduleItems.length} 個排程`} to="/app/schedules" />
 					</div>
 				)}
 			</section>

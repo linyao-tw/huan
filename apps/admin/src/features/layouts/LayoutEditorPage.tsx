@@ -8,10 +8,10 @@ import "@/features/layouts/layouts.css";
 import { useMediaListQuery } from "@/features/media/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
-import { formatDateTime, formatRelativeTime } from "@/shared/utils/format";
+import { formatRelativeTime } from "@/shared/utils/format";
 import { collectSlots, removeSlot, serializeLayoutDocument, setSlotContent, setSplitDirection, setSplitRatio, splitNode, swapSlotContent } from "@huan/layout-engine";
 import type { LayoutDetail, LayoutDocument, MediaAsset, SlotContent, SplitDirection } from "@huan/protocol";
-import { Alert, AlertDescription, AlertTitle, Badge, Button, Card, CardBody, Dialog, EmptyState, SectionHeading, Spinner, TextField, TextView, useToastManager } from "@linyao.tw/ui";
+import { Alert, AlertDescription, AlertTitle, Badge, Button, Dialog, EmptyState, Spinner, TextView, useToastManager } from "@linyao.tw/ui";
 import { ArrowClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowClockwise";
 import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
 import { CloudCheckIcon } from "@phosphor-icons/react/dist/csr/CloudCheck";
@@ -36,12 +36,12 @@ function SaveIndicator({ state, message }: { state: SaveState; message: string |
 		return (
 			<span className="huan-row huan-row--tight">
 				<CloudWarningIcon weight="bold" aria-hidden="true" />
-				<Badge variant="danger">{state === "invalid" ? "草稿內容不合法" : "儲存失敗"}</Badge>
+				<Badge variant="danger">{state === "invalid" ? "設定超出範圍" : "儲存失敗"}</Badge>
 				{message ? <span className="huan-caption">{message}</span> : null}
 			</span>
 		);
 	}
-	if (state === "dirty") return <span className="huan-muted">尚未儲存的變更</span>;
+	if (state === "dirty") return <span className="huan-muted">還沒存檔</span>;
 	return (
 		<span className="huan-row huan-row--tight huan-muted">
 			<CloudCheckIcon weight="bold" aria-hidden="true" /> 草稿已儲存
@@ -82,7 +82,7 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 	 * 自動儲存。
 	 *
 	 * 送出前先用 schema 序列化一次：使用者把畫布寬度暫時輸入成 12 的當下，
-	 * 這份草稿是不合法的，寧可顯示「內容不合法」也不要送出去讓 Server 回 400。
+	 * 這份草稿是不合法的，寧可顯示「設定超出範圍」也不要送出去讓 Server 回 400。
 	 */
 	useEffect(() => {
 		let signature: string;
@@ -90,7 +90,7 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 			signature = `${name} ${description} ${serializeLayoutDocument(history.document)}`;
 		} catch {
 			setSaveState("invalid");
-			setSaveMessage("畫布尺寸、比例或內容超出允許範圍，修正後會自動繼續儲存。");
+			setSaveMessage("畫布尺寸或比例超出可用範圍，改回來就會自動繼續儲存。");
 			return;
 		}
 
@@ -189,7 +189,7 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 						{layout.publishedRevisionNumber === null ? <Badge variant="neutral">尚未發布</Badge> : <Badge variant="success">已發布第 {layout.publishedRevisionNumber} 版</Badge>}
 					</span>
 				}
-				description={`畫布 ${history.document.canvas.width} x ${history.document.canvas.height}，草稿最後修改 ${formatRelativeTime(layout.draftUpdatedAt)}`}
+				description={`畫布 ${history.document.canvas.width} × ${history.document.canvas.height} · 草稿最後修改 ${formatRelativeTime(layout.draftUpdatedAt)}`}
 				actions={
 					<div className="huan-row huan-row--tight">
 						<SaveIndicator state={saveState} message={saveMessage} />
@@ -206,20 +206,10 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 				}
 			/>
 
-			{media.isError ? <QueryErrorAlert error={media.error} onRetry={() => void media.refetch()} retrying={media.isFetching} title="無法載入素材，畫布上的圖片與影片會顯示為預留位置" /> : null}
+			{media.isError ? <QueryErrorAlert error={media.error} onRetry={() => void media.refetch()} retrying={media.isFetching} title="無法載入素材，畫布上的圖片與影片會先用灰底代替" /> : null}
 
 			<div className="huan-editor">
-				<MediaPalette
-					selectedSlotId={activeSlotId}
-					onAssign={assetId => {
-						const asset = assetMap.get(assetId);
-						if (asset) setSelectedContent(contentForAsset(asset));
-					}}
-					onInsertText={() => setSelectedContent(createTextContent())}
-					onInsertTicker={() => setSelectedContent(createTickerContent())}
-					onInsertUrl={() => setSelectedContent(createUrlContent())}
-				/>
-
+				{/* 畫布排在最前面：焦點順序才會跟看到的順序一致（畫布 → 側欄上 → 側欄下）。 */}
 				<div className="huan-editor__canvas-pane">
 					<LayoutCanvas
 						document={history.document}
@@ -234,54 +224,37 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 						onSwapSlots={(sourceId, targetId) => applyDocument(current => swapSlotContent(current, sourceId, targetId))}
 					/>
 
-					<Alert status="info">
-						<AlertTitle>操作提示</AlertTitle>
-						<AlertDescription>
-							拖曳分隔線可調整比例，按住 Alt 會暫時關閉吸附；分隔線取得焦點後也能用方向鍵微調。選取區塊後按 Alt 加右方向鍵水平分割、Alt 加下方向鍵垂直分割，Delete 刪除分割，Ctrl 或 Command 加 Z 復原。
-						</AlertDescription>
-					</Alert>
-
-					<Card variant="material" size="sm">
-						<CardBody>
-							<div className="huan-stack huan-stack--sm">
-								<TextField label="版面名稱" size="sm" value={name} onChange={event => setName(event.target.value)} />
-								<TextView label="說明" size="sm" rows={2} value={description} onChange={event => setDescription(event.target.value)} />
-							</div>
-						</CardBody>
-					</Card>
-
-					<Card variant="material" size="sm">
-						<CardBody>
-							<div className="huan-stack huan-stack--sm">
-								<SectionHeading level={2} size="sm" description="每一次發布都會產生一個新的修訂，裝置只會播放已發布的修訂。">
-									發布歷史
-								</SectionHeading>
-								{layout.revisions.length === 0 ? (
-									<p className="huan-muted">這個版面還沒有發布過。</p>
-								) : (
-									<ul className="huan-stack huan-stack--sm">
-										{layout.revisions.map(revision => (
-											<li key={revision.id} className="huan-row huan-row--between">
-												<span className="huan-row huan-row--tight">
-													<Badge variant={revision.id === layout.publishedRevisionId ? "success" : "neutral"} size="sm">
-														第 {revision.revisionNumber} 版
-													</Badge>
-													<span className="huan-caption">{revision.note ?? "（沒有備註）"}</span>
-												</span>
-												<span className="huan-caption">{formatDateTime(revision.publishedAt)}</span>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
-						</CardBody>
-					</Card>
+					{/* 提示原本是一整塊 Alert，在工作介面裡它每一次開啟都在跟畫布搶高度。 */}
+					<ul className="huan-editor__hints huan-caption">
+						<li>拖曳分隔線調整比例，按住 Alt 不吸附</li>
+						<li>
+							<kbd>Alt</kbd> + <kbd>→</kbd> 左右分割、<kbd>Alt</kbd> + <kbd>↓</kbd> 上下分割
+						</li>
+						<li>
+							<kbd>Delete</kbd> 刪除分割
+						</li>
+						<li>
+							<kbd>Ctrl</kbd> 或 <kbd>⌘</kbd> + <kbd>Z</kbd> 復原
+						</li>
+					</ul>
 				</div>
+
+				<MediaPalette
+					selectedSlotId={activeSlotId}
+					onAssign={assetId => {
+						const asset = assetMap.get(assetId);
+						if (asset) setSelectedContent(contentForAsset(asset));
+					}}
+					onInsertText={() => setSelectedContent(createTextContent())}
+					onInsertTicker={() => setSelectedContent(createTickerContent())}
+					onInsertUrl={() => setSelectedContent(createUrlContent())}
+				/>
 
 				<Inspector
 					document={history.document}
 					assets={assets}
 					selectedNodeId={activeSlotId}
+					meta={{ name, description, onNameChange: setName, onDescriptionChange: setDescription, publishedRevisionId: layout.publishedRevisionId, revisions: layout.revisions }}
 					onSplit={splitSelected}
 					onRemoveSlot={removeSelected}
 					onClearSlot={() => setSelectedContent(null)}
@@ -303,15 +276,15 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 						<Dialog.Popup closeButton={false}>
 							<Dialog.Header>
 								<Dialog.Title>發布版面</Dialog.Title>
-								<Dialog.Description>發布會把目前的草稿凍結成一個新的修訂，並派送給使用這個版面的裝置。裝置會先下載完所有素材，再原子性切換。</Dialog.Description>
+								<Dialog.Description>把現在的草稿存成新的一版，送到使用這個版面的裝置。裝置會先把素材下載完再一次換過去，不會播到一半缺東西。</Dialog.Description>
 							</Dialog.Header>
 							<Dialog.Body>
 								<div className="huan-stack">
-									<TextView label="發布備註" rows={3} value={publishNote} onChange={event => setPublishNote(event.target.value)} description="選填，最多 280 個字。日後在發布歷史裡看得到。" />
+									<TextView label="發布備註" rows={3} value={publishNote} onChange={event => setPublishNote(event.target.value)} description="選填，最多 280 個字，之後在發布紀錄裡看得到。" />
 									{saveState !== "saved" ? (
 										<Alert status="warning">
-											<AlertTitle>草稿尚未完全儲存</AlertTitle>
-											<AlertDescription>發布的是伺服器上的草稿。請等待「草稿已儲存」出現後再發布，才不會漏掉最後幾個修改。</AlertDescription>
+											<AlertTitle>草稿還沒存完</AlertTitle>
+											<AlertDescription>發布出去的是已經存到伺服器的草稿。等「草稿已儲存」出現再發布，才不會漏掉最後幾筆修改。</AlertDescription>
 										</Alert>
 									) : null}
 									{publish.isError ? (

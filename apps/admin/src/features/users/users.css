@@ -1,0 +1,23 @@
+/* ── 使用者 ───────────────────────────────────────────────── */
+
+/*
+ * 操作按鈕不換行。
+ *
+ * 共用的 .huan-row 預設 flex-wrap: wrap，欄位一窄就把三顆按鈕疊成三層：
+ * 實測 1024 下列高從 73px 變成 185px，整張表只剩三列看得到。表格本來就會
+ * 橫向捲動，讓按鈕留在同一行，用捲動換回垂直方向的資訊密度。
+ */
+.huan-user-actions {
+	display: flex;
+	flex-wrap: nowrap;
+	justify-content: flex-end;
+	gap: var(--space-1);
+}
+
+/* 顯示名稱與帳號是同一個人的兩種寫法，行距收緊成一組。 */
+.huan-user-identity {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-05);
+	min-inline-size: 0;
+}

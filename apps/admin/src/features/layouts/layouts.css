@@ -1,17 +1,74 @@
 /* ── 版面編輯器 ───────────────────────────────────────────── */
 
-.huan-editor {
-	display: grid;
-	grid-template-columns: 16rem minmax(0, 1fr) 20rem;
-	gap: var(--space-4);
-	align-items: start;
-	min-height: 0;
+/*
+ * 編輯器要用滿主欄。
+ *
+ * 84rem 的內容上限是給閱讀型頁面用的；套在工作介面上，1920 的畫面有 304px
+ * 是空白，而畫布同時只有 662px。這裡只針對「這一頁裡有編輯器」的情況解除，
+ * 其他頁面不受影響。
+ */
+.huan-shell__content:has(> .huan-editor) {
+	max-width: none;
 }
 
-/* 1280px 寬的螢幕扣掉側邊導覽之後只剩約 960px，三欄要再瘦一點畫布才留得住空間。 */
-@media (max-width: 100rem) {
-	.huan-editor {
-		grid-template-columns: 14rem minmax(0, 1fr) 18rem;
+/*
+ * 畫布優先的兩欄工作區。
+ *
+ * 原本是「素材 | 畫布 | 檢視器」三欄，兩側固定吃掉 512px：1280 的筆電上畫布
+ * 只剩 390×288，比它自己的工具列還窄。三欄在這個寬度不可能同時成立，所以把
+ * 兩個側邊面板疊進同一條側欄，畫布拿走剩下的全部 —— 視窗變寬時畫布只會變大，
+ * 不會因為多長出一欄而突然縮小。
+ */
+.huan-shell .huan-editor {
+	--huan-editor-rail: 19rem;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--space-4);
+	min-width: 0;
+}
+
+/*
+ * 68rem 以上才排成工作區。
+ *
+ * 這個斷點必須寫在這裡：原本它放在 devices.css，於是編輯器會不會收合取決於
+ * 使用者有沒有先逛過裝置頁（那一頁的 CSS 才會被載入），同一個寬度可以量到
+ * 兩種版面。選擇器多一層 .huan-shell 也是為了在舊規則還在時穩定勝出。
+ */
+@media (min-width: 68rem) {
+	.huan-shell .huan-editor {
+		grid-template-columns: minmax(0, 1fr) var(--huan-editor-rail);
+		grid-template-rows: auto minmax(0, 1fr);
+		grid-template-areas:
+			"canvas source"
+			"canvas inspect";
+		/*
+		 * 固定高度是三個面板等高的唯一可靠做法。
+		 *
+		 * 原本只有側邊面板有 max-height、又用 align-items: start，結果三個面板
+		 * 底部參差 281px，畫布面板還超出側欄 41px。改成整個工作區一個高度、
+		 * 各自捲動之後，參差必然是 0。
+		 */
+		block-size: clamp(34rem, calc(100dvh - var(--space-24) - var(--space-10)), 96rem);
+	}
+
+	.huan-shell .huan-editor__canvas-pane {
+		grid-area: canvas;
+	}
+
+	.huan-shell .huan-editor__pane--source {
+		grid-area: source;
+		/* 素材再多也不能把檢視器擠掉。 */
+		max-block-size: 40vh;
+	}
+
+	.huan-shell .huan-editor__pane--inspect {
+		grid-area: inspect;
+	}
+}
+
+@media (min-width: 100rem) {
+	.huan-shell .huan-editor {
+		--huan-editor-rail: 21rem;
 	}
 }
 
@@ -23,34 +80,84 @@
 	border-radius: var(--radius-md);
 	background: var(--background-secondary);
 	padding: var(--space-3);
-	max-height: calc(100dvh - var(--space-24));
+	min-block-size: 0;
 	overflow-y: auto;
 }
 
+/*
+ * 面板是固定高度的捲動容器，裡面的東西不可以被壓縮。
+ *
+ * 沒有這一條，「內容來源」的標題與說明會被擠成互相重疊，而且因為內容被壓扁，
+ * 該出現的捲軸永遠不會出現。
+ */
+.huan-editor__pane > * {
+	flex: none;
+}
+
+/* 面板是外框，畫布面板是工作檯：底色要分得出來，不能兩層同色。 */
 .huan-editor__canvas-pane {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-3);
 	border: var(--border-width-hairline) solid var(--divider-subtle);
 	border-radius: var(--radius-md);
-	background: var(--background-inset);
+	background: var(--background-main);
 	padding: var(--space-3);
 	min-width: 0;
+	min-block-size: 0;
+	overflow: hidden;
 }
 
+.huan-editor__hints {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-4);
+	list-style: none;
+	padding-inline-start: 0;
+	flex: none;
+}
+
+.huan-editor__hints kbd {
+	font-family: var(--font-family-mono);
+	font-size: var(--font-size-xs);
+	color: var(--text-secondary);
+}
+
+/*
+ * 畫布視窗用版面自己的長寬比，不是固定的 16:9。
+ *
+ * 直式看板（1080 × 1920）在 16:9 的框裡只用得到中間一小條，兩側全是留白。
+ */
 .huan-canvas-viewport {
 	position: relative;
-	width: 100%;
-	aspect-ratio: 16 / 9;
-	min-height: 18rem;
+	inline-size: 100%;
+	aspect-ratio: var(--huan-canvas-ratio, 16 / 9);
+	min-block-size: 12rem;
+	max-block-size: 70vh;
 	border-radius: var(--radius-sm);
 	overflow: hidden;
 	background: var(--background-sunken);
 }
 
+/* 工作區模式下畫布填滿剩下的高度，比例交給置中縮放處理。 */
+@media (min-width: 68rem) {
+	.huan-shell .huan-canvas-viewport {
+		flex: 1 1 auto;
+		aspect-ratio: auto;
+		min-block-size: 14rem;
+		max-block-size: none;
+	}
+}
+
 .huan-canvas-stage {
 	position: absolute;
 	overflow: hidden;
+	/*
+	 * 版面底色可能跟工作檯很接近（深色主題下版面是純黑、工作檯也接近黑），
+	 * 所以要有一條實線邊界，光靠陰影在深色下看不出畫布從哪裡開始。
+	 */
+	outline: var(--border-width-hairline) solid var(--divider-main);
+	box-shadow: var(--elevation-1);
 }
 
 .huan-canvas-slot {
@@ -253,6 +360,28 @@
 	}
 }
 
+/* 三顆「放入」擺一排比直的堆三層省 80px，側欄的高度要留給素材清單。 */
+.huan-palette-inserts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+/* 側欄裡讓它們補滿一列，攤平模式下不要被拉成 230px 寬的巨大按鈕。 */
+.huan-palette-inserts > * {
+	flex: 1 1 auto;
+	max-inline-size: 12rem;
+}
+
+.huan-palette-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	list-style: none;
+	padding-inline-start: 0;
+	min-block-size: 0;
+}
+
 .huan-palette-item {
 	display: flex;
 	align-items: center;
@@ -273,13 +402,59 @@
 	inline-size: var(--control-height-compact-sm);
 	block-size: var(--control-height-compact-sm);
 	border-radius: var(--radius-2xs);
-	background: var(--background-inset);
+	/* inset 與面板同色，縮圖佔位框在這裡看不見。 */
+	background: var(--background-sunken);
 	object-fit: cover;
 	flex: none;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--icon-secondary);
+}
+
+/*
+ * 開關列不能換行。
+ *
+ * 共用的 .huan-row 會 flex-wrap: wrap，在 288px 寬的側欄裡「靜音」那一列因此
+ * 被撐成 110px 高、開關掉到說明文字下面。標籤與開關是同一件事，必須同一列。
+ */
+.huan-switch-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: nowrap;
+	gap: var(--space-3);
+	min-inline-size: 0;
+}
+
+.huan-switch-row__text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-05);
+	min-inline-size: 0;
+}
+
+/* 成對的數值欄位：放得下就並排，放不下自己疊起來，不會擠成兩個窄框。 */
+.huan-field-pair {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+	gap: var(--space-3);
+}
+
+.huan-revision-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	list-style: none;
+	padding-inline-start: 0;
+}
+
+.huan-revision {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-2);
+	min-inline-size: 0;
 }
 
 .huan-color-control {

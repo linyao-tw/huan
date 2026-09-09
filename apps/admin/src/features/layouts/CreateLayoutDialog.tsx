@@ -76,13 +76,20 @@ export function CreateLayoutDialog({ open, onOpenChange }: { open: boolean; onOp
 						>
 							<Dialog.Header>
 								<Dialog.Title>建立版面</Dialog.Title>
-								<Dialog.Description>畫布尺寸決定設計座標系。實機播放時會等比縮放並置中，長寬比不同的部分以版面背景色填滿。</Dialog.Description>
+								<Dialog.Description>先決定畫面尺寸。實際播放時會等比例縮放並置中，長寬比不一樣的地方用版面背景色補滿。</Dialog.Description>
 							</Dialog.Header>
 
 							<Dialog.Body>
 								<div className="huan-stack">
 									<TextField label="版面名稱" required value={name} onChange={event => setName(event.target.value)} disabled={create.isPending} />
-									<TextView label="說明" rows={2} value={description} onChange={event => setDescription(event.target.value)} disabled={create.isPending} description="選填，方便日後辨識用途。" />
+									<TextView
+										label="說明"
+										rows={2}
+										value={description}
+										onChange={event => setDescription(event.target.value)}
+										disabled={create.isPending}
+										description="選填，方便日後認出這是哪一個畫面。"
+									/>
 
 									<RadioGroup value={source} onValueChange={value => setSource(value as SizeSource)} aria-label="畫布尺寸來源">
 										<div className="huan-stack huan-stack--sm">
@@ -90,7 +97,7 @@ export function CreateLayoutDialog({ open, onOpenChange }: { open: boolean; onOp
 											<RadioItem
 												value="device"
 												label="使用裝置解析度"
-												description={displayOptions.length === 0 ? "目前沒有任何已配對裝置回報顯示器資訊。" : "從已配對裝置實際回報的顯示器解析度中挑一個。"}
+												description={displayOptions.length === 0 ? "目前還沒有裝置回報過螢幕尺寸。" : "直接用某一台裝置螢幕的實際尺寸。"}
 												disabled={displayOptions.length === 0}
 											/>
 											<RadioItem value="custom" label="自訂尺寸" />
@@ -117,25 +124,9 @@ export function CreateLayoutDialog({ open, onOpenChange }: { open: boolean; onOp
 									) : null}
 
 									{source === "custom" ? (
-										<div className="huan-row">
-											<NumberField
-												className="huan-grow"
-												label="寬（px）"
-												min={LAYOUT_MIN_CANVAS}
-												max={LAYOUT_MAX_CANVAS}
-												step={2}
-												value={customWidth}
-												onValueChange={value => setCustomWidth(value ?? customWidth)}
-											/>
-											<NumberField
-												className="huan-grow"
-												label="高（px）"
-												min={LAYOUT_MIN_CANVAS}
-												max={LAYOUT_MAX_CANVAS}
-												step={2}
-												value={customHeight}
-												onValueChange={value => setCustomHeight(value ?? customHeight)}
-											/>
+										<div className="huan-field-pair">
+											<NumberField label="寬（px）" min={LAYOUT_MIN_CANVAS} max={LAYOUT_MAX_CANVAS} step={2} value={customWidth} onValueChange={value => setCustomWidth(value ?? customWidth)} />
+											<NumberField label="高（px）" min={LAYOUT_MIN_CANVAS} max={LAYOUT_MAX_CANVAS} step={2} value={customHeight} onValueChange={value => setCustomHeight(value ?? customHeight)} />
 										</div>
 									) : null}
 

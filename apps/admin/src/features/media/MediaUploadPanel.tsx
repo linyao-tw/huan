@@ -15,7 +15,7 @@ export function MediaUploadPanel({ uploader }: { uploader: MediaUploader }) {
 		<div className="huan-stack">
 			<DropZone
 				label="上傳素材"
-				description="支援 MP4、MOV、MKV、WebM、JPEG、PNG、WebP、AVIF、GIF 與 HTML，單檔上限 4 GB。原始檔在轉檔完成後會刪除，HUAN 不長期保存原始檔。"
+				description="支援 MP4、MOV、MKV、WebM、JPEG、PNG、WebP、AVIF、GIF 與 HTML，單檔上限 4 GB。請自己留一份原始檔，伺服器不會長期保存。"
 				primaryLabel="把檔案拖到這裡"
 				secondaryLabel="或"
 				browseLabel="選擇檔案"
@@ -27,7 +27,7 @@ export function MediaUploadPanel({ uploader }: { uploader: MediaUploader }) {
 			{uploader.tasks.length > 0 ? (
 				<div className="huan-stack huan-stack--sm">
 					<div className="huan-row huan-row--between">
-						<span className="huan-muted">{active > 0 ? `${active} 個檔案上傳中` : "上傳佇列"}</span>
+						<span className="huan-muted">{active > 0 ? `${active} 個檔案上傳中` : "上傳清單"}</span>
 						<Button variant="quiet" size="sm" startIcon={<TrashIcon weight="bold" />} onClick={uploader.clearFinished}>
 							清除已完成
 						</Button>

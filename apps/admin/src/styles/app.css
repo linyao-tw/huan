@@ -58,6 +58,12 @@ body {
 	justify-content: flex-end;
 }
 
+/* 標籤加控制項這種不可分的一組，在窄面板裡不該被拆成兩行。 */
+.huan-row--nowrap {
+	flex-wrap: nowrap;
+	min-width: 0;
+}
+
 .huan-row--tight {
 	gap: var(--space-2);
 }
@@ -110,7 +116,14 @@ body {
 
 .huan-shell {
 	display: grid;
-	grid-template-columns: var(--huan-shell-nav-width) minmax(0, 1fr);
+	/*
+	 * 側欄寬度是連續的，不是階梯。
+	 *
+	 * 原本用中斷點在 1248 與 1280 之間把 13rem 換成 17rem，結果是視窗變寬 32px、
+	 * 內容欄反而少 64px —— 又變回「拉寬反而更難用」。改成隨視窗成長：多出來的
+	 * 寬度側欄只拿 15%，其餘都給內容，所以內容欄只會變寬。
+	 */
+	grid-template-columns: clamp(13rem, calc(13rem + (100vw - 60rem) * 0.15), var(--huan-shell-nav-width)) minmax(0, 1fr);
 	min-height: 100dvh;
 	background: var(--background-main);
 }
@@ -273,11 +286,8 @@ body {
  * 17rem 的側欄在 1024 會把內容欄壓到 702px —— 比 768 的 734px 還窄，也就是
  * 把視窗拉寬反而更難用。在側欄回來到夠寬之間先給它一個較窄的尺寸。
  */
+/* 側欄較窄時，導覽項目的左右內距也要跟著收。 */
 @media (min-width: 60.0625rem) and (max-width: 78rem) {
-	.huan-shell {
-		grid-template-columns: 13rem minmax(0, 1fr);
-	}
-
 	.huan-shell__nav-link {
 		padding-inline: var(--space-3);
 	}
@@ -373,8 +383,14 @@ body {
  */
 .huan-card-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 22rem));
-	justify-content: start;
+	/*
+	 * 軌道上限用 1fr，不要用固定值。
+	 *
+	 * auto-fit 是拿「上限」去算能塞幾欄的：寫成 22rem 的話 1920 永遠只排三欄，
+	 * 右邊固定空出兩百多 px 的參差。1fr 讓欄位長滿剩下的空間。
+	 * 需要固定欄數的頁面自己覆寫 grid-template-columns。
+	 */
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 	gap: var(--space-4);
 }
 
@@ -437,42 +453,24 @@ body {
 .huan-definition dd {
 	margin: 0;
 	color: var(--text-main);
-	overflow-wrap: anywhere;
+	/*
+	 * anywhere 會在任意字元斷開，所以 `Debian GNU/Linux 12 (bookworm)` 會被切成
+	 * `(bookwor` 和 `m)`，`2026/08/10 14:37` 會變成 `2026/08/1` 和 `0 14:37`。
+	 * break-word 只在整個詞放不下時才斷，而且優先在空白處換行。
+	 */
+	overflow-wrap: break-word;
+	word-break: normal;
 }
 
 /* ── 設計系統元件的在地調整 ───────────────────────────────── */
 
 /*
- * SectionHeading 在設計系統裡是「列表軌道標籤」，不是區段標題。
+ * 標題的對齊與字級曾經要在這裡補償。
  *
- * 它為一個 display:none 的 rail 保留 16px 左內距、自帶背景與圓角，而且標題
- * 用的是 --font-size-xs（比它自己的說明文字還小）。直接拿來當頁面標題的結果
- * 是每一頁、每一個寬度、兩個主題，標題都比它所標示的內容右移 16px，卡片裡
- * 還多長出一層淺色面板 —— 這就是「整個對齊很糟」的來源，不是很多個獨立的
- * bug，是同一條規則重複四十幾次。
- *
- * 這裡只在後台範圍內調整它的呈現，不動元件本身的結構與可存取性。
+ * 那是 @linyao.tw/ui 1.3.0 的 SectionHeading 缺陷：為一條 display:none 的
+ * rail 保留 16px 內距、自帶背景圓角、標題字級比自己的說明文字還小。
+ * 1.4.0 已經在元件庫修好，這裡不需要任何覆寫。
  */
-.huan-shell .lyds-section-heading,
-.huan-landing .lyds-section-heading {
-	padding-inline-start: 0;
-	background: transparent;
-	border-radius: 0;
-}
-
-/* 標題必須比它自己的說明文字大，這是階層的最低要求。 */
-.huan-shell .lyds-section-heading__title {
-	color: var(--text-title);
-	font-size: var(--font-size-lg);
-	font-weight: var(--font-weight-semibold);
-	letter-spacing: var(--letter-spacing-tight);
-	text-transform: none;
-}
-
-.huan-shell .lyds-section-heading[data-size="lg"] .lyds-section-heading__title {
-	font-size: var(--font-size-2xl);
-	font-weight: var(--font-weight-bold);
-}
 
 /*
  * 表格要有最小寬度，否則中文永遠不會觸發捲動。
@@ -482,10 +480,6 @@ body {
  * 表頭七行、列高 210px，而 hiddenPx 是 0 —— 捲動條從來沒出現過。
  * 給一個最小寬度，該捲的時候才會真的捲。
  */
-.huan-shell .lyds-table-frame {
-	overflow-x: auto;
-}
-
 .huan-shell .lyds-table-frame > table {
 	min-inline-size: var(--huan-table-min, 48rem);
 }
@@ -493,6 +487,30 @@ body {
 /* 欄多的表格自己加大下限。 */
 .huan-table--wide {
 	--huan-table-min: 68rem;
+}
+
+/*
+ * 表格被裁掉時要看得出來還有內容。
+ *
+ * macOS 的浮動捲軸不捲就不顯示，所以窄螢幕下表格是在框線處直接切斷的，沒有
+ * 任何線索說右邊還有欄位。強制畫出細捲軸：瀏覽器只有在真的能捲時才會畫拇指，
+ * 裝得下的表格不會多出任何東西。這是 CSS 判斷不到「有沒有溢出」時唯一會自己
+ * 校正的做法 —— 用漸層遮罩的話，剛好裝得下的表格最後一欄也會被淡掉。
+ */
+.huan-shell .lyds-table-frame {
+	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--divider-strong) transparent;
+}
+
+.huan-shell .lyds-table-frame::-webkit-scrollbar {
+	-webkit-appearance: none;
+	block-size: var(--space-2);
+}
+
+.huan-shell .lyds-table-frame::-webkit-scrollbar-thumb {
+	background: var(--divider-strong);
+	border-radius: var(--radius-pill);
 }
 
 /*

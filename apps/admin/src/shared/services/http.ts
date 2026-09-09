@@ -88,7 +88,14 @@ async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
 	} catch {
 		// 落到下面的預設訊息；Server 沒有回 JSON 時不應該讓畫面炸掉。
 	}
-	return { code: `http_${response.status}`, message: `伺服器回應 ${response.status}，請稍後再試。` };
+	/*
+	 * 狀態碼留在 code 裡給開發者，訊息給使用者。
+	 *
+	 * 「伺服器回應 500」對按下按鈕的人沒有任何幫助——他不知道 500 是什麼，
+	 * 也不會因為知道而做出不同的事。要說的是「現在怎麼辦」。
+	 */
+	const message = response.status >= 500 ? "系統暫時有狀況，稍後再試一次。" : "這個操作沒有完成，請重新整理後再試一次。";
+	return { code: `http_${response.status}`, message };
 }
 
 export async function apiRequest<Output>(path: string, options: RequestOptions<Output> = {}): Promise<Output> {

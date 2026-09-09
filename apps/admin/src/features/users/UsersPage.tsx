@@ -1,5 +1,6 @@
 import { useCurrentUser } from "@/features/auth/hooks";
 import { useCreateUserMutation, useResetUserPasswordMutation, useUpdateUserMutation, useUserListQuery } from "@/features/users/hooks";
+import "@/features/users/users.css";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
@@ -31,9 +32,12 @@ import { CopyIcon } from "@phosphor-icons/react/dist/csr/Copy";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { useState } from "react";
 
+/** 畫面上一律用中文角色名；`user` / `super_admin` 是資料庫的值，不是給人看的。 */
+const ROLE_LABELS: Record<UserRole, string> = { user: "一般使用者", super_admin: "系統管理員" };
+
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-	{ value: "user", label: "user（一般使用者）" },
-	{ value: "super_admin", label: "super_admin（可管理使用者）" }
+	{ value: "user", label: ROLE_LABELS.user },
+	{ value: "super_admin", label: ROLE_LABELS.super_admin }
 ];
 
 const PASSWORD_ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -78,7 +82,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 									{ email, username, displayName: displayName.trim(), password, role },
 									{
 										onSuccess: user => {
-											toast.add({ title: `已建立使用者 ${user.username}`, description: "請把初始密碼安全地交給對方，並提醒他登入後立即更換。", data: { status: "success" } });
+											toast.add({ title: `已建立 ${user.username}`, description: "把密碼交給本人，並請他登入後自己改掉。", data: { status: "success" } });
 											onOpenChange(false);
 											setEmail("");
 											setUsername("");
@@ -92,7 +96,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 						>
 							<Dialog.Header>
 								<Dialog.Title>建立使用者</Dialog.Title>
-								<Dialog.Description>HUAN 不開放自助註冊，所有帳號都由 super_admin 建立。</Dialog.Description>
+								<Dialog.Description>帳號一律由系統管理員建立，不能自行註冊。</Dialog.Description>
 							</Dialog.Header>
 
 							<Dialog.Body>
@@ -116,7 +120,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 										onChange={event => setUsername(event.target.value)}
 										invalid={Boolean(usernameError)}
 										error={usernameError}
-										description="只能使用小寫英數字與 . _ -，3 到 32 個字元。"
+										description="小寫英數字與 . _ -，3 到 32 個字元。"
 										disabled={create.isPending}
 									/>
 									<TextField label="顯示名稱" required value={displayName} onChange={event => setDisplayName(event.target.value)} disabled={create.isPending} />
@@ -128,7 +132,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 										onChange={event => setPassword(event.target.value)}
 										invalid={Boolean(passwordError)}
 										error={passwordError}
-										description="至少 12 個字元。系統已先產生一組，也可以自行輸入。"
+										description="至少 12 個字元。已經先產生一組，也可以自己輸入。"
 										disabled={create.isPending}
 									/>
 									<Button variant="quiet" size="sm" onClick={() => setPassword(generatePassword())} disabled={create.isPending}>
@@ -139,7 +143,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 										value={role}
 										onValueChange={value => setRole(value ?? "user")}
 										options={ROLE_OPTIONS}
-										description="super_admin 可以管理使用者與檢視稽核紀錄。"
+										description="系統管理員可以建立帳號、查看操作紀錄。"
 										disabled={create.isPending}
 									/>
 
@@ -194,7 +198,7 @@ function EditUserDialog({ user, onClose }: { user: User; onClose: () => void }) 
 									{ id: user.id, body: { displayName: displayName.trim(), role, status } },
 									{
 										onSuccess: () => {
-											toast.add({ title: "已更新使用者", data: { status: "success" } });
+											toast.add({ title: "已儲存", data: { status: "success" } });
 											onClose();
 										}
 									}
@@ -203,7 +207,7 @@ function EditUserDialog({ user, onClose }: { user: User; onClose: () => void }) 
 						>
 							<Dialog.Header>
 								<Dialog.Title>編輯 {user.username}</Dialog.Title>
-								<Dialog.Description>Email 與帳號建立後不可變更。密碼請使用「重設密碼」。</Dialog.Description>
+								<Dialog.Description>Email 與帳號建立後不能改。要換密碼請用「重設密碼」。</Dialog.Description>
 							</Dialog.Header>
 
 							<Dialog.Body>
@@ -216,7 +220,7 @@ function EditUserDialog({ user, onClose }: { user: User; onClose: () => void }) 
 											<SegmentedControlItem value="active">啟用</SegmentedControlItem>
 											<SegmentedControlItem value="disabled">停用</SegmentedControlItem>
 										</SegmentedControl>
-										<span className="huan-caption">停用後無法登入，既有的工作階段也會失效。</span>
+										<span className="huan-caption">停用後就不能登入，已經登入的裝置也會被登出。</span>
 									</div>
 
 									{update.isError ? (
@@ -272,7 +276,7 @@ function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => voi
 						>
 							<Dialog.Header>
 								<Dialog.Title>重設 {user.username} 的密碼</Dialog.Title>
-								<Dialog.Description>{done ? "密碼已更新。這組密碼只會顯示這一次。" : "可以使用系統產生的密碼，或自行輸入一組。"}</Dialog.Description>
+								<Dialog.Description>{done ? "密碼換好了，這一組只會顯示這一次。" : "可以用系統產生的密碼，也可以自己輸入一組。"}</Dialog.Description>
 							</Dialog.Header>
 
 							<Dialog.Body>
@@ -280,8 +284,8 @@ function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => voi
 									{done ? (
 										<>
 											<Alert status="warning">
-												<AlertTitle>請立刻把密碼交給本人</AlertTitle>
-												<AlertDescription>伺服器只保存 Argon2id 雜湊，關閉視窗後就無法再取得這組明文密碼。請提醒對方登入後立即更換。</AlertDescription>
+												<AlertTitle>現在就把密碼交給本人</AlertTitle>
+												<AlertDescription>關掉這個視窗就看不到了，系統不會再顯示第二次。請他登入後自己改掉。</AlertDescription>
 											</Alert>
 											<code className="huan-code-block">{password}</code>
 											<Button
@@ -292,7 +296,7 @@ function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => voi
 													void navigator.clipboard
 														.writeText(password)
 														.then(() => toast.add({ title: "已複製密碼", data: { status: "success" } }))
-														.catch(() => toast.add({ title: "複製失敗", description: "瀏覽器拒絕存取剪貼簿，請手動選取後複製。", data: { status: "danger" } }));
+														.catch(() => toast.add({ title: "複製失敗", description: "瀏覽器不讓網頁用剪貼簿，請自己選取文字複製。", data: { status: "danger" } }));
 												}}
 											>
 												複製密碼
@@ -358,11 +362,14 @@ export function UsersPage() {
 
 	const items = users.data?.items ?? [];
 
+	/* 讀不到清單時不能說「還沒有其他使用者」——沒查到不等於沒有。 */
+	const showEmptyState = !users.isPending && !users.isError && items.length === 0;
+
 	return (
 		<>
 			<PageHeader
 				title="使用者管理"
-				description="只有 super_admin 看得到這個頁面。這裡不會顯示任何密碼雜湊。"
+				description="只有系統管理員看得到這一頁。密碼不會顯示在任何地方。"
 				actions={
 					<Button startIcon={<PlusIcon weight="bold" />} onClick={() => setCreateOpen(true)}>
 						建立使用者
@@ -370,15 +377,18 @@ export function UsersPage() {
 				}
 			/>
 
-			{users.isError ? <QueryErrorAlert error={users.error} onRetry={() => void users.refetch()} retrying={users.isFetching} title="無法載入使用者列表" /> : null}
+			{users.isError ? <QueryErrorAlert error={users.error} onRetry={() => void users.refetch()} retrying={users.isFetching} title="讀不到使用者清單" /> : null}
 
-			{users.isPending ? (
-				<ListSkeleton rows={4} label="正在載入使用者" />
-			) : items.length === 0 ? (
+			{users.isPending ? <ListSkeleton rows={4} label="正在載入使用者" /> : null}
+
+			{showEmptyState ? (
 				<EmptyState title="還沒有其他使用者" description="建立帳號之後，同事就能一起管理素材、版面與裝置。" actions={<Button onClick={() => setCreateOpen(true)}>建立使用者</Button>} />
-			) : (
+			) : null}
+
+			{items.length > 0 ? (
 				<TableFrame>
-					<Table>
+					{/* 八個欄位加上一整排操作按鈕，給表格最小寬度，該捲的時候才會真的捲。 */}
+					<Table className="huan-table--wide">
 						<TableHeader>
 							<TableRow>
 								<TableHead>使用者</TableHead>
@@ -395,23 +405,40 @@ export function UsersPage() {
 							{items.map(user => (
 								<TableRow key={user.id}>
 									<TableCell>
-										<div className="huan-stack huan-stack--sm">
+										<div className="huan-user-identity">
 											<span>{user.displayName}</span>
 											<span className="huan-caption">@{user.username}</span>
 										</div>
 									</TableCell>
 									<TableCell className="huan-truncate">{user.email}</TableCell>
 									<TableCell>
-										<Badge variant={user.role === "super_admin" ? "accent" : "neutral"}>{user.role}</Badge>
+										<Badge variant={user.role === "super_admin" ? "accent" : "neutral"} size="sm">
+											{ROLE_LABELS[user.role]}
+										</Badge>
+									</TableCell>
+									{/* 常態寫成一般文字，徽章留給真的需要被看見的那幾列。 */}
+									<TableCell>
+										{user.status === "active" ? (
+											<span className="huan-muted">啟用中</span>
+										) : (
+											<Badge variant="danger" size="sm">
+												已停用
+											</Badge>
+										)}
 									</TableCell>
 									<TableCell>
-										<Badge variant={user.status === "active" ? "success" : "danger"}>{user.status === "active" ? "啟用" : "停用"}</Badge>
+										{user.totpEnabled ? (
+											<Badge variant="success" size="sm">
+												已開啟
+											</Badge>
+										) : (
+											<span className="huan-muted">未開啟</span>
+										)}
 									</TableCell>
-									<TableCell>{user.totpEnabled ? <Badge variant="success">已啟用</Badge> : <Badge variant="neutral">未啟用</Badge>}</TableCell>
 									<TableCell>{formatRelativeTime(user.lastLoginAt)}</TableCell>
 									<TableCell>{formatDateTime(user.createdAt)}</TableCell>
 									<TableCell textAlign="end">
-										<div className="huan-row huan-row--end huan-row--tight">
+										<div className="huan-user-actions">
 											<Button variant="quiet" size="sm" onClick={() => setEditing(user)}>
 												編輯
 											</Button>
@@ -428,7 +455,7 @@ export function UsersPage() {
 						</TableBody>
 					</Table>
 				</TableFrame>
-			)}
+			) : null}
 
 			<CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
 			{editing ? <EditUserDialog key={editing.id} user={editing} onClose={() => setEditing(null)} /> : null}
@@ -444,7 +471,7 @@ export function UsersPage() {
 				}}
 				destructive={toggling?.status === "active"}
 				title={toggling?.status === "active" ? `停用「${toggling.displayName}」？` : `啟用「${toggling?.displayName ?? ""}」？`}
-				description={toggling?.status === "active" ? "停用後這個帳號無法登入，既有的工作階段也會失效。設定與稽核紀錄都會保留。" : "啟用後這個帳號可以立即登入。"}
+				description={toggling?.status === "active" ? "停用後這個帳號不能登入，已經登入的裝置也會被登出。他做過的事情都會留著。" : "啟用後這個帳號馬上就能登入。"}
 				confirmLabel={toggling?.status === "active" ? "停用帳號" : "啟用帳號"}
 				pending={update.isPending}
 				errorMessage={update.error?.message ?? null}

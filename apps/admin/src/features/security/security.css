@@ -1,0 +1,29 @@
+/* ── 安全設定 ─────────────────────────────────────────────── */
+
+/*
+ * 表格儲存格的兩行式內容。
+ *
+ * 「裝置」與「登入時間」各自帶一行次要資訊，六欄的表格才收得回四欄。
+ * 間距刻意比 huan-stack--sm 更小：這兩行是同一件事，不是兩個並列項目。
+ */
+.huan-session-cell {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-05);
+	min-inline-size: 0;
+}
+
+/*
+ * 這張表只有四欄，48rem 的共用下限反而讓它在 1024 多出 2px 的捲動。
+ *
+ * 下限的用意是「中文不要塌成一個字寬」，不是「每張表都要 768px」；
+ * 四欄的表在 44rem 就已經排得開。
+ */
+.huan-session-table {
+	--huan-table-min: 44rem;
+}
+
+/* 密碼欄位不需要跟上面的表格一樣寬：1120px 的輸入框只會讓人找不到游標在哪裡。 */
+.huan-password-card {
+	max-inline-size: 32rem;
+}

@@ -18,7 +18,7 @@ function usageTotal(usage: MediaUsage | undefined): number {
 }
 
 function UsageList({ usage }: { usage: MediaUsage }) {
-	if (usageTotal(usage) === 0) return <p className="huan-muted">目前沒有任何版面、排程或裝置使用這份素材。</p>;
+	if (usageTotal(usage) === 0) return <p className="huan-muted">還沒有任何版面、排程或裝置用到這份素材。</p>;
 	return (
 		<div className="huan-stack huan-stack--sm">
 			{usage.layouts.length > 0 ? (
@@ -97,13 +97,13 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 									<div className="huan-row huan-row--tight">
 										<MediaStatusBadge status={asset.status} />
 										<Badge variant="neutral">{KIND_LABELS[asset.kind]}</Badge>
-										{!playbackAvailable && asset.status === "ready" ? <Badge variant="warning">播放產物已回收</Badge> : null}
+										{!playbackAvailable && asset.status === "ready" ? <Badge variant="warning">伺服器上已無檔案</Badge> : null}
 									</div>
 
 									{asset.status === "needs_reupload" ? (
 										<Alert status="warning">
 											<AlertTitle>這份素材需要重新上傳</AlertTitle>
-											<AlertDescription>HUAN 不長期保存原始檔，播放產物也會在所有裝置確認後回收。伺服器上已經沒有可派送的檔案，請重新上傳同一個檔案。</AlertDescription>
+											<AlertDescription>伺服器上已經沒有這個檔案了。重新上傳同一個檔案，下面列出的版面與排程就會恢復正常。</AlertDescription>
 										</Alert>
 									) : null}
 
@@ -114,8 +114,8 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 										</Alert>
 									) : null}
 
-									{asset.previewUrl && asset.kind === "image" ? <img className="huan-media-thumb" src={asset.previewUrl} alt={`${asset.name} 預覽`} /> : null}
-									{asset.previewUrl && asset.kind === "video" ? <video className="huan-media-thumb" src={asset.previewUrl} muted controls playsInline preload="metadata" /> : null}
+									{asset.previewUrl && asset.kind === "image" ? <img className="huan-media-preview" src={asset.previewUrl} alt={`${asset.name} 預覽`} /> : null}
+									{asset.previewUrl && asset.kind === "video" ? <video className="huan-media-preview" src={asset.previewUrl} muted controls playsInline preload="metadata" /> : null}
 
 									<dl className="huan-definition">
 										<dt>原始檔名</dt>
@@ -124,9 +124,9 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 										<dd className="huan-numeric">{formatResolution(asset.probe?.width, asset.probe?.height)}</dd>
 										<dt>長度</dt>
 										<dd className="huan-numeric">{asset.kind === "video" ? formatDurationMs(asset.probe?.durationMs ?? null) : "—"}</dd>
-										<dt>影像編碼</dt>
+										<dt>影像格式</dt>
 										<dd>{asset.probe?.videoCodec ?? "—"}</dd>
-										<dt>音訊編碼</dt>
+										<dt>音訊格式</dt>
 										<dd>{asset.probe?.audioCodec ?? "—"}</dd>
 										<dt>畫面更新率</dt>
 										<dd className="huan-numeric">{asset.probe?.frameRate ? `${asset.probe.frameRate.toFixed(2)} fps` : "—"}</dd>
@@ -138,7 +138,7 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 										<dd>{formatDateTime(asset.updatedAt)}</dd>
 									</dl>
 
-									<TextField label="素材名稱" value={name} onChange={event => setName(event.target.value)} disabled={rename.isPending} description="只影響後台顯示，不會改變物件鍵。" />
+									<TextField label="素材名稱" value={name} onChange={event => setName(event.target.value)} disabled={rename.isPending} description="只改後台看到的名稱，不影響已經在播的內容。" />
 
 									<div className="huan-stack huan-stack--sm">
 										<span className="huan-muted">使用情形</span>
@@ -186,7 +186,7 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 				onOpenChange={setConfirmOpen}
 				destructive={!inUse}
 				title={inUse ? "無法刪除：素材仍在使用中" : "刪除這份素材？"}
-				description={inUse ? "請先把下列版面、排程與裝置改成其他素材，再回來刪除。" : "刪除後無法復原，正在播放這份素材的裝置會在下次同步時改播預設內容。"}
+				description={inUse ? "請先把下面這些版面、排程與裝置改成其他素材，再回來刪除。" : "刪除後無法復原。正在播這份素材的裝置，下次連上線就會改播預設內容。"}
 				confirmLabel={inUse ? "我知道了" : "刪除"}
 				cancelLabel={inUse ? "關閉" : "取消"}
 				confirmDisabled={remove.isPending}

@@ -18,6 +18,16 @@ HUAN 讙讓你在瀏覽器裡設計一面畫面，然後把它送到現場的螢
 
 **網路斷了，畫面照播。** 這是 HUAN 最重要的設計目標：素材永遠先下載到裝置本機，排程也存在裝置上，Server 離線時裝置依然會依時間切換版面。
 
+## 說明文件
+
+線上文件：<https://docs.linyao.tw/huan>
+
+文件本身在 <https://github.com/linyao-tw/docs>，那個 repository 收錄麟曜所有產品的文件。這裡只留下產生截圖的工具：
+
+```sh
+pnpm docs:screenshots  # 以 Playwright 對種子環境重新擷取產品截圖到 ../docs
+```
+
 ## 架構
 
 ```mermaid
@@ -160,16 +170,6 @@ pnpm --filter @huan/device package:mac
 第一次啟動會顯示 `XXXX-XXXX` 配對碼與 QR Code。用已登入的後台掃碼或輸入配對碼即可綁定。綁定後裝置本機只提供裝置資訊、連線狀態與解除綁定，內容一律由後台控制。
 
 不想準備實體裝置時，`pnpm dev:device-sim` 會啟動一個完整走完配對、同步、下載、校驗與回報流程的模擬裝置。
-
-## 文件
-
-線上文件：<https://docs.linyao.tw/huan>
-
-文件本身在 <https://github.com/linyao-tw/docs>，那個 repository 收錄麟曜所有產品的文件。這裡只留下產生截圖的工具：
-
-```sh
-pnpm docs:screenshots  # 以 Playwright 對種子環境重新擷取產品截圖到 ../docs
-```
 
 ## 測試
 

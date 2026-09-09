@@ -35,7 +35,7 @@ test.describe("版面編輯器", () => {
 		await expect(divider).toHaveAttribute("aria-orientation", "vertical");
 
 		/** 用數值欄位而不是拖曳：比例必須能在完全不用滑鼠的情況下設定。 */
-		const ratio = page.getByLabel("這一組分割的第一塊占比（%）");
+		const ratio = page.getByLabel("左邊那塊占的寬度（%）");
 		await ratio.fill("70");
 		await ratio.blur();
 		await expect(divider).toHaveAttribute("aria-label", /70\s*%/);

@@ -2,7 +2,7 @@
 
 .huan-week {
 	display: grid;
-	grid-template-columns: minmax(3rem, auto) repeat(7, minmax(0, 1fr));
+	grid-template-columns: minmax(3.5rem, auto) repeat(7, minmax(0, 1fr));
 	gap: var(--space-1);
 	min-width: 40rem;
 }
@@ -23,6 +23,26 @@
 	overflow: hidden;
 }
 
+/*
+ * 時間軸。
+ *
+ * 原本這一欄只寫「00–24」，等於沒有刻度：畫面上有三條分隔線，卻沒有人說得出
+ * 它們是幾點。刻度與線用同一組數字算位置，所以永遠對得齊。
+ */
+.huan-week__axis {
+	position: relative;
+	block-size: 12rem;
+}
+
+.huan-week__axis-mark {
+	position: absolute;
+	inset-inline-end: var(--space-2);
+	font-size: var(--font-size-xs);
+	line-height: var(--line-height-tight);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums lining-nums;
+}
+
 .huan-week__block {
 	position: absolute;
 	inset-inline: 0;
@@ -30,13 +50,80 @@
 	background: var(--background-accent);
 	color: var(--text-on-accent);
 	font-size: var(--font-size-xs);
+	line-height: var(--line-height-tight);
 	padding: var(--space-05);
 	overflow: hidden;
 	opacity: 0.85;
+	/* 重疊的方塊要看得出是兩塊，否則「同一時間有多個排程」在圖上是隱形的。 */
+	outline: var(--border-width-hairline) solid var(--background-inset);
 }
 
 .huan-week__hour {
 	position: absolute;
 	inset-inline: 0;
 	border-top: var(--border-width-hairline) solid var(--divider-subtle);
+}
+
+/* ── 衝突規則 ─────────────────────────────────────────────── */
+
+/*
+ * 自己畫編號的有序清單。
+ *
+ * 設計系統的 OrderedList 是側邊清單「面板」（inline-size: min(100%, 20.5rem)、
+ * 自帶背景、list-style: none）。拿它排這段文字的結果是：卡片內寬 1088px，
+ * 清單只有 328px，每一條規則都折成兩行，而且一個編號都沒有 —— 偏偏這段話的
+ * 全部意思就是「由上往下比，第一個分出勝負的贏」。
+ */
+.huan-rules {
+	counter-reset: huan-rule;
+	display: grid;
+	gap: var(--space-2);
+	margin: 0;
+	padding-inline-start: 0;
+	list-style: none;
+}
+
+.huan-rules > li {
+	counter-increment: huan-rule;
+	display: grid;
+	grid-template-columns: var(--space-5) minmax(0, 1fr);
+	gap: var(--space-3);
+	align-items: baseline;
+	font-size: var(--font-size-sm);
+	line-height: var(--line-height-body);
+	color: var(--text-main);
+}
+
+.huan-rules > li::before {
+	content: counter(huan-rule);
+	text-align: end;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	font-variant-numeric: tabular-nums lining-nums;
+	color: var(--text-accent);
+}
+
+/* ── 排程表格 ─────────────────────────────────────────────── */
+
+/* 主要資訊在上、次要在下：九欄的表格因此收得回六欄。 */
+.huan-schedule-cell {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-05);
+	min-inline-size: 0;
+}
+
+/* 裝置名稱可以換行，但欄位不能被壓成一個字寬。 */
+.huan-schedule-devices {
+	min-inline-size: 11rem;
+}
+
+/*
+ * 操作欄的兩顆按鈕不換行。
+ *
+ * .huan-row 預設 wrap：1440 下這一欄只有 124px，「編輯」與「刪除」因此上下疊，
+ * 列高從 73px 被撐到 129px —— 同一張表在 1920 是 73px，兩個寬度長得不一樣。
+ */
+.huan-schedule-actions {
+	flex-wrap: nowrap;
 }

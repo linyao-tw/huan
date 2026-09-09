@@ -11,23 +11,23 @@ interface MediaStatusDescriptor {
 }
 
 /**
- * 每一個狀態都要說得出「現在發生什麼事」與「使用者能做什麼」。
+ * 每一個狀態都要說得出「現在怎麼了」與「該做什麼」，而且用店長看得懂的話。
  *
- * `needs_reupload` 特別重要：HUAN 不長期保存原始檔，播放產物回收後檔案就真的不在了。
- * 這裡必須誠實講出來，不能假裝伺服器還留著。
+ * `needs_reupload` 特別重要：伺服器上真的已經沒有這個檔案了。使用者需要知道的是
+ * 這個後果與「再上傳一次」這個動作，不是回收與保留期怎麼運作。
  */
 export const MEDIA_STATUS_DESCRIPTORS: Record<MediaStatus, MediaStatusDescriptor> = {
-	uploading: { label: "上傳中", badge: "neutral", feedback: "neutral", busy: true, explanation: "檔案正在直接傳送到儲存空間，離開頁面會中斷上傳。" },
-	uploaded: { label: "等待處理", badge: "accent", feedback: "info", busy: true, explanation: "檔案已送達，正在排隊等待轉檔工作。" },
-	processing: { label: "處理中", badge: "accent", feedback: "info", busy: true, explanation: "轉檔中，完成後會自動產生縮圖、預覽與播放版本。" },
-	ready: { label: "可使用", badge: "success", feedback: "success", busy: false, explanation: "已完成轉檔，可以放進版面與排程。" },
-	failed: { label: "轉檔失敗", badge: "danger", feedback: "danger", busy: false, explanation: "轉檔沒有成功，請確認檔案格式後重新上傳。" },
+	uploading: { label: "上傳中", badge: "neutral", feedback: "neutral", busy: true, explanation: "正在上傳。關掉這個頁面會中斷。" },
+	uploaded: { label: "等待處理", badge: "accent", feedback: "info", busy: true, explanation: "檔案已經收到，排隊等著處理。" },
+	processing: { label: "處理中", badge: "accent", feedback: "info", busy: true, explanation: "正在處理，完成後就可以放進版面。" },
+	ready: { label: "可使用", badge: "success", feedback: "success", busy: false, explanation: "可以放進版面與排程了。" },
+	failed: { label: "轉檔失敗", badge: "danger", feedback: "danger", busy: false, explanation: "轉檔沒有成功。換成 MP4、JPEG 或 PNG 再上傳一次；同一個檔案重試通常還是會失敗。" },
 	needs_reupload: {
 		label: "需重新上傳",
 		badge: "warning",
 		feedback: "warning",
 		busy: false,
-		explanation: "HUAN 不長期保存原始檔：轉檔完成後原始檔就會刪除，播放版本在所有裝置確認並過了保留期後也會回收。這份素材現在沒有可派送的檔案，必須重新上傳同一個檔案才能繼續使用。"
+		explanation: "伺服器上已經沒有這個檔案了。重新上傳同一個檔案，正在用它的版面就會恢復。"
 	}
 };
 

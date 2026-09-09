@@ -87,7 +87,8 @@ export function LayoutCanvas({ document: layoutDocument, assets, selectedNodeId,
 	const backgroundAsset = background.imageAssetId ? assets.get(background.imageAssetId) : undefined;
 
 	return (
-		<div className="huan-canvas-viewport" ref={viewportRef}>
+		// 視窗用版面自己的長寬比，直式看板才不會被固定的 16:9 浪費掉大半面積。
+		<div className="huan-canvas-viewport" ref={viewportRef} style={{ ["--huan-canvas-ratio" as string]: `${layoutDocument.canvas.width} / ${layoutDocument.canvas.height}` }}>
 			<div
 				className="huan-canvas-stage"
 				role="group"

@@ -1,4 +1,5 @@
 import { emptyScheduleForm, isScheduleFormValid, toScheduleRequest, validateScheduleForm, type ScheduleFormValues } from "@/features/schedules/form";
+import { timeZoneOptionLabel } from "@/features/schedules/timezone-labels";
 import { WEEKDAY_LABELS } from "@/shared/utils/format";
 import { buildTimeZoneOptions } from "@/shared/utils/timezones";
 import { SchedulePrioritySchema, type Device, type LayoutSummary } from "@huan/protocol";
@@ -66,7 +67,7 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 	const [values, setValues] = useState<ScheduleFormValues>(() => initialValues ?? emptyScheduleForm(defaultTimeZone));
 	const [submitted, setSubmitted] = useState(false);
 
-	const timeZoneOptions = useMemo(() => buildTimeZoneOptions().map(option => ({ value: option.value, label: option.curated ? `${option.label}（常用）` : option.label })), []);
+	const timeZoneOptions = useMemo(() => buildTimeZoneOptions().map(option => ({ value: option.value, label: timeZoneOptionLabel(option.value) })), []);
 	const errors = validateScheduleForm(values);
 	const showErrors = submitted;
 
@@ -88,7 +89,7 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 						>
 							<Dialog.Header>
 								<Dialog.Title>{title}</Dialog.Title>
-								<Dialog.Description>排程以指定時區的牆上時間判定，因此夏令時間切換由平台的時區資料庫處理，不需要手動調整。</Dialog.Description>
+								<Dialog.Description>時間以你選的時區為準，不用自己換算時差，日光節約時間也會自動跟著調。</Dialog.Description>
 							</Dialog.Header>
 
 							<Dialog.Body>
@@ -106,18 +107,18 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 									<label className="huan-row huan-row--between">
 										<span className="huan-stack huan-stack--sm">
 											<span>啟用這個排程</span>
-											<span className="huan-caption">停用後仍會保留設定，但不會影響任何裝置。</span>
+											<span className="huan-caption">停用後設定會留著，但不會影響任何裝置。</span>
 										</span>
 										<Switch checked={values.enabled} onCheckedChange={checked => patch({ enabled: checked })} disabled={pending} />
 									</label>
 
 									<Select
-										label="播放版面"
+										label="播哪一個版面"
 										required
-										placeholder="選擇一個版面"
+										placeholder="挑一個版面"
 										value={values.layoutId}
 										onValueChange={value => patch({ layoutId: value })}
-										options={layouts.map(layout => ({ value: layout.id, label: layout.publishedRevisionNumber === null ? `${layout.name}（尚未發布）` : layout.name }))}
+										options={layouts.map(layout => ({ value: layout.id, label: layout.publishedRevisionNumber === null ? `${layout.name}（還沒發布，不會播）` : layout.name }))}
 										invalid={showErrors && Boolean(errors.layoutId)}
 										error={showErrors ? errors.layoutId : undefined}
 										disabled={pending}
@@ -128,9 +129,9 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 										value={values.timezone}
 										onValueChange={value => patch({ timezone: value ?? values.timezone })}
 										options={timeZoneOptions}
-										placeholder="搜尋 IANA 時區"
-										emptyMessage="找不到符合的時區"
-										description="以 IANA 時區名稱判定，例如 Asia/Taipei。"
+										placeholder="搜尋城市或時區"
+										emptyMessage="找不到這個時區"
+										description="排程的時間以這個時區為準。台灣選台北。"
 										disabled={pending}
 									/>
 
@@ -141,7 +142,7 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 										step={10}
 										value={values.priority}
 										onValueChange={value => patch({ priority: SchedulePrioritySchema.catch(100).parse(value ?? 100) })}
-										description="數字大的優先。相同優先度時再比較視窗長度等條件。"
+										description="數字大的先播。數字一樣時，時段短的先播。"
 										disabled={pending}
 									/>
 
@@ -151,7 +152,7 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 											label="開始日期"
 											value={toCalendarDate(values.startDate)}
 											onValueChange={value => patch({ startDate: value ? value.toString() : null })}
-											description="選填。留白代表沒有起始限制。"
+											description="不填就是從今天開始。"
 											disabled={pending}
 										/>
 										<DatePicker
@@ -161,13 +162,13 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 											onValueChange={value => patch({ endDate: value ? value.toString() : null })}
 											invalid={showErrors && Boolean(errors.endDate)}
 											error={showErrors ? errors.endDate : undefined}
-											description="選填。展覽或檔期結束後會自動失效。"
+											description="不填就是一直有效。檔期結束日填進去，時間到就自動停。"
 										/>
 									</div>
 
 									<div className="huan-stack huan-stack--sm">
 										<span className="huan-muted" id="schedule-weekdays-label">
-											生效星期
+											哪幾天播
 										</span>
 										<ToggleGroup
 											aria-labelledby="schedule-weekdays-label"
@@ -207,26 +208,30 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 											onValueChange={value => patch({ endTime: fromTime(value, values.endTime) })}
 											invalid={showErrors && Boolean(errors.endTime)}
 											error={showErrors ? errors.endTime : undefined}
-											description="結束時間早於開始時間代表跨午夜，例如 22:00 到 02:00。"
+											description="結束時間比開始時間早，代表跨過半夜，例如 22:00 到隔天 02:00。"
 										/>
 									</div>
 
 									<div className="huan-stack huan-stack--sm">
-										<span className="huan-muted">目標裝置</span>
+										<span className="huan-muted">播給哪些裝置</span>
 										{devices.length === 0 ? (
-											<EmptyState title="還沒有配對任何裝置" description="沒有目標裝置的排程仍可建立，之後配對裝置再回來勾選即可。" />
+											<EmptyState title="還沒有配對任何裝置" description="現在就建立也可以，但沒有勾裝置的排程不會播。配對好裝置之後再回來勾。" />
 										) : (
-											<CheckboxGroup value={values.deviceIds} onValueChange={next => patch({ deviceIds: next })} aria-label="目標裝置">
-												{devices.map(device => (
-													<CheckboxItem key={device.id} name={device.id} label={device.name} description={device.online ? "線上" : "離線"} disabled={pending} />
-												))}
-											</CheckboxGroup>
+											<>
+												<CheckboxGroup value={values.deviceIds} onValueChange={next => patch({ deviceIds: next })} aria-label="播給哪些裝置">
+													{devices.map(device => (
+														<CheckboxItem key={device.id} name={device.id} label={device.name} description={device.online ? "線上" : "離線"} disabled={pending} />
+													))}
+												</CheckboxGroup>
+												{/* 空的裝置清單在後端等於「不派給任何人」，不是「派給所有人」。 */}
+												<span className="huan-caption">一台都沒勾的話，這個排程不會播。</span>
+											</>
 										)}
 									</div>
 
 									{errorMessage ? (
 										<Alert status="danger" live="assertive">
-											<AlertTitle>儲存失敗</AlertTitle>
+											<AlertTitle>沒有存成功</AlertTitle>
 											<AlertDescription>{errorMessage}</AlertDescription>
 										</Alert>
 									) : null}
@@ -236,7 +241,7 @@ export function ScheduleDialog({ open, onOpenChange, title, initialValues, defau
 							<Dialog.Footer>
 								<Dialog.Close render={<Button variant="secondary">取消</Button>} />
 								<Button type="submit" loading={pending}>
-									儲存排程
+									儲存
 								</Button>
 							</Dialog.Footer>
 						</form>

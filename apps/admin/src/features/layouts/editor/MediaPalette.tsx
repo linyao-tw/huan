@@ -36,12 +36,12 @@ export function MediaPalette({ selectedSlotId, onAssign, onInsertText, onInsertT
 	const assignDisabled = selectedSlotId === null;
 
 	return (
-		<div className="huan-editor__pane">
-			<SectionHeading level={2} size="sm" description="拖曳到畫布上的區塊，或選取區塊後按「指派」。">
+		<div className="huan-editor__pane huan-editor__pane--source">
+			<SectionHeading level={2} size="sm" description="把素材拖到畫布上，或選好區塊後按「放入」。">
 				內容來源
 			</SectionHeading>
 
-			<div className="huan-stack huan-stack--sm">
+			<div className="huan-palette-inserts">
 				<Button size="sm" variant="secondary" onClick={onInsertText} disabled={assignDisabled}>
 					放入文字
 				</Button>
@@ -64,9 +64,9 @@ export function MediaPalette({ selectedSlotId, onAssign, onInsertText, onInsertT
 					))}
 				</div>
 			) : items.length === 0 ? (
-				<EmptyState title="沒有可用的素材" description={search ? "換一個關鍵字試試。" : "只有轉檔完成的素材可以放進版面。請先到素材庫上傳。"} />
+				<EmptyState title="沒有可用的素材" description={search ? "換一個關鍵字試試。" : "只有處理完成的素材可以放進版面。先到素材庫上傳。"} />
 			) : (
-				<ul className="huan-stack huan-stack--sm">
+				<ul className="huan-palette-list">
 					{items.map(asset => (
 						<li key={asset.id}>
 							<div
@@ -83,7 +83,7 @@ export function MediaPalette({ selectedSlotId, onAssign, onInsertText, onInsertT
 									<span className="huan-caption huan-numeric">{formatResolution(asset.probe?.width, asset.probe?.height)}</span>
 								</span>
 								<Button size="sm" variant="quiet" disabled={assignDisabled} onClick={() => onAssign(asset.id)}>
-									指派
+									放入
 								</Button>
 							</div>
 						</li>

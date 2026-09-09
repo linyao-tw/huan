@@ -26,7 +26,7 @@ export function LayoutsPage() {
 		<>
 			<PageHeader
 				title="版面"
-				description="版面是一棵遞迴分割樹。編輯中的內容存在草稿，按下發布才會產生新的修訂並派送到裝置。"
+				description="把畫面切成幾塊，每一塊放不同的內容。編輯時存成草稿，按發布才會送到裝置上播。"
 				actions={
 					<Button startIcon={<PlusIcon weight="bold" />} onClick={() => setCreateOpen(true)}>
 						建立版面
@@ -42,7 +42,7 @@ export function LayoutsPage() {
 				<EmptyState
 					icon={<SquaresFourIcon weight="bold" />}
 					title="還沒有任何版面"
-					description="建立第一個版面之後，就可以把畫面切分成多個區塊，分別放入影片、圖片、文字與跑馬燈。"
+					description="建立第一個版面之後，就可以把畫面切成幾塊，分別放影片、圖片、文字與跑馬燈。"
 					actions={
 						<Button startIcon={<PlusIcon weight="bold" />} onClick={() => setCreateOpen(true)}>
 							建立版面
@@ -56,7 +56,7 @@ export function LayoutsPage() {
 							<TableRow>
 								<TableHead>名稱</TableHead>
 								<TableHead>畫布</TableHead>
-								<TableHead>已發布修訂</TableHead>
+								<TableHead>已發布版本</TableHead>
 								<TableHead>草稿最後修改</TableHead>
 								<TableHead textAlign="end">操作</TableHead>
 							</TableRow>
@@ -104,7 +104,7 @@ export function LayoutsPage() {
 				}}
 				destructive
 				title={`刪除版面「${pendingDelete?.name ?? ""}」？`}
-				description="刪除後所有修訂都會一併移除，無法復原。若版面正被排程或裝置引用，伺服器會拒絕刪除並說明原因。"
+				description="刪除後這個版面的所有版本都會消失，無法復原。如果還有排程或裝置在用它，系統會擋下來並告訴你是哪一個。"
 				confirmLabel="刪除版面"
 				pending={remove.isPending}
 				errorMessage={remove.error?.message ?? null}

@@ -1,4 +1,5 @@
 import { useSessionQuery } from "@/features/auth/hooks";
+import "@/features/devices/devices.css";
 import { PlatformLabel } from "@/features/devices/DeviceStatus";
 import { useConfirmPairingMutation, usePairingLookupQuery } from "@/features/devices/hooks";
 import { useLayoutListQuery } from "@/features/layouts/hooks";
@@ -8,7 +9,7 @@ import { isApiError } from "@/shared/services/http";
 import { formatDateTime } from "@/shared/utils/format";
 import { PairingCodeSchema } from "@huan/protocol";
 import { formatPairingCode } from "@huan/shared";
-import { Alert, AlertDescription, AlertTitle, Button, Card, CardBody, EmptyState, Loader, SectionHeading, Select, TextField } from "@linyao.tw/ui";
+import { Alert, AlertDescription, AlertTitle, Button, Card, CardBody, CardDescription, CardHeader, CardTitle, EmptyState, Loader, Select, TextField } from "@linyao.tw/ui";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { PlugsIcon } from "@phosphor-icons/react/dist/csr/Plugs";
 import { useEffect, useState, type FormEvent } from "react";
@@ -75,7 +76,7 @@ export function PairPage() {
 								status="success"
 								icon={<CheckCircleIcon weight="bold" />}
 								title="配對完成"
-								description={`「${confirm.data.name}」已經綁定到這個工作區，裝置會在下一次同步時取得內容。`}
+								description={`「${confirm.data.name}」已經加進來了，它會自己開始下載要播的內容。`}
 								actions={
 									<div className="huan-row huan-row--tight">
 										<Button render={<RouterLink to={`/app/devices/${confirm.data.id}`} />} nativeButton={false}>
@@ -91,7 +92,7 @@ export function PairPage() {
 												setSearchParams({});
 											}}
 										>
-											再配對一台
+											再加一台
 										</Button>
 									</div>
 								}
@@ -100,11 +101,19 @@ export function PairPage() {
 					</Card>
 				) : !code ? (
 					<Card variant="elevated">
+						{/*
+						 * 卡片標題用 CardTitle。
+						 *
+						 * SectionHeading 在設計系統裡是列表軌道標籤，自帶背景與縮排，而且字級是
+						 * --font-size-xs；app.css 的修正只作用在 .huan-shell 底下，配對頁不在裡面，
+						 * 所以那條修正到不了這裡，標題會變成一塊比說明文字還小的灰色面板。
+						 */}
+						<CardHeader>
+							<CardTitle level={2}>輸入配對碼</CardTitle>
+							<CardDescription>播放器開機後，螢幕上會顯示一組 8 位數的配對碼，格式是 XXXX-XXXX。</CardDescription>
+						</CardHeader>
 						<CardBody>
 							<form className="huan-stack" onSubmit={submitManualCode} noValidate>
-								<SectionHeading level={2} size="md" description="播放器啟動後會在畫面上顯示 8 碼配對碼，格式為 XXXX-XXXX。">
-									輸入配對碼
-								</SectionHeading>
 								<TextField
 									label="配對碼"
 									name="pairingCode"
@@ -135,8 +144,8 @@ export function PairPage() {
 									<EmptyState
 										status="warning"
 										icon={<PlugsIcon weight="bold" />}
-										title="配對碼無效或已過期"
-										description={`「${formatPairingCode(code)}」查不到對應的裝置。配對碼有時效，請在播放器上重新產生一組，再輸入一次。`}
+										title="這組配對碼用不了"
+										description={`查不到「${formatPairingCode(code)}」對應的裝置。配對碼有時效，請在播放器上重新產生一組，再輸入一次。`}
 										actions={
 											<Button
 												variant="secondary"
@@ -150,13 +159,17 @@ export function PairPage() {
 										}
 									/>
 								) : (
-									<QueryErrorAlert error={lookup.error} onRetry={() => void lookup.refetch()} retrying={lookup.isFetching} title="查詢配對碼失敗" />
+									<QueryErrorAlert error={lookup.error} onRetry={() => void lookup.refetch()} retrying={lookup.isFetching} title="查詢時發生問題" />
 								)}
 							</div>
 						</CardBody>
 					</Card>
 				) : (
 					<Card variant="elevated">
+						<CardHeader>
+							<CardTitle level={2}>確認裝置</CardTitle>
+							<CardDescription>先確認下面這台就是你眼前的螢幕，再繼續。</CardDescription>
+						</CardHeader>
 						<CardBody>
 							<form
 								className="huan-stack"
@@ -166,23 +179,19 @@ export function PairPage() {
 								}}
 								noValidate
 							>
-								<SectionHeading level={2} size="md" description="請先確認畫面上顯示的裝置就是你眼前這一台，再完成綁定。">
-									確認裝置
-								</SectionHeading>
-
-								<dl className="huan-definition">
+								<dl className="huan-device-def">
 									<dt>配對碼</dt>
-									<dd className="huan-numeric">{formatPairingCode(lookup.data.code)}</dd>
-									<dt>裝置回報名稱</dt>
+									<dd className="huan-device-def__atom huan-numeric">{formatPairingCode(lookup.data.code)}</dd>
+									<dt>裝置目前的名稱</dt>
 									<dd>{lookup.data.deviceName}</dd>
-									<dt>平台</dt>
+									<dt>系統</dt>
 									<dd>
 										<PlatformLabel platform={lookup.data.platform} arch={lookup.data.arch} />
 									</dd>
 									<dt>播放器版本</dt>
 									<dd>{lookup.data.appVersion}</dd>
-									<dt>配對碼有效至</dt>
-									<dd>{formatDateTime(lookup.data.expiresAt)}</dd>
+									<dt>有效到</dt>
+									<dd className="huan-device-def__atom huan-numeric">{formatDateTime(lookup.data.expiresAt)}</dd>
 								</dl>
 
 								<TextField
@@ -191,14 +200,14 @@ export function PairPage() {
 									required
 									value={deviceName}
 									onChange={event => setDeviceName(event.target.value)}
-									description="建議填寫實際位置，例如「一號店櫥窗」。"
+									description="填實際位置最好認，例如「一號店櫥窗」。"
 									disabled={confirm.isPending}
 								/>
 
 								<Select
 									label="預設版面"
-									placeholder="沒有排程命中時顯示待命畫面"
-									description="沒有任何排程生效時要播放的版面，之後可以再修改。"
+									placeholder="沒有排程時顯示待命畫面"
+									description="沒有排程的時段要播的版面，之後可以再改。"
 									disabled={confirm.isPending || layouts.isPending}
 									value={defaultLayoutId}
 									onValueChange={value => setDefaultLayoutId(value)}
@@ -213,7 +222,7 @@ export function PairPage() {
 								) : null}
 
 								<Button type="submit" loading={confirm.isPending} disabled={deviceName.trim().length === 0}>
-									完成配對
+									加入這台裝置
 								</Button>
 							</form>
 						</CardBody>

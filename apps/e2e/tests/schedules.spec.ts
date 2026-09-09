@@ -11,7 +11,7 @@ test.use({ storageState: ADMIN_STATE });
 test.describe("排程", () => {
 	test("列表頁說明衝突判定規則", async ({ page }) => {
 		await page.goto("/app/schedules");
-		await expect(page.getByRole("heading", { name: "衝突判定規則" })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "同一時間有多個排程，播哪一個" })).toBeVisible();
 		/** 規則必須寫在使用者看得到的地方，否則沒有人知道兩筆排程重疊時會播哪一個。 */
 		await expect(page.getByText(/優先度/).first()).toBeVisible();
 	});

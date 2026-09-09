@@ -1,5 +1,5 @@
 import "@/features/devices/devices.css";
-import { deviceNeedsAttention, DeviceOnlineBadge, DiskMeter, PlatformLabel } from "@/features/devices/DeviceStatus";
+import { DeviceContentBadge, DeviceOnlineBadge, DiskMeter, PlatformLabel } from "@/features/devices/DeviceStatus";
 import { useDeviceListQuery } from "@/features/devices/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
@@ -13,86 +13,92 @@ export function DevicesPage() {
 	const devices = useDeviceListQuery();
 	const items = devices.data?.items ?? [];
 
+	/*
+	 * 空狀態只在「查得到、而且真的沒有」時才出現。
+	 *
+	 * 原本錯誤與空狀態是各自判斷的，載入失敗時會同時看到「無法載入」與
+	 * 「還沒有配對任何裝置」—— 兩句話互相矛盾，而且後面那句是錯的：
+	 * 沒查到不等於沒有。
+	 */
+	const showEmptyState = !devices.isPending && !devices.isError && items.length === 0;
+
 	return (
 		<>
 			<PageHeader
 				title="裝置"
-				description="每一台已配對的播放裝置。伺服器只宣告期望狀態，實際下載、驗證與切換都由裝置自己完成。"
+				description="所有已加入的播放螢幕。內容會先下載到裝置上，網路斷掉也會繼續播。"
 				actions={
 					<Button render={<RouterLink to="/pair" />} nativeButton={false} startIcon={<PlugsConnectedIcon weight="bold" />}>
-						配對新裝置
+						新增裝置
 					</Button>
 				}
 			/>
 
-			{devices.isError ? <QueryErrorAlert error={devices.error} onRetry={() => void devices.refetch()} retrying={devices.isFetching} title="無法載入裝置列表" /> : null}
+			{devices.isError ? <QueryErrorAlert error={devices.error} onRetry={() => void devices.refetch()} retrying={devices.isFetching} title="讀不到裝置清單" /> : null}
 
-			{devices.isPending ? (
-				<ListSkeleton rows={4} label="正在載入裝置" />
-			) : items.length === 0 ? (
+			{devices.isPending ? <ListSkeleton rows={5} label="正在載入裝置" /> : null}
+
+			{showEmptyState ? (
 				<EmptyState
 					icon={<MonitorIcon weight="bold" />}
-					title="還沒有配對任何裝置"
-					description="在播放裝置上啟動 HUAN 播放器，畫面會顯示 8 碼配對碼，輸入之後就能完成綁定。"
+					title="還沒有任何裝置"
+					description="在要播放的螢幕上打開 HUAN 播放器，畫面會顯示一組 8 位數的配對碼，輸入後就會出現在這裡。"
 					actions={
 						<Button render={<RouterLink to="/pair" />} nativeButton={false}>
-							前往配對
+							新增裝置
 						</Button>
 					}
 				/>
-			) : (
+			) : null}
+
+			{items.length > 0 ? (
 				<TableFrame>
-					<Table>
+					{/* 欄位多，給表格一個最小寬度，中文才會觸發橫向捲動而不是把每一欄壓成一個字。 */}
+					<Table className="huan-table--wide">
 						<TableHeader>
 							<TableRow>
 								<TableHead>裝置</TableHead>
 								<TableHead>狀態</TableHead>
-								<TableHead>平台</TableHead>
-								<TableHead>解析度</TableHead>
-								<TableHead>播放器版本</TableHead>
-								<TableHead>目前版面</TableHead>
-								<TableHead>期望／實際版本</TableHead>
-								<TableHead>磁碟</TableHead>
-								<TableHead>最後回報</TableHead>
-								<TableHead>最後同步</TableHead>
+								<TableHead>內容</TableHead>
+								<TableHead>預設版面</TableHead>
+								<TableHead>系統</TableHead>
+								<TableHead>螢幕</TableHead>
+								<TableHead>儲存空間</TableHead>
+								<TableHead>最後連線</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{items.map(device => {
 								const display = device.reported?.displays.find(entry => entry.primary) ?? device.reported?.displays[0];
-								const attention = deviceNeedsAttention(device);
 								return (
-									<TableRow key={device.id} className={device.online ? undefined : "huan-offline-row"}>
+									<TableRow key={device.id}>
 										<TableCell>
-											<div className="huan-stack huan-stack--sm">
-												<RouterLink to={`/app/devices/${device.id}`}>{device.name}</RouterLink>
-												{attention ? <span className="huan-caption">{attention}</span> : null}
-											</div>
+											<RouterLink to={`/app/devices/${device.id}`} className="huan-device-link">
+												{device.name}
+											</RouterLink>
 										</TableCell>
 										<TableCell>
 											<DeviceOnlineBadge device={device} />
 										</TableCell>
 										<TableCell>
+											<DeviceContentBadge device={device} />
+										</TableCell>
+										<TableCell>{device.defaultLayoutName ?? <span className="huan-caption">未指定</span>}</TableCell>
+										<TableCell>
 											<PlatformLabel platform={device.reported?.platform} arch={device.reported?.arch} />
 										</TableCell>
 										<TableCell numeric>{formatResolution(display?.width, display?.height)}</TableCell>
-										<TableCell>{device.reported?.appVersion ?? "—"}</TableCell>
-										<TableCell>{device.defaultLayoutName ?? <span className="huan-caption">未指定預設版面</span>}</TableCell>
-										<TableCell numeric>
-											{device.desiredVersion} / {device.reported?.desiredVersion ?? "—"}
-										</TableCell>
 										<TableCell>
-											<DiskMeter device={device} />
+											<DiskMeter device={device} compact />
 										</TableCell>
 										<TableCell>{formatRelativeTime(device.lastSeenAt)}</TableCell>
-										<TableCell>{formatRelativeTime(device.reported?.lastSyncAt ?? null)}</TableCell>
 									</TableRow>
 								);
 							})}
 						</TableBody>
 					</Table>
 				</TableFrame>
-			)}
+			) : null}
 		</>
 	);
 }

@@ -9,23 +9,7 @@ import { CardsSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
 import { formatDateTime, formatResolution } from "@/shared/utils/format";
 import type { MediaAsset, MediaKind, MediaStatus } from "@huan/protocol";
 import { formatBytes, formatDurationMs } from "@huan/shared";
-import {
-	Badge,
-	Card,
-	CardBody,
-	EmptyState,
-	SearchField,
-	SegmentedControl,
-	SegmentedControlItem,
-	Select,
-	Table,
-	TableBody,
-	TableCell,
-	TableFrame,
-	TableHead,
-	TableHeader,
-	TableRow
-} from "@linyao.tw/ui";
+import { Badge, Card, EmptyState, SearchField, SegmentedControl, SegmentedControlItem, Select, Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from "@linyao.tw/ui";
 import { FileHtmlIcon } from "@phosphor-icons/react/dist/csr/FileHtml";
 import { ImageIcon } from "@phosphor-icons/react/dist/csr/Image";
 import { ImagesSquareIcon } from "@phosphor-icons/react/dist/csr/ImagesSquare";
@@ -100,7 +84,7 @@ export function MediaPage() {
 		<>
 			<PageHeader
 				title="素材庫"
-				description="上傳的影片、圖片與 HTML 會在這裡轉檔並產生縮圖、預覽與播放版本。"
+				description="上傳影片、圖片或 HTML 檔案，處理完成後就可以放進版面。"
 				annotation={media.data ? <Badge variant="neutral">{media.data.total} 個素材</Badge> : null}
 				actions={
 					<SegmentedControl aria-label="檢視方式" size="sm" value={view} onValueChange={next => next && setView(next as ViewMode)}>
@@ -118,14 +102,13 @@ export function MediaPage() {
 				}
 			/>
 
-			<Card variant="material">
-				<CardBody>
-					<MediaUploadPanel uploader={uploader} />
-				</CardBody>
+			{/* 上傳卡與格狀卡同一個 size，否則同一頁上會出現 24px 與 16px 兩種內距。 */}
+			<Card variant="material" size="sm">
+				<MediaUploadPanel uploader={uploader} />
 			</Card>
 
-			<div className="huan-row">
-				<SearchField className="huan-grow" label="搜尋素材" size="sm" value={search} onChange={event => setSearch(event.target.value)} placeholder="輸入素材名稱" />
+			<div className="huan-media-toolbar">
+				<SearchField label="搜尋素材" size="sm" value={search} onChange={event => setSearch(event.target.value)} placeholder="輸入素材名稱" />
 				<Select label="類型" size="sm" value={kind} onValueChange={value => setKind(value ?? "all")} options={KIND_OPTIONS} />
 				<Select label="狀態" size="sm" value={status} onValueChange={value => setStatus(value ?? "all")} options={STATUS_OPTIONS} />
 			</div>
@@ -138,7 +121,7 @@ export function MediaPage() {
 				<EmptyState
 					icon={<ImagesSquareIcon weight="bold" />}
 					title={hasFilters ? "沒有符合條件的素材" : "素材庫還是空的"}
-					description={hasFilters ? "換一組篩選條件，或清除搜尋關鍵字。" : "把影片、圖片或 HTML 檔案拖到上方的上傳區，就會開始轉檔。"}
+					description={hasFilters ? "換一組篩選條件，或清除搜尋關鍵字。" : "把影片、圖片或 HTML 檔案拖到上面的上傳區就會開始處理。"}
 				/>
 			) : view === "grid" ? (
 				<ul className="huan-media-grid">
@@ -146,19 +129,19 @@ export function MediaPage() {
 						<li key={asset.id}>
 							<button type="button" className="huan-media-select" onClick={() => openDetail(asset)} aria-label={`開啟素材 ${asset.name} 的詳細資料`}>
 								<Card variant="material" size="sm">
-									<CardBody>
-										<div className="huan-media-card">
-											<div className="huan-media-thumb">
-												<MediaThumb asset={asset} />
-											</div>
-											<span className="huan-truncate">{asset.name}</span>
+									<div className="huan-media-card">
+										<div className="huan-media-thumb">
+											<MediaThumb asset={asset} />
+										</div>
+										<span className="huan-media-card__name huan-truncate">{asset.name}</span>
+										<div className="huan-media-card__meta">
 											<MediaStatusBadge status={asset.status} />
-											<span className="huan-caption">
+											<span className="huan-caption huan-truncate">
 												{KIND_LABELS[asset.kind]} · {formatResolution(asset.probe?.width, asset.probe?.height)}
 											</span>
-											<span className="huan-caption">{asset.status === "needs_reupload" ? "需重新上傳同一個檔案" : mediaStatusDetail(asset).slice(0, 40)}</span>
 										</div>
-									</CardBody>
+										<span className="huan-caption huan-media-card__detail">{mediaStatusDetail(asset)}</span>
+									</div>
 								</Card>
 							</button>
 						</li>

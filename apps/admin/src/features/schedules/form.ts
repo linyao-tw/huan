@@ -56,19 +56,19 @@ export function validateScheduleForm(values: ScheduleFormValues): ScheduleFormEr
 	if (values.name.trim().length === 0) errors.name = "請輸入排程名稱";
 	else if (values.name.trim().length > 120) errors.name = "排程名稱最多 120 個字";
 
-	if (!values.layoutId) errors.layoutId = "請選擇要播放的版面";
+	if (!values.layoutId) errors.layoutId = "請選一個要播的版面";
 
 	if (values.timezone.trim().length === 0) errors.timezone = "請選擇時區";
 
-	if (values.daysOfWeek.length === 0) errors.daysOfWeek = "至少選擇一天";
+	if (values.daysOfWeek.length === 0) errors.daysOfWeek = "至少要選一天";
 
-	if (!ClockTimeSchema.safeParse(values.startTime).success) errors.startTime = "時間格式必須是 HH:MM";
-	if (!ClockTimeSchema.safeParse(values.endTime).success) errors.endTime = "時間格式必須是 HH:MM";
+	if (!ClockTimeSchema.safeParse(values.startTime).success) errors.startTime = "時間請用 24 小時制填寫，例如 09:30";
+	if (!ClockTimeSchema.safeParse(values.endTime).success) errors.endTime = "時間請用 24 小時制填寫，例如 09:30";
 
-	if (!errors.startTime && !errors.endTime && values.startTime === values.endTime) errors.endTime = "開始與結束時間不能相同。若要播放整天，請改用 00:00 到 23:59。";
+	if (!errors.startTime && !errors.endTime && values.startTime === values.endTime) errors.endTime = "開始和結束時間不能相同。要播整天的話，填 00:00 到 23:59。";
 
-	if (values.startDate && !CalendarDateSchema.safeParse(values.startDate).success) errors.endDate = "日期格式必須是 YYYY-MM-DD";
-	if (values.endDate && !CalendarDateSchema.safeParse(values.endDate).success) errors.endDate = "日期格式必須是 YYYY-MM-DD";
+	if (values.startDate && !CalendarDateSchema.safeParse(values.startDate).success) errors.endDate = "日期請照 2026-05-10 這樣填";
+	if (values.endDate && !CalendarDateSchema.safeParse(values.endDate).success) errors.endDate = "日期請照 2026-05-10 這樣填";
 	if (values.startDate && values.endDate && values.startDate > values.endDate) errors.endDate = "結束日期不能早於開始日期";
 
 	return errors;

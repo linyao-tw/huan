@@ -32,16 +32,16 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 		<>
 			<div className="huan-row huan-row--tight">
 				<Button size={size} variant="quiet" startIcon={<PencilSimpleIcon weight="bold" />} onClick={() => setRenameOpen(true)}>
-					重新命名
+					編輯
 				</Button>
 				<Button size={size} variant="quiet" startIcon={<ArrowsClockwiseIcon weight="bold" />} onClick={() => setPending("force-sync")} disabled={!device.online}>
-					強制同步
+					立即更新
 				</Button>
 				<Button size={size} variant="quiet" startIcon={<PowerIcon weight="bold" />} onClick={() => setPending("restart")} disabled={!device.online}>
-					重啟播放器
+					重新啟動
 				</Button>
 				<Button size={size} variant="quiet" startIcon={<PlugsIcon weight="bold" />} onClick={() => setPending("unbind")}>
-					解除綁定
+					移除裝置
 				</Button>
 			</div>
 
@@ -63,7 +63,7 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 										{ id: device.id, body: { name: name.trim(), defaultLayoutId } },
 										{
 											onSuccess: () => {
-												toast.add({ title: "已更新裝置", data: { status: "success" } });
+												toast.add({ title: "已儲存", data: { status: "success" } });
 												setRenameOpen(false);
 											}
 										}
@@ -72,7 +72,7 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 							>
 								<Dialog.Header>
 									<Dialog.Title>編輯裝置</Dialog.Title>
-									<Dialog.Description>名稱只影響後台顯示；預設版面會在沒有任何排程命中時播放。</Dialog.Description>
+									<Dialog.Description>名稱只用在後台。沒有排程的時段，畫面會播預設版面。</Dialog.Description>
 								</Dialog.Header>
 								<Dialog.Body>
 									<div className="huan-stack">
@@ -82,11 +82,11 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 											value={name}
 											onChange={event => setName(event.target.value)}
 											disabled={update.isPending}
-											description="建議使用實際位置，例如「三號店櫥窗」。"
+											description="填實際位置最好認，例如「三號店櫥窗」。"
 										/>
 										<Select
 											label="預設版面"
-											placeholder="沒有排程命中時顯示待命畫面"
+											placeholder="沒有排程時顯示待命畫面"
 											value={defaultLayoutId}
 											onValueChange={value => setDefaultLayoutId(value)}
 											options={(layouts.data?.items ?? []).map(layout => ({ value: layout.id, label: layout.name }))}
@@ -120,15 +120,15 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 						forceSync.reset();
 					}
 				}}
-				title="要求裝置立即同步？"
-				description="裝置會馬上向伺服器取一次完整狀態並重新下載缺少的檔案。正在播放的內容不會中斷。"
-				confirmLabel="立即同步"
+				title="現在就更新這台裝置？"
+				description="它會馬上重新確認一次該播什麼，缺的檔案會補下載。畫面不會中斷。"
+				confirmLabel="立即更新"
 				pending={forceSync.isPending}
 				errorMessage={forceSync.error?.message ?? null}
 				onConfirm={() =>
 					forceSync.mutate(device.id, {
 						onSuccess: () => {
-							toast.add({ title: "已送出同步指令", data: { status: "success" } });
+							toast.add({ title: "已通知裝置更新", data: { status: "success" } });
 							close();
 						}
 					})
@@ -145,14 +145,14 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 				}}
 				destructive
 				title="重新啟動播放器？"
-				description="畫面會黑屏數秒後回到目前的版面。已下載的素材不會遺失，但正在進行的下載會重來。"
-				confirmLabel="重啟播放器"
+				description="畫面會黑幾秒，然後回到現在的內容。已經下載好的檔案不會不見，還沒下載完的要重來。"
+				confirmLabel="重新啟動"
 				pending={restart.isPending}
 				errorMessage={restart.error?.message ?? null}
 				onConfirm={() =>
 					restart.mutate(device.id, {
 						onSuccess: () => {
-							toast.add({ title: "已送出重啟指令", data: { status: "success" } });
+							toast.add({ title: "已通知裝置重新啟動", data: { status: "success" } });
 							close();
 						}
 					})
@@ -168,15 +168,15 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 					}
 				}}
 				destructive
-				title={`解除綁定「${device.name}」？`}
-				description="裝置憑證會立刻失效，這台裝置將無法再取得任何內容，必須重新走一次配對流程才能回來。本機已下載的素材會保留在該裝置上。"
-				confirmLabel="解除綁定"
+				title={`把「${device.name}」移出系統？`}
+				description="它會立刻停止收到新內容，要重新配對才能加回來。已經下載到裝置上的檔案會留著，畫面還是會繼續播。"
+				confirmLabel="移除裝置"
 				pending={unbind.isPending}
 				errorMessage={unbind.error?.message ?? null}
 				onConfirm={() =>
 					unbind.mutate(device.id, {
 						onSuccess: () => {
-							toast.add({ title: "已解除綁定", data: { status: "success" } });
+							toast.add({ title: "已移除裝置", data: { status: "success" } });
 							close();
 							void navigate("/app/devices");
 						}

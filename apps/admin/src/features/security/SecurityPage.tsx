@@ -1,10 +1,12 @@
 import { useChangePasswordMutation, useCurrentUser } from "@/features/auth/hooks";
 import { useRegenerateRecoveryCodesMutation, useRevokeSessionMutation, useSecurityOverviewQuery, useTotpDisableMutation } from "@/features/security/hooks";
+import "@/features/security/security.css";
 import { RecoveryCodePanel, TotpSetupDialog } from "@/features/security/TotpSetupDialog";
+import { describeUserAgent } from "@/features/security/user-agent";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
-import { formatDateTime, formatRelativeTime } from "@/shared/utils/format";
-import { PasswordSchema } from "@huan/protocol";
+import { formatDate, formatDateTime, formatRelativeTime } from "@/shared/utils/format";
+import { PasswordSchema, type SessionSummary } from "@huan/protocol";
 import {
 	Alert,
 	AlertDescription,
@@ -38,72 +40,85 @@ function ChangePasswordCard() {
 	const [confirm, setConfirm] = useState("");
 
 	const nextError = next.length > 0 ? (PasswordSchema.safeParse(next).error?.issues[0]?.message ?? undefined) : undefined;
-	const confirmError = confirm.length > 0 && confirm !== next ? "兩次輸入的新密碼不一致" : undefined;
+	const confirmError = confirm.length > 0 && confirm !== next ? "兩次輸入的新密碼不一樣" : undefined;
 	const canSubmit = current.length > 0 && next.length > 0 && !nextError && !confirmError && confirm === next;
 
 	return (
-		<Card variant="material">
-			<CardBody>
-				<form
-					className="huan-stack"
-					onSubmit={event => {
-						event.preventDefault();
-						changePassword.mutate(
-							{ currentPassword: current, newPassword: next },
-							{
-								onSuccess: () => {
-									toast.add({ title: "密碼已更新", data: { status: "success" } });
-									setCurrent("");
-									setNext("");
-									setConfirm("");
+		<section className="huan-stack" aria-label="換一組密碼">
+			<SectionHeading level={2} size="md" description="密碼至少 12 個字。不必混大小寫和符號，那通常只會逼人挑出更短、更好猜的密碼。">
+				換一組密碼
+			</SectionHeading>
+
+			<Card variant="material" className="huan-password-card">
+				<CardBody>
+					<form
+						className="huan-stack"
+						onSubmit={event => {
+							event.preventDefault();
+							changePassword.mutate(
+								{ currentPassword: current, newPassword: next },
+								{
+									onSuccess: () => {
+										toast.add({ title: "密碼已更新", data: { status: "success" } });
+										setCurrent("");
+										setNext("");
+										setConfirm("");
+									}
 								}
-							}
-						);
-					}}
-				>
-					<SectionHeading level={2} size="sm" description="密碼至少 12 個字元。HUAN 不強制混合大小寫與符號，因為那通常只會讓人選出更好猜的密碼。">
-						變更密碼
-					</SectionHeading>
+							);
+						}}
+					>
+						<PasswordField label="目前的密碼" autoComplete="current-password" required value={current} onChange={event => setCurrent(event.target.value)} disabled={changePassword.isPending} />
+						<PasswordField
+							label="新密碼"
+							autoComplete="new-password"
+							required
+							value={next}
+							onChange={event => setNext(event.target.value)}
+							invalid={Boolean(nextError)}
+							error={nextError}
+							disabled={changePassword.isPending}
+						/>
+						<PasswordField
+							label="再輸入一次新密碼"
+							autoComplete="new-password"
+							required
+							value={confirm}
+							onChange={event => setConfirm(event.target.value)}
+							invalid={Boolean(confirmError)}
+							error={confirmError}
+							disabled={changePassword.isPending}
+						/>
 
-					<PasswordField label="目前的密碼" autoComplete="current-password" required value={current} onChange={event => setCurrent(event.target.value)} disabled={changePassword.isPending} />
-					<PasswordField
-						label="新密碼"
-						autoComplete="new-password"
-						required
-						value={next}
-						onChange={event => setNext(event.target.value)}
-						invalid={Boolean(nextError)}
-						error={nextError}
-						disabled={changePassword.isPending}
-					/>
-					<PasswordField
-						label="再次輸入新密碼"
-						autoComplete="new-password"
-						required
-						value={confirm}
-						onChange={event => setConfirm(event.target.value)}
-						invalid={Boolean(confirmError)}
-						error={confirmError}
-						disabled={changePassword.isPending}
-					/>
+						{changePassword.isError ? (
+							<Alert status="danger" live="assertive">
+								<AlertTitle>密碼沒有換成功</AlertTitle>
+								<AlertDescription>{changePassword.error.message}</AlertDescription>
+							</Alert>
+						) : null}
 
-					{changePassword.isError ? (
-						<Alert status="danger" live="assertive">
-							<AlertTitle>無法變更密碼</AlertTitle>
-							<AlertDescription>{changePassword.error.message}</AlertDescription>
-						</Alert>
-					) : null}
-
-					<div>
-						<Button type="submit" loading={changePassword.isPending} disabled={!canSubmit}>
-							更新密碼
-						</Button>
-					</div>
-				</form>
-			</CardBody>
-		</Card>
+						<div>
+							<Button type="submit" loading={changePassword.isPending} disabled={!canSubmit}>
+								更新密碼
+							</Button>
+						</div>
+					</form>
+				</CardBody>
+			</Card>
+		</section>
 	);
 }
+
+/** 自己這一個排最前面，其餘依最後使用時間由新到舊 —— 要撤掉的通常是最陌生、最舊的那幾筆。 */
+function sortSessions(sessions: readonly SessionSummary[]): SessionSummary[] {
+	return [...sessions].sort((a, b) => {
+		if (a.current !== b.current) return a.current ? -1 : 1;
+		return b.lastSeenAt.localeCompare(a.lastSeenAt);
+	});
+}
+
+/** 每天在不同瀏覽器登入的人很快就會累積出幾十筆，全部攤開會把這一頁變成四千像素長。 */
+const SESSION_PREVIEW_COUNT = 8;
 
 type TotpDialog = "setup" | "disable" | "regenerate" | null;
 
@@ -119,6 +134,7 @@ export function SecurityPage() {
 	const [password, setPassword] = useState("");
 	const [code, setCode] = useState("");
 	const [newCodes, setNewCodes] = useState<string[] | null>(null);
+	const [showAllSessions, setShowAllSessions] = useState(false);
 
 	const closeDialog = (): void => {
 		setDialog(null);
@@ -129,129 +145,146 @@ export function SecurityPage() {
 	};
 
 	const totpEnabled = overview.data?.totpEnabled ?? user?.totpEnabled ?? false;
+	const codesLeft = overview.data?.recoveryCodesRemaining ?? 0;
+	const sessions = sortSessions(overview.data?.sessions ?? []);
+	const visibleSessions = showAllSessions ? sessions : sessions.slice(0, SESSION_PREVIEW_COUNT);
 
 	return (
 		<>
-			<PageHeader title="安全設定" description="兩階段驗證、登入工作階段與密碼。長期憑證不會存在瀏覽器的 localStorage 裡。" />
+			<PageHeader title="安全設定" description="管理這個帳號的密碼、兩步驟驗證，以及正在登入的裝置。" />
 
-			{overview.isError ? <QueryErrorAlert error={overview.error} onRetry={() => void overview.refetch()} retrying={overview.isFetching} title="無法載入安全設定" /> : null}
+			{overview.isError ? <QueryErrorAlert error={overview.error} onRetry={() => void overview.refetch()} retrying={overview.isFetching} title="安全設定載入失敗" /> : null}
 
-			<Card variant="material">
-				<CardBody>
-					<div className="huan-stack">
-						<SectionHeading
-							level={2}
-							size="sm"
-							description="啟用後，登入時除了密碼還需要驗證器產生的一次性驗證碼。"
-							annotation={
-								totpEnabled ? (
-									<Badge variant="success">
-										<span className="huan-row huan-row--tight">
-											<ShieldCheckIcon weight="bold" aria-hidden="true" /> 已啟用
-										</span>
-									</Badge>
-								) : (
-									<Badge variant="warning">
-										<span className="huan-row huan-row--tight">
-											<ShieldWarningIcon weight="bold" aria-hidden="true" /> 未啟用
-										</span>
-									</Badge>
-								)
-							}
-						>
-							兩階段驗證（TOTP）
-						</SectionHeading>
+			<section className="huan-stack" aria-label="兩步驟驗證">
+				<SectionHeading
+					level={2}
+					size="md"
+					description="開啟之後，登入除了密碼，還要輸入驗證器 App 上的 6 位數字。就算密碼外流，別人也進不來。"
+					annotation={
+						totpEnabled ? (
+							<Badge variant="success">
+								<span className="huan-row huan-row--tight">
+									<ShieldCheckIcon weight="bold" aria-hidden="true" /> 已開啟
+								</span>
+							</Badge>
+						) : (
+							<Badge variant="warning">
+								<span className="huan-row huan-row--tight">
+									<ShieldWarningIcon weight="bold" aria-hidden="true" /> 未開啟
+								</span>
+							</Badge>
+						)
+					}
+				>
+					兩步驟驗證
+				</SectionHeading>
 
+				<Card variant="material">
+					<CardBody>
 						{overview.isPending ? (
-							<ListSkeleton rows={2} label="正在載入兩階段驗證狀態" />
+							<ListSkeleton rows={2} label="正在讀取兩步驟驗證狀態" />
 						) : totpEnabled ? (
 							<div className="huan-stack huan-stack--sm">
-								<p className="huan-muted">剩餘可用的復原碼：{overview.data?.recoveryCodesRemaining ?? 0} 組。</p>
-								{overview.data && overview.data.recoveryCodesRemaining <= 2 ? (
+								<p className="huan-muted">
+									備用碼還剩 <span className="huan-numeric">{codesLeft}</span> 組。手機不在身邊時，用備用碼登入。
+								</p>
+								{codesLeft <= 2 ? (
 									<Alert status="warning">
-										<AlertTitle>復原碼快用完了</AlertTitle>
-										<AlertDescription>復原碼是遺失驗證器時唯一的退路。建議立即重新產生一份並妥善保存。</AlertDescription>
+										<AlertTitle>備用碼快用完了</AlertTitle>
+										<AlertDescription>手機掉了、換手機了，就只剩備用碼能進來。現在重新產生一份，收在手機以外的地方。</AlertDescription>
 									</Alert>
 								) : null}
 								<div className="huan-row huan-row--tight">
 									<Button variant="secondary" onClick={() => setDialog("regenerate")}>
-										重新產生復原碼
+										重新產生備用碼
 									</Button>
 									<Button variant="danger" onClick={() => setDialog("disable")}>
-										停用兩階段驗證
+										關閉兩步驟驗證
 									</Button>
 								</div>
 							</div>
 						) : (
-							<div>
-								<Button onClick={() => setDialog("setup")}>啟用兩階段驗證</Button>
+							<div className="huan-stack huan-stack--sm">
+								<p className="huan-muted">現在只要有密碼就能登入這個帳號。</p>
+								<div>
+									<Button onClick={() => setDialog("setup")}>開啟兩步驟驗證</Button>
+								</div>
 							</div>
 						)}
-					</div>
-				</CardBody>
-			</Card>
+					</CardBody>
+				</Card>
+			</section>
 
-			<Card variant="material">
-				<CardBody>
-					<div className="huan-stack">
-						<SectionHeading level={2} size="sm" description="每一次登入都會建立一個工作階段。發現不認識的裝置時請立即撤銷。">
-							登入中的工作階段
-						</SectionHeading>
+			<section className="huan-stack" aria-label="登入中的裝置">
+				<SectionHeading level={2} size="md" description="這些瀏覽器現在可以直接進入後台。看到不認識的，就把它登出。">
+					登入中的裝置
+				</SectionHeading>
 
-						{overview.isPending ? (
-							<ListSkeleton rows={3} label="正在載入工作階段" />
-						) : (overview.data?.sessions.length ?? 0) === 0 ? (
-							<p className="huan-muted">目前沒有其他工作階段。</p>
-						) : (
-							<TableFrame>
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>裝置與瀏覽器</TableHead>
-											<TableHead>IP</TableHead>
-											<TableHead>建立時間</TableHead>
-											<TableHead>最後活動</TableHead>
-											<TableHead>到期時間</TableHead>
-											<TableHead textAlign="end">操作</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{(overview.data?.sessions ?? []).map(session => (
-											<TableRow key={session.id}>
-												<TableCell>
-													<div className="huan-row huan-row--tight">
-														<span className="huan-truncate">{session.userAgent ?? "未知的用戶端"}</span>
-														{session.current ? <Badge variant="accent">目前這個</Badge> : null}
-													</div>
-												</TableCell>
-												<TableCell>{session.ipAddress ?? "—"}</TableCell>
-												<TableCell>{formatDateTime(session.createdAt)}</TableCell>
-												<TableCell>{formatRelativeTime(session.lastSeenAt)}</TableCell>
-												<TableCell>{formatDateTime(session.expiresAt)}</TableCell>
-												<TableCell textAlign="end">
-													<Button
-														variant="quiet"
-														size="sm"
-														disabled={session.current || revoke.isPending}
-														onClick={() =>
-															revoke.mutate(session.id, {
-																onSuccess: () => toast.add({ title: "已撤銷工作階段", data: { status: "success" } }),
-																onError: error => toast.add({ title: "撤銷失敗", description: error.message, data: { status: "danger" } })
-															})
-														}
-													>
-														{session.current ? "使用中" : "撤銷"}
-													</Button>
-												</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							</TableFrame>
-						)}
+				{overview.isPending ? (
+					<ListSkeleton rows={3} label="正在讀取登入中的裝置" />
+				) : sessions.length === 0 ? (
+					<p className="huan-muted">目前沒有登入中的裝置。</p>
+				) : (
+					<TableFrame className="huan-session-table">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>裝置</TableHead>
+									<TableHead>最後使用</TableHead>
+									<TableHead>登入時間</TableHead>
+									<TableHead textAlign="end">操作</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{visibleSessions.map(session => (
+									<TableRow key={session.id}>
+										<TableCell>
+											<div className="huan-session-cell">
+												<span className="huan-row huan-row--tight">
+													{/* 完整的 User-Agent 留在 title，需要時看得到，但不佔版面。 */}
+													<span title={session.userAgent ?? undefined}>{describeUserAgent(session.userAgent)}</span>
+													{session.current ? <Badge variant="accent">你正在用的</Badge> : null}
+												</span>
+												<span className="huan-caption huan-numeric">{session.ipAddress ?? "沒有記錄來源位址"}</span>
+											</div>
+										</TableCell>
+										<TableCell>{formatRelativeTime(session.lastSeenAt)}</TableCell>
+										<TableCell>
+											<div className="huan-session-cell">
+												<span className="huan-numeric">{formatDateTime(session.createdAt)}</span>
+												<span className="huan-caption huan-numeric">{formatDate(session.expiresAt)} 自動登出</span>
+											</div>
+										</TableCell>
+										<TableCell textAlign="end">
+											<Button
+												variant="quiet"
+												size="sm"
+												disabled={session.current || revoke.isPending}
+												onClick={() =>
+													revoke.mutate(session.id, {
+														onSuccess: () => toast.add({ title: "已登出這台裝置", data: { status: "success" } }),
+														onError: error => toast.add({ title: "登出失敗", description: error.message, data: { status: "danger" } })
+													})
+												}
+											>
+												{session.current ? "使用中" : "登出"}
+											</Button>
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</TableFrame>
+				)}
+
+				{sessions.length > SESSION_PREVIEW_COUNT ? (
+					<div>
+						<Button variant="secondary" size="sm" onClick={() => setShowAllSessions(current => !current)}>
+							{showAllSessions ? `只看最近 ${SESSION_PREVIEW_COUNT} 個` : `還有 ${sessions.length - SESSION_PREVIEW_COUNT} 個，全部顯示`}
+						</Button>
 					</div>
-				</CardBody>
-			</Card>
+				) : null}
+			</section>
 
 			<ChangePasswordCard />
 
@@ -270,7 +303,7 @@ export function SecurityPage() {
 											{ password, code },
 											{
 												onSuccess: () => {
-													toast.add({ title: "已停用兩階段驗證", data: { status: "warning" } });
+													toast.add({ title: "已關閉兩步驟驗證", data: { status: "warning" } });
 													closeDialog();
 												}
 											}
@@ -281,8 +314,8 @@ export function SecurityPage() {
 								}}
 							>
 								<Dialog.Header>
-									<Dialog.Title>{dialog === "disable" ? "停用兩階段驗證" : "重新產生復原碼"}</Dialog.Title>
-									<Dialog.Description>{dialog === "disable" ? "停用之後，只要知道密碼就能登入這個帳號。請確認你真的需要這麼做。" : "重新產生會讓舊的復原碼全部失效。"}</Dialog.Description>
+									<Dialog.Title>{dialog === "disable" ? "關閉兩步驟驗證" : "重新產生備用碼"}</Dialog.Title>
+									<Dialog.Description>{dialog === "disable" ? "關閉之後，只要知道密碼就能登入這個帳號。" : "舊的備用碼會立刻失效，之後只能用新的這一份。"}</Dialog.Description>
 								</Dialog.Header>
 
 								<Dialog.Body>
@@ -295,10 +328,10 @@ export function SecurityPage() {
 											onChange={event => setPassword(event.target.value)}
 											disabled={disable.isPending || regenerate.isPending}
 										/>
-										<CodeField label="驗證器產生的 6 位數字" length={6} value={code} onValueChange={setCode} autoComplete="one-time-code" disabled={disable.isPending || regenerate.isPending} />
+										<CodeField label="驗證器上的 6 位數字" length={6} value={code} onValueChange={setCode} autoComplete="one-time-code" disabled={disable.isPending || regenerate.isPending} />
 										{disable.isError || regenerate.isError ? (
 											<Alert status="danger" live="assertive">
-												<AlertTitle>操作失敗</AlertTitle>
+												<AlertTitle>沒有完成</AlertTitle>
 												<AlertDescription>{(disable.error ?? regenerate.error)?.message}</AlertDescription>
 											</Alert>
 										) : null}
@@ -308,7 +341,7 @@ export function SecurityPage() {
 								<Dialog.Footer>
 									<Dialog.Close render={<Button variant="secondary">取消</Button>} />
 									<Button type="submit" variant={dialog === "disable" ? "danger" : "primary"} loading={disable.isPending || regenerate.isPending} disabled={password.length === 0 || code.length !== 6}>
-										{dialog === "disable" ? "停用" : "重新產生"}
+										{dialog === "disable" ? "關閉" : "重新產生"}
 									</Button>
 								</Dialog.Footer>
 							</form>
@@ -331,12 +364,12 @@ export function SecurityPage() {
 					<Dialog.Viewport>
 						<Dialog.Popup closeButton={false}>
 							<Dialog.Header>
-								<Dialog.Title>新的復原碼</Dialog.Title>
-								<Dialog.Description>舊的復原碼已經全部失效。</Dialog.Description>
+								<Dialog.Title>新的備用碼</Dialog.Title>
+								<Dialog.Description>舊的備用碼已經失效。</Dialog.Description>
 							</Dialog.Header>
 							<Dialog.Body>{newCodes ? <RecoveryCodePanel codes={newCodes} /> : null}</Dialog.Body>
 							<Dialog.Footer>
-								<Dialog.Close render={<Button>我已經保存好了</Button>} />
+								<Dialog.Close render={<Button>我存好了</Button>} />
 							</Dialog.Footer>
 						</Dialog.Popup>
 					</Dialog.Viewport>

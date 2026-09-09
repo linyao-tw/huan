@@ -41,9 +41,10 @@ describe("素材狀態機的呈現", () => {
 		expect(mediaStatusDetail({ status: "failed", errorMessage: null })).toContain("轉檔沒有成功");
 	});
 
-	it("needs_reupload 必須說明伺服器沒有保留原始檔", () => {
+	it("needs_reupload 必須說明伺服器上已經沒有檔案，而且要重新上傳", () => {
 		const detail = mediaStatusDetail({ status: "needs_reupload", errorMessage: null });
-		expect(detail).toContain("不長期保存原始檔");
+		// 「回收」「保留期」「原始檔」是內部機制，畫面上要講的是後果與該做的事。
+		expect(detail).toContain("伺服器上已經沒有這個檔案");
 		expect(detail).toContain("重新上傳");
 	});
 });

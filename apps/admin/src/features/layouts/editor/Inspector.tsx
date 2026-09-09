@@ -11,12 +11,14 @@ import {
 import { ContentForm } from "@/features/layouts/editor/ContentForm";
 import "@/features/layouts/layouts.css";
 import { ColorControl } from "@/shared/components/ColorControl";
+import { formatDateTime } from "@/shared/utils/format";
 import { computeLayoutGeometry, findParentSplit } from "@huan/layout-engine";
 import {
 	LAYOUT_MAX_CANVAS,
 	LAYOUT_MIN_CANVAS,
 	MAX_SPLIT_RATIO,
 	MIN_SPLIT_RATIO,
+	type LayoutDetail,
 	type LayoutDocument,
 	type MediaAsset,
 	type ObjectFit,
@@ -24,7 +26,23 @@ import {
 	type SlotContentType,
 	type SplitDirection
 } from "@huan/protocol";
-import { Alert, AlertDescription, AlertTitle, Button, EmptyState, NumberField, SectionHeading, SegmentedControl, SegmentedControlItem, Select, Separator, Tabs } from "@linyao.tw/ui";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+	Badge,
+	Button,
+	EmptyState,
+	NumberField,
+	SectionHeading,
+	SegmentedControl,
+	SegmentedControlItem,
+	Select,
+	Separator,
+	Tabs,
+	TextField,
+	TextView
+} from "@linyao.tw/ui";
 import { ArrowsHorizontalIcon } from "@phosphor-icons/react/dist/csr/ArrowsHorizontal";
 import { ArrowsVerticalIcon } from "@phosphor-icons/react/dist/csr/ArrowsVertical";
 import { EraserIcon } from "@phosphor-icons/react/dist/csr/Eraser";
@@ -38,10 +56,21 @@ const FIT_OPTIONS: { value: ObjectFit; label: string }[] = [
 	{ value: "fill", label: "拉伸變形" }
 ];
 
+/** 版面層級的欄位與發布紀錄。放在檢視器裡，畫布那一欄才能整片留給畫布。 */
+export interface LayoutMeta {
+	name: string;
+	description: string;
+	onNameChange: (value: string) => void;
+	onDescriptionChange: (value: string) => void;
+	publishedRevisionId: string | null;
+	revisions: LayoutDetail["revisions"];
+}
+
 export interface InspectorProps {
 	document: LayoutDocument;
 	assets: MediaAsset[];
 	selectedNodeId: string | null;
+	meta: LayoutMeta;
 	onSplit: (direction: SplitDirection) => void;
 	onRemoveSlot: () => void;
 	onClearSlot: () => void;
@@ -56,6 +85,7 @@ export function Inspector({
 	document: layoutDocument,
 	assets,
 	selectedNodeId,
+	meta,
 	onSplit,
 	onRemoveSlot,
 	onClearSlot,
@@ -106,20 +136,21 @@ export function Inspector({
 	};
 
 	return (
-		<div className="huan-editor__pane">
+		<div className="huan-editor__pane huan-editor__pane--inspect">
 			<Tabs.Root defaultValue="region">
 				<Tabs.List>
 					<Tabs.Tab value="region">區塊</Tabs.Tab>
 					<Tabs.Tab value="layout">版面</Tabs.Tab>
+					<Tabs.Tab value="publish">發布</Tabs.Tab>
 				</Tabs.List>
 
 				<Tabs.Panel value="region">
 					<div className="huan-stack">
 						{!selectedSlot ? (
-							<EmptyState title="尚未選取區塊" description="在畫布上點一下任何區塊，或用 Tab 移動焦點，就可以在這裡編輯它的內容。" />
+							<EmptyState title="還沒選到區塊" description="在畫布上點一下任何一塊，就可以在這裡編輯它的內容。" />
 						) : (
 							<>
-								<SectionHeading level={3} size="sm" description={`${Math.round(selectedSlot.width)} × ${Math.round(selectedSlot.height)} 設計 px`}>
+								<SectionHeading level={3} size="sm" description={`在畫布上佔 ${Math.round(selectedSlot.width)} × ${Math.round(selectedSlot.height)}`}>
 									{describeContent(selectedSlot.content, assetNames)}
 								</SectionHeading>
 
@@ -141,16 +172,16 @@ export function Inspector({
 											刪除分割
 										</Button>
 									</div>
-									{parent === null ? <p className="huan-caption">這是版面唯一的區塊，無法刪除；清空內容即可回到空白狀態。</p> : null}
+									{parent === null ? <p className="huan-caption">整個版面只有這一塊，沒辦法刪除；清空內容就會回到空白。</p> : null}
 								</div>
 
 								{parent ? (
 									<>
 										<Separator spacing="sm" />
 										<div className="huan-stack huan-stack--sm">
-											<span className="huan-muted">與相鄰區塊的比例</span>
+											<span className="huan-muted">跟隔壁的比例</span>
 											<NumberField
-												label="這一組分割的第一塊占比（%）"
+												label={parent.parent.direction === "horizontal" ? "左邊那塊占的寬度（%）" : "上面那塊占的高度（%）"}
 												min={Math.round(MIN_SPLIT_RATIO * 100)}
 												max={Math.round(MAX_SPLIT_RATIO * 100)}
 												step={1}
@@ -160,9 +191,9 @@ export function Inspector({
 													if (value === null) return;
 													onRatioChange(parent.parent.id, value / 100);
 												}}
-												description="也可以直接拖曳畫布上的分隔線，或用方向鍵調整（按住 Shift 一次 5%）。"
+												description="也可以直接拖曳畫布上的分隔線。"
 											/>
-											<SegmentedControl aria-label="分割方向" size="sm" value={parent.parent.direction} onValueChange={value => value && onDirectionChange(parent.parent.id, value as SplitDirection)}>
+											<SegmentedControl aria-label="排列方向" size="sm" value={parent.parent.direction} onValueChange={value => value && onDirectionChange(parent.parent.id, value as SplitDirection)}>
 												<SegmentedControlItem value="horizontal">左右並排</SegmentedControlItem>
 												<SegmentedControlItem value="vertical">上下堆疊</SegmentedControlItem>
 											</SegmentedControl>
@@ -176,8 +207,8 @@ export function Inspector({
 										<div className="huan-stack huan-stack--sm">
 											<span className="huan-muted">交換內容</span>
 											<Select
-												label="與哪一個區塊交換"
-												placeholder="選擇目標區塊"
+												label="跟哪一塊交換"
+												placeholder="選擇另一塊"
 												value={validSwapTarget}
 												onValueChange={value => setSwapTarget(value)}
 												options={otherSlots.map(slot => ({ value: slot.nodeId, label: describeContent(slot.content, assetNames) }))}
@@ -191,9 +222,9 @@ export function Inspector({
 													if (validSwapTarget) onSwapWith(validSwapTarget);
 												}}
 											>
-												交換兩個區塊的內容
+												交換這兩塊的內容
 											</Button>
-											<p className="huan-caption">在畫布上把一個區塊拖到另一個區塊也會交換內容，這裡是鍵盤操作的等價做法。</p>
+											<p className="huan-caption">在畫布上把一塊拖到另一塊也會交換。</p>
 										</div>
 									</>
 								) : null}
@@ -214,7 +245,7 @@ export function Inspector({
 									kindAssets.length === 0 ? (
 										<Alert status="info">
 											<AlertTitle>沒有可用的素材</AlertTitle>
-											<AlertDescription>素材庫裡還沒有轉檔完成的{CONTENT_TYPE_LABELS[activeType]}。請先到素材庫上傳。</AlertDescription>
+											<AlertDescription>素材庫裡還沒有處理完成的{CONTENT_TYPE_LABELS[activeType]}。請先去素材庫上傳。</AlertDescription>
 										</Alert>
 									) : (
 										<Select
@@ -237,13 +268,17 @@ export function Inspector({
 
 				<Tabs.Panel value="layout">
 					<div className="huan-stack">
-						<SectionHeading level={3} size="sm" description="這些設定會影響整份版面，發布後同步到所有裝置。">
+						<SectionHeading level={3} size="sm" description="這些設定影響整個版面，發布後會同步到所有裝置。">
 							版面設定
 						</SectionHeading>
 
-						<div className="huan-row">
+						<TextField label="版面名稱" size="sm" value={meta.name} onChange={event => meta.onNameChange(event.target.value)} />
+						<TextView label="說明" size="sm" rows={2} value={meta.description} onChange={event => meta.onDescriptionChange(event.target.value)} description="選填，方便日後認出這是哪一個畫面。" />
+
+						<Separator spacing="sm" />
+
+						<div className="huan-field-pair">
 							<NumberField
-								className="huan-grow"
 								label="畫布寬（px）"
 								min={LAYOUT_MIN_CANVAS}
 								max={LAYOUT_MAX_CANVAS}
@@ -255,7 +290,6 @@ export function Inspector({
 								}}
 							/>
 							<NumberField
-								className="huan-grow"
 								label="畫布高（px）"
 								min={LAYOUT_MIN_CANVAS}
 								max={LAYOUT_MAX_CANVAS}
@@ -269,7 +303,7 @@ export function Inspector({
 						</div>
 
 						<NumberField
-							label="區塊間距（設計 px）"
+							label="區塊之間的間隔（px）"
 							min={0}
 							max={200}
 							step={2}
@@ -278,14 +312,14 @@ export function Inspector({
 								if (value === null) return;
 								onDocumentChange(current => ({ ...current, gap: value }));
 							}}
-							description="間距是從可用空間裡扣掉的，因此區塊外緣永遠貼齊畫布邊界。"
+							description="間隔從區塊本身扣掉，版面最外圈不會多出留白。"
 						/>
 
 						<ColorControl
 							label="版面背景色"
 							value={layoutDocument.background.color}
 							onChange={value => onDocumentChange(current => ({ ...current, background: { ...current.background, color: value } }))}
-							description="畫布長寬比與螢幕不同時，四周留白也會是這個顏色。"
+							description="畫布長寬比跟螢幕不一樣時，四周補上的就是這個顏色。"
 						/>
 
 						<Select
@@ -294,7 +328,7 @@ export function Inspector({
 							value={layoutDocument.background.imageAssetId}
 							onValueChange={value => onDocumentChange(current => ({ ...current, background: { ...current.background, imageAssetId: value } }))}
 							options={imageAssets.map(asset => ({ value: asset.id, label: asset.name }))}
-							description={imageAssets.length === 0 ? "素材庫裡還沒有轉檔完成的圖片。" : undefined}
+							description={imageAssets.length === 0 ? "素材庫裡還沒有處理完成的圖片。" : undefined}
 						/>
 
 						{layoutDocument.background.imageAssetId ? (
@@ -310,6 +344,32 @@ export function Inspector({
 								</Button>
 							</>
 						) : null}
+					</div>
+				</Tabs.Panel>
+
+				<Tabs.Panel value="publish">
+					<div className="huan-stack">
+						<SectionHeading level={3} size="sm" description="裝置只會播已發布的版本，草稿改再多都不會影響現場。">
+							發布紀錄
+						</SectionHeading>
+
+						{meta.revisions.length === 0 ? (
+							<p className="huan-muted">還沒有發布過。按右上角的「發布」就會送到裝置上。</p>
+						) : (
+							<ul className="huan-revision-list">
+								{meta.revisions.map(revision => (
+									<li key={revision.id} className="huan-revision">
+										<span className="huan-row huan-row--tight">
+											<Badge variant={revision.id === meta.publishedRevisionId ? "success" : "neutral"} size="sm">
+												第 {revision.revisionNumber} 版
+											</Badge>
+											<span className="huan-caption">{revision.note ?? "（沒有備註）"}</span>
+										</span>
+										<span className="huan-caption huan-numeric">{formatDateTime(revision.publishedAt)}</span>
+									</li>
+								))}
+							</ul>
+						)}
 					</div>
 				</Tabs.Panel>
 			</Tabs.Root>

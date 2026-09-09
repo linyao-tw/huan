@@ -1,24 +1,165 @@
 /* ── 裝置 ─────────────────────────────────────────────────── */
 
-.huan-dot {
-	display: inline-block;
-	inline-size: var(--space-2);
+/*
+ * 離線列不再整列調降不透明度。
+ *
+ * 0.72 的 opacity 會把整列文字的對比一起拉低（實測次要文字掉到 3.1:1），
+ * 而「離線」這件事狀態欄的徽章已經說得很清楚了。用一個看得懂的標籤，
+ * 不要用一層看不清楚的灰。
+ */
+
+/*
+ * 表格裡的連結要有 24px 以上的命中區。
+ *
+ * 純文字連結的高度就是一行字（實測 21px），比最小命中區還小；滑鼠偏一點就
+ * 點不到，觸控更難按。這裡把它撐到 28px，同時仍然維持表格的密度。
+ */
+.huan-device-link {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: calc(var(--space-6) + var(--space-1));
+	border-radius: var(--radius-xs);
+	font-weight: var(--font-weight-medium);
+	text-underline-offset: var(--space-05);
+	text-decoration-thickness: from-font;
+}
+
+.huan-device-link:focus-visible {
+	outline: var(--border-width-strong) solid var(--focus-ring);
+	outline-offset: var(--space-05);
+}
+
+/*
+ * 列表裡的儀表只留一條細軌道。
+ *
+ * 預設的 Meter 是「標籤列 + 軌道」兩層共 36px，再加一行剩餘空間的說明，
+ * 單一儲存格就把列高推到 97px。列表要回答的只有「還剩多少」，
+ * 一行字加一條線就夠；完整的數字留在詳情頁。
+ */
+.huan-device-disk {
+	inline-size: calc(var(--space-24) + var(--space-4));
+}
+
+.huan-device-disk .lyds-range {
+	gap: var(--space-1);
+}
+
+.huan-device-disk .lyds-range__label {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-regular);
+	letter-spacing: var(--letter-spacing-body);
+}
+
+/* 軌道維持設計系統的厚度，太細會被誤讀成文字底線。 */
+.huan-device-disk .lyds-range__track {
 	block-size: var(--space-2);
-	border-radius: var(--radius-round);
-	background: var(--status-neutral-indicator);
-	flex: none;
 }
 
-.huan-dot[data-online="true"] {
-	background: var(--status-success-foreground);
+/* ── 裝置詳情 ─────────────────────────────────────────────── */
+
+/*
+ * 資訊卡的軌道上限是 1fr，不是固定寬度。
+ *
+ * 共用的 .huan-card-grid 把軌道上限釘在 22rem，1920 下四張卡片停在 x≈1536，
+ * 而同一頁的 alert 與同步區塊到 1744 —— 右邊固定空出 208px 的參差。
+ * 這裡改用兩張卡片配 20rem 下限：360／768／1024 是一欄或兩欄、1440／1920 是
+ * 兩欄，每一種寬度都剛好填滿內容欄，沒有落單的卡片，也沒有參差。
+ */
+.huan-device-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+	gap: var(--space-4);
+	align-items: stretch;
 }
 
-.huan-dot[data-online="false"] {
-	background: var(--status-danger-foreground);
+.huan-device-grid > * {
+	block-size: 100%;
 }
 
-.huan-offline-row {
-	opacity: 0.72;
+.huan-device-def {
+	display: grid;
+	grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
+	gap: var(--space-2) var(--space-4);
+	margin: 0;
+	font-size: var(--font-size-sm);
+}
+
+.huan-device-def dt {
+	color: var(--text-secondary);
+}
+
+/*
+ * 值只在字與字之間換行。
+ *
+ * 共用的 .huan-definition 用 overflow-wrap: anywhere，值欄一窄就把
+ * `Debian GNU/Linux 12 (bookworm)` 斷成 `(bookwor` / `m)` —— 讀起來像壞掉的
+ * 資料，而不是一段被折行的文字。
+ */
+.huan-device-def dd {
+	margin: 0;
+	color: var(--text-main);
+	overflow-wrap: break-word;
+	word-break: normal;
+	line-break: strict;
+}
+
+/* 時間、版號、識別碼是一個整體，寧可用省略號截斷也不要拆開來讀。 */
+.huan-device-def dd.huan-device-def__atom {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/*
+ * 「現在播什麼」的四項事實。
+ *
+ * 下限 16rem 讓 360 是一欄、768／1024 是兩欄（剛好 2×2）、1440 與 1920 是
+ * 四欄，四個項目在每一種寬度都填滿整列。
+ */
+.huan-device-facts {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+	gap: var(--space-4);
+	margin: 0;
+}
+
+.huan-device-facts > div {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-inline-size: 0;
+}
+
+.huan-device-facts dt {
+	color: var(--text-secondary);
+	font-size: var(--font-size-xs);
+}
+
+.huan-device-facts dd {
+	margin: 0;
+	color: var(--text-title);
+	font-size: var(--font-size-md);
+	overflow-wrap: break-word;
+}
+
+/* 檔案清單在寬螢幕排成多欄，不然 1920 下是一根又細又長的字條。 */
+.huan-device-assets {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+	gap: var(--space-1) var(--space-4);
+	margin: 0;
+	padding-inline-start: 0;
+	list-style: none;
+	font-size: var(--font-size-sm);
+}
+
+.huan-device-displays {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--space-3);
+	margin: 0;
+	padding-inline-start: 0;
+	list-style: none;
 }
 
 .huan-code-block {
@@ -49,14 +190,4 @@
 	background: var(--background-elevated);
 	padding: var(--space-2);
 	border: var(--border-width-hairline) solid var(--divider-subtle);
-}
-
-@media (max-width: 78rem) {
-	.huan-editor {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	.huan-editor__pane {
-		max-height: none;
-	}
 }

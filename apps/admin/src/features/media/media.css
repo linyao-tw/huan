@@ -1,23 +1,81 @@
 /* ── 素材庫 ───────────────────────────────────────────────── */
 
+/*
+ * 篩選列對齊控制項的底邊，不是整塊的中線。
+ *
+ * 搜尋欄的標籤浮在框裡（整塊 48px），下拉的標籤在框上面（整塊 66px）。用
+ * align-items: center 對齊「整塊」的結果，是使用者真正看到的那三個框錯開 8px；
+ * 一旦輸入文字讓浮動標籤升起，它又自己對齊了 —— 只有靜止時是歪的，最難發現。
+ */
+.huan-media-toolbar {
+	display: grid;
+	/* 下拉本身的 min-width 就是 12rem，軌道給不到這個寬度它會直接溢出到隔壁。 */
+	grid-template-columns: minmax(0, 1fr) repeat(2, minmax(12rem, 13rem));
+	gap: var(--space-3);
+	align-items: end;
+}
+
+@media (max-width: 40rem) {
+	.huan-media-toolbar {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
 .huan-media-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
 	gap: var(--space-4);
+}
+
+/*
+ * 卡片等高。
+ *
+ * li → 按鈕 → Card 只要有一層沒撐滿，格子就會依內容長短各自為政：實測同一列
+ * 四張卡片是 303.6 / 303.6 / 321.6 / 303.6。
+ */
+.huan-media-grid > li {
+	display: flex;
+	min-inline-size: 0;
+}
+
+.huan-media-select {
+	appearance: none;
+	background: none;
+	border: var(--border-width-hairline) solid transparent;
+	padding: 0;
+	text-align: start;
+	cursor: pointer;
+	color: inherit;
+	font: inherit;
+	border-radius: var(--radius-md);
+	inline-size: 100%;
+	min-inline-size: 0;
+}
+
+.huan-media-select:focus-visible {
+	outline: var(--border-width-strong) solid var(--focus-ring);
+	outline-offset: var(--space-05);
+}
+
+.huan-media-grid .huan-media-select,
+.huan-media-grid .huan-media-select > .lyds-card {
+	block-size: 100%;
 }
 
 .huan-media-card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-2);
-	height: 100%;
+	block-size: 100%;
+	min-inline-size: 0;
 }
 
 .huan-media-thumb {
 	position: relative;
 	aspect-ratio: 16 / 9;
 	border-radius: var(--radius-sm);
-	background: var(--background-inset);
+	/* inset 與 secondary 是同一個值，佔位框在卡片上完全看不見。 */
+	background: var(--background-sunken);
 	overflow: hidden;
 	display: flex;
 	align-items: center;
@@ -33,22 +91,31 @@
 	display: block;
 }
 
-.huan-media-select {
-	appearance: none;
-	background: none;
-	border: var(--border-width-hairline) solid transparent;
-	padding: 0;
-	text-align: start;
-	cursor: pointer;
-	color: inherit;
-	font: inherit;
-	border-radius: var(--radius-sm);
-	width: 100%;
+.huan-media-card__name {
+	color: var(--text-title);
+	font-weight: var(--font-weight-medium);
 }
 
-.huan-media-select:focus-visible {
-	outline: var(--border-width-strong) solid var(--focus-ring);
-	outline-offset: var(--space-05);
+.huan-media-card__meta {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	justify-content: space-between;
+}
+
+/*
+ * 說明固定兩行高。
+ *
+ * 不固定的話，說明一行的卡片就比兩行的矮 18px；固定之後同一列的卡片高度相同，
+ * 狀態標籤也會落在同一條水平線上。
+ */
+.huan-media-card__detail {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	block-size: calc(2em * var(--line-height-body));
+	margin-block-start: auto;
 }
 
 .huan-upload-list {
@@ -65,5 +132,14 @@
 	padding: var(--space-3);
 	border: var(--border-width-hairline) solid var(--divider-subtle);
 	border-radius: var(--radius-sm);
-	background: var(--background-secondary);
+	background: var(--background-main);
+}
+
+.huan-media-preview {
+	inline-size: 100%;
+	max-block-size: 40vh;
+	object-fit: contain;
+	border-radius: var(--radius-sm);
+	background: var(--background-sunken);
+	display: block;
 }
