@@ -23,10 +23,16 @@ body {
 
 /* ── 通用版面工具 ─────────────────────────────────────────── */
 
+/*
+ * 這兩個排版工具經常直接套在 <ul> 上，所以要自己關掉項目符號。
+ * 沒關的話瀏覽器會把圓點畫在 padding 之外 —— 實測跑到內容欄左緣外面 14px。
+ */
 .huan-stack {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-4);
+	list-style: none;
+	padding-inline-start: 0;
 }
 
 .huan-stack--sm {
@@ -228,6 +234,8 @@ body {
 .huan-shell__content {
 	padding: var(--space-6);
 	max-width: var(--huan-content-max);
+	/* 有上限就要置中，否則 1920 下整頁靠左、右邊空 304px。 */
+	margin-inline: auto;
 	width: 100%;
 	display: flex;
 	flex-direction: column;
@@ -268,10 +276,26 @@ body {
 	flex-wrap: wrap;
 }
 
+/*
+ * auto-fit 而不是 auto-fill，而且給軌道一個上限。
+ *
+ * auto-fill 會在螢幕變寬時多塞一欄，結果是視窗從 1440 拉到 1920，卡片反而
+ * 從 268px 縮到 246px —— 螢幕越大越難讀。
+ */
 .huan-card-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 22rem));
+	justify-content: start;
 	gap: var(--space-4);
+}
+
+/* 同一列的卡片要一樣高，不然有沒有狀態標籤就差 30px。 */
+.huan-card-grid > * {
+	block-size: 100%;
+}
+
+.huan-card-grid .lyds-card {
+	block-size: 100%;
 }
 
 .huan-stat {
@@ -325,6 +349,87 @@ body {
 	margin: 0;
 	color: var(--text-main);
 	overflow-wrap: anywhere;
+}
+
+/* ── 設計系統元件的在地調整 ───────────────────────────────── */
+
+/*
+ * SectionHeading 在設計系統裡是「列表軌道標籤」，不是區段標題。
+ *
+ * 它為一個 display:none 的 rail 保留 16px 左內距、自帶背景與圓角，而且標題
+ * 用的是 --font-size-xs（比它自己的說明文字還小）。直接拿來當頁面標題的結果
+ * 是每一頁、每一個寬度、兩個主題，標題都比它所標示的內容右移 16px，卡片裡
+ * 還多長出一層淺色面板 —— 這就是「整個對齊很糟」的來源，不是很多個獨立的
+ * bug，是同一條規則重複四十幾次。
+ *
+ * 這裡只在後台範圍內調整它的呈現，不動元件本身的結構與可存取性。
+ */
+.huan-shell .lyds-section-heading,
+.huan-landing .lyds-section-heading {
+	padding-inline-start: 0;
+	background: transparent;
+	border-radius: 0;
+}
+
+/* 標題必須比它自己的說明文字大，這是階層的最低要求。 */
+.huan-shell .lyds-section-heading__title {
+	color: var(--text-title);
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	letter-spacing: var(--letter-spacing-tight);
+	text-transform: none;
+}
+
+.huan-shell .lyds-section-heading[data-size="lg"] .lyds-section-heading__title {
+	font-size: var(--font-size-2xl);
+	font-weight: var(--font-weight-bold);
+}
+
+/*
+ * 表格要有最小寬度，否則中文永遠不會觸發捲動。
+ *
+ * overflow-x: auto 的前提是內容比容器寬，而中文的 min-content 是「一個字」，
+ * 所以表格會一路塌下去而不是溢出：實測 1024px 的裝置表把 10 欄壓成每欄一字、
+ * 表頭七行、列高 210px，而 hiddenPx 是 0 —— 捲動條從來沒出現過。
+ * 給一個最小寬度，該捲的時候才會真的捲。
+ */
+.huan-shell .lyds-table-frame {
+	overflow-x: auto;
+}
+
+.huan-shell .lyds-table-frame > table {
+	min-inline-size: var(--huan-table-min, 48rem);
+}
+
+/* 欄多的表格自己加大下限。 */
+.huan-table--wide {
+	--huan-table-min: 68rem;
+}
+
+/*
+ * 表格儲存格預設不換行。
+ *
+ * 「期望／實際版本」這種欄名一旦逐字換行就變成一根直的字條，列高被撐到 200px
+ * 以上。要換行的欄位自己標 .huan-wrap。
+ */
+.huan-shell .lyds-table-frame th,
+.huan-shell .lyds-table-frame td {
+	white-space: nowrap;
+}
+
+.huan-shell .lyds-table-frame .huan-wrap {
+	white-space: normal;
+}
+
+/*
+ * huan-truncate 一定要有寬度上限才會生效。
+ *
+ * 它只設了 nowrap 與 ellipsis，沒有上限的話儲存格的 min-content 會變成整串
+ * 文字的長度，省略號永遠不會出現 —— 安全設定那張表因此在 1920 都還裝不下。
+ */
+.huan-truncate {
+	max-inline-size: var(--huan-truncate-max, 22rem);
+	min-inline-size: 0;
 }
 
 /* ── 置中的單欄畫面（登入、配對、404） ─────────────────────── */
