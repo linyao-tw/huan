@@ -1,4 +1,4 @@
-import { ADMIN_STATE, ANONYMOUS_STATE } from "@/auth-state";
+import { ADMIN_STATE, ANONYMOUS_STATE, USER_STATE } from "@/auth-state";
 import { settle } from "@/fixtures";
 import { destinationsFor, screenshotDirs } from "@/screenshot-dir";
 import { expect, test, type Page } from "@playwright/test";
@@ -61,8 +61,14 @@ test.describe("公開頁面", () => {
 	});
 });
 
+/**
+ * 素材、版面、排程與裝置屬於個別使用者。
+ *
+ * 這些頁面必須用一般使用者拍：系統管理員不但沒有這些頁面，連數字都不會有，
+ * 拍出來會是一張權限說明或空清單，而文件只放真實的產品畫面。
+ */
 test.describe("後台", () => {
-	test.use({ storageState: ADMIN_STATE });
+	test.use({ storageState: USER_STATE });
 
 	test("console pages", async ({ page }) => {
 		await page.goto("/app");
@@ -84,10 +90,6 @@ test.describe("後台", () => {
 		await page.goto("/app/security");
 		await expect(page.getByRole("heading", { name: "安全設定" })).toBeVisible();
 		await shoot(page, "security");
-
-		await page.goto("/app/users");
-		await expect(page.getByRole("heading", { name: "使用者管理" })).toBeVisible();
-		await shoot(page, "users");
 	});
 
 	test("layout editor", async ({ page }) => {
@@ -108,5 +110,16 @@ test.describe("後台", () => {
 		await page.goto("/pair");
 		await expect(page.getByRole("heading", { name: /配對/ }).first()).toBeVisible();
 		await shoot(page, "pairing");
+	});
+});
+
+/** 使用者管理是系統管理員唯一的功能，只有這一張要用管理員登入狀態拍。 */
+test.describe("帳號管理", () => {
+	test.use({ storageState: ADMIN_STATE });
+
+	test("users", async ({ page }) => {
+		await page.goto("/app/users");
+		await expect(page.getByRole("heading", { name: "使用者管理" })).toBeVisible();
+		await shoot(page, "users");
 	});
 });

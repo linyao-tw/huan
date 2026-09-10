@@ -1,15 +1,19 @@
+import { useCurrentUser } from "@/features/auth/hooks";
 import "@/features/dashboard/dashboard.css";
 import { deviceNeedsAttention } from "@/features/devices/DeviceStatus";
 import { useDeviceListQuery } from "@/features/devices/hooks";
 import { useLayoutListQuery } from "@/features/layouts/hooks";
 import { useMediaListQuery } from "@/features/media/hooks";
 import { useScheduleListQuery } from "@/features/schedules/hooks";
+import { useUserListQuery } from "@/features/users/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
 import { formatRelativeTime } from "@/shared/utils/format";
 import { Badge, Button, Card, CardBody, EmptyState, ListCell, SectionHeading, Skeleton } from "@linyao.tw/ui";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { ProhibitIcon } from "@phosphor-icons/react/dist/csr/Prohibit";
+import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { WarningIcon } from "@phosphor-icons/react/dist/csr/Warning";
 import { WarningCircleIcon } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import type { ReactNode } from "react";
@@ -41,7 +45,7 @@ interface AttentionItem {
 	kind: "device" | "media";
 }
 
-export function DashboardPage() {
+function OwnerDashboard() {
 	const devices = useDeviceListQuery();
 	const media = useMediaListQuery({ limit: 200 });
 	const layouts = useLayoutListQuery();
@@ -80,7 +84,7 @@ export function DashboardPage() {
 
 	return (
 		<>
-			<PageHeader title="總覽" description="這個工作區現在的狀況。要處理的事都放在最上面。" />
+			<PageHeader title="總覽" description="你自己的裝置、素材、版面與排程現在的狀況。要處理的事都放在最上面。" />
 
 			{firstError ? (
 				<QueryErrorAlert
@@ -99,7 +103,7 @@ export function DashboardPage() {
 				<SectionHeading
 					level={2}
 					size="md"
-					description="沒在播的螢幕、還不能用的素材。處理完就會從這裡消失。"
+					description="你自己沒在播的螢幕、還不能用的素材。處理完就會從這裡消失。"
 					annotation={isPending || attention.length === 0 ? undefined : <Badge variant="danger">{attention.length} 件</Badge>}
 				>
 					需要處理
@@ -108,7 +112,7 @@ export function DashboardPage() {
 				{isPending ? (
 					<ListSkeleton rows={3} label="正在讀取需要處理的項目" />
 				) : attention.length === 0 ? (
-					<EmptyState status="success" icon={<CheckCircleIcon weight="bold" />} title="目前沒有要處理的事" description="裝置都在線上，素材也都轉好了。" />
+					<EmptyState status="success" icon={<CheckCircleIcon weight="bold" />} title="目前沒有要處理的事" description="你的裝置都在線上，素材也都轉好了。" />
 				) : (
 					<div className="huan-stack huan-stack--sm">
 						{attention.map(item => (
@@ -130,7 +134,7 @@ export function DashboardPage() {
 			</section>
 
 			<section className="huan-stack" aria-label="目前狀態">
-				<SectionHeading level={2} size="md" description="點任何一張卡片可以進去看細節。">
+				<SectionHeading level={2} size="md" description="這些數字只算你自己的東西，看不到別人的。點任何一張卡片可以進去看細節。">
 					目前狀態
 				</SectionHeading>
 
@@ -144,18 +148,114 @@ export function DashboardPage() {
 					</div>
 				) : (
 					<div className="huan-card-grid huan-stat-grid">
-						<StatCard label="裝置在線上" value={`${online} / ${deviceItems.length}`} hint={deviceItems.length === 0 ? "還沒有配對任何裝置" : "離線的裝置會繼續播已經下載好的內容"} to="/app/devices" />
+						<StatCard
+							label="裝置在線上"
+							value={`${online} / ${deviceItems.length}`}
+							hint={deviceItems.length === 0 ? "你還沒有配對任何裝置" : "離線的裝置會繼續播已經下載好的內容"}
+							to="/app/devices"
+						/>
 						<StatCard
 							label="素材"
 							value={mediaItems.length}
 							hint={processing > 0 ? `${processing} 個還在上傳或轉檔` : failed + needsReupload > 0 ? `${failed + needsReupload} 個現在不能播` : "全部都可以播"}
 							to="/app/media"
 						/>
-						<StatCard label="已發布的版面" value={published} hint={`共 ${layoutItems.length} 個版面，只有發布過的才會播`} to="/app/layouts" />
-						<StatCard label="啟用中的排程" value={enabledSchedules} hint={`共 ${scheduleItems.length} 個排程`} to="/app/schedules" />
+						<StatCard label="已發布的版面" value={published} hint={`你有 ${layoutItems.length} 個版面，只有發布過的才會播`} to="/app/layouts" />
+						<StatCard label="啟用中的排程" value={enabledSchedules} hint={`你有 ${scheduleItems.length} 個排程`} to="/app/schedules" />
 					</div>
 				)}
 			</section>
 		</>
 	);
+}
+
+/**
+ * 系統管理員的總覽。
+ *
+ * 這個角色不擁有素材、版面、排程與裝置，把一般使用者那四張卡片端給它只會是四個零，
+ * 而四個零讀起來像「東西被刪光了」。改成說清楚這個角色負責什麼，並把人帶去使用者管理。
+ */
+function AccountAdminDashboard() {
+	const users = useUserListQuery(true);
+
+	const items = users.data?.items ?? [];
+	const active = items.filter(user => user.status === "active").length;
+	const admins = items.filter(user => user.role === "super_admin").length;
+
+	/* 讀不到清單時不能說「沒有帳號」——沒查到不等於沒有，至少還有登入中的自己。 */
+	const unreadable = !users.isPending && !users.isError && items.length === 0;
+
+	return (
+		<>
+			<PageHeader title="總覽" description="你的角色是系統管理員，負責的是帳號：建立使用者、調整角色、停用帳號與重設密碼。" />
+
+			{users.isError ? <QueryErrorAlert error={users.error} onRetry={() => void users.refetch()} retrying={users.isFetching} title="讀不到帳號數量" /> : null}
+
+			<section className="huan-stack" aria-label="帳號">
+				<SectionHeading level={2} size="md" description="點卡片進去建立帳號、調整角色或停用帳號。">
+					帳號
+				</SectionHeading>
+
+				{users.isPending ? (
+					/* 骨架用同一個網格，資料進來時卡片不會換位置。 */
+					<div className="huan-card-grid huan-stat-grid" aria-busy="true" aria-live="polite">
+						<span className="huan-visually-hidden">正在讀取帳號數量</span>
+						{Array.from({ length: 2 }, (_value, index) => (
+							<Skeleton key={index} shape="rectangular" style={{ blockSize: "var(--space-24)" }} />
+						))}
+					</div>
+				) : unreadable ? (
+					<EmptyState
+						status="warning"
+						icon={<UsersThreeIcon weight="bold" />}
+						title="讀不到任何帳號"
+						description="伺服器回傳了空的帳號清單。這不太可能，因為你自己就是一個帳號，請重試一次。"
+						actions={
+							<Button variant="secondary" onClick={() => void users.refetch()} loading={users.isFetching}>
+								重試
+							</Button>
+						}
+					/>
+				) : (
+					<div className="huan-card-grid huan-stat-grid">
+						<StatCard
+							label="啟用中的帳號"
+							value={`${active} / ${items.length}`}
+							hint={active === items.length ? "沒有被停用的帳號" : `${items.length - active} 個被停用，停用的帳號無法登入`}
+							to="/app/users"
+						/>
+						<StatCard label="系統管理員" value={admins} hint="系統管理員只管帳號，不會有自己的素材與裝置" to="/app/users" />
+					</div>
+				)}
+			</section>
+
+			<section className="huan-stack" aria-label="素材、版面、排程與裝置">
+				<SectionHeading level={2} size="md">
+					素材、版面、排程與裝置
+				</SectionHeading>
+
+				<EmptyState
+					status="info"
+					icon={<ProhibitIcon weight="bold" />}
+					title="這四項不在系統管理員手上"
+					description="它們都屬於各個使用者，只有本人看得到。系統管理員不會有這些數字，也不能代為上傳、編輯或配對裝置。要自己放內容，請用一般使用者帳號登入。"
+					actions={
+						<Button render={<RouterLink to="/app/users" />} nativeButton={false} variant="secondary" endIcon={<ArrowRightIcon weight="bold" />}>
+							去使用者管理
+						</Button>
+					}
+				/>
+			</section>
+		</>
+	);
+}
+
+export function DashboardPage() {
+	const user = useCurrentUser();
+
+	/*
+	 * 兩個角色看的是兩份不同的資料，所以分成兩個元件。
+	 * 寫成一個的話，系統管理員這邊也得照 hooks 的呼叫順序去打那四個自己只會拿到 403 的清單。
+	 */
+	return user?.role === "super_admin" ? <AccountAdminDashboard /> : <OwnerDashboard />;
 }

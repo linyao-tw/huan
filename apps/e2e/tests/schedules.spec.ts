@@ -1,12 +1,29 @@
-import { ADMIN_STATE } from "@/auth-state";
-import { SEED_ADMIN } from "@/fixtures";
+import { USER_STATE } from "@/auth-state";
+import { SEED_USER } from "@/fixtures";
 import type { ScheduleManifestEntry } from "@huan/protocol";
 import { compareSchedulePrecedence, resolveActiveSchedule } from "@huan/shared";
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const API = "/api/v1";
 
-test.use({ storageState: ADMIN_STATE });
+/** 排程、版面與裝置都屬於個別使用者，系統管理員沒有這些頁面，所以整份測試跑在一般使用者身上。 */
+test.use({ storageState: USER_STATE });
+
+/**
+ * 挑一個這個帳號自己擁有、而且已經發布過的版面。
+ *
+ * 找不到就當場丟錯，不要讓 `layoutId` 變成 undefined 再送出去：
+ * 那樣後面的請求會因為「少了 layoutId」被退回 400，看起來像測到了驗證規則，
+ * 實際上是種子資料沒有把已發布的版面給這個帳號。
+ */
+async function requirePublishedLayoutId(request: APIRequestContext): Promise<string> {
+	const response = await request.get(`${API}/layouts`);
+	expect(response.ok(), await response.text()).toBe(true);
+	const layouts = (await response.json()) as { items: { id: string; publishedRevisionId: string | null }[] };
+	const layout = layouts.items.find(item => item.publishedRevisionId);
+	if (!layout) throw new Error(`${SEED_USER.identifier} 名下沒有任何已發布的版面，排程測試需要一個。請確認 pnpm db:seed 把已發布的版面指給這個帳號。`);
+	return layout.id;
+}
 
 test.describe("排程", () => {
 	test("列表頁說明衝突判定規則", async ({ page }) => {
@@ -17,18 +34,16 @@ test.describe("排程", () => {
 	});
 
 	test("可以建立、修改與刪除排程", async ({ request }) => {
-		const auth = await request.post(`${API}/auth/login`, { data: SEED_ADMIN });
+		const auth = await request.post(`${API}/auth/login`, { data: SEED_USER });
 		expect(auth.ok()).toBe(true);
 
-		const layouts = (await (await request.get(`${API}/layouts`)).json()) as { items: { id: string; publishedRevisionId: string | null }[] };
-		const layout = layouts.items.find(item => item.publishedRevisionId);
-		expect(layout).toBeTruthy();
+		const layoutId = await requirePublishedLayoutId(request);
 
 		const created = await request.post(`${API}/schedules`, {
 			data: {
 				name: `E2E 排程 ${Date.now()}`,
 				enabled: true,
-				layoutId: layout?.id,
+				layoutId,
 				timezone: "Asia/Taipei",
 				priority: 200,
 				daysOfWeek: [1, 2, 3, 4, 5],
@@ -45,7 +60,7 @@ test.describe("排程", () => {
 			data: {
 				name: "E2E 排程（已更新）",
 				enabled: false,
-				layoutId: layout?.id,
+				layoutId,
 				timezone: "Asia/Taipei",
 				priority: 400,
 				daysOfWeek: [6, 0],
@@ -62,18 +77,19 @@ test.describe("排程", () => {
 	});
 
 	test("拒絕開始與結束相同的時間", async ({ request }) => {
-		await request.post(`${API}/auth/login`, { data: SEED_ADMIN });
-		const layouts = (await (await request.get(`${API}/layouts`)).json()) as { items: { id: string }[] };
+		await request.post(`${API}/auth/login`, { data: SEED_USER });
+		/** 版面必須是真的存在的：少了 layoutId 也會得到 400，那就分不出測到的是哪一條規則。 */
+		const layoutId = await requirePublishedLayoutId(request);
 
 		const response = await request.post(`${API}/schedules`, {
-			data: { name: "無效排程", enabled: true, layoutId: layouts.items[0]?.id, timezone: "Asia/Taipei", priority: 100, daysOfWeek: [1], startTime: "09:00", endTime: "09:00", deviceIds: [] }
+			data: { name: "無效排程", enabled: true, layoutId, timezone: "Asia/Taipei", priority: 100, daysOfWeek: [1], startTime: "09:00", endTime: "09:00", deviceIds: [] }
 		});
 		expect(response.ok()).toBe(false);
 		expect(response.status()).toBe(400);
 	});
 
 	test("後台與裝置對同一組排程得到相同的判定結果", async ({ request }) => {
-		await request.post(`${API}/auth/login`, { data: SEED_ADMIN });
+		await request.post(`${API}/auth/login`, { data: SEED_USER });
 		const schedules = (await (await request.get(`${API}/schedules`)).json()) as {
 			items: {
 				id: string;

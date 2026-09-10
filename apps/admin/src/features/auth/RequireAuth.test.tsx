@@ -46,4 +46,20 @@ describe("/app 的登入守衛", () => {
 
 		expect(await screen.findByRole("heading", { name: "使用者管理", level: 2 })).toBeInTheDocument();
 	});
+
+	it("super_admin 開啟 /app/devices 時看到這個角色沒有這項功能，而不是空表格", async () => {
+		renderWithProviders(<AppRoutes />, { initialEntries: ["/app/devices"], session: { user: makeUser({ role: "super_admin" }) } });
+
+		expect(await screen.findByText("這個角色沒有這項功能")).toBeInTheDocument();
+		expect(screen.getByText("403")).toBeInTheDocument();
+		/* 空清單會讓人以為自己的裝置被刪掉了，所以裝置頁的標題一個字都不該出現。 */
+		expect(screen.queryByRole("heading", { name: "裝置", level: 2 })).not.toBeInTheDocument();
+	});
+
+	it("super_admin 開啟 /app/media 時同樣看到權限說明", async () => {
+		renderWithProviders(<AppRoutes />, { initialEntries: ["/app/media"], session: { user: makeUser({ role: "super_admin" }) } });
+
+		expect(await screen.findByText("這個角色沒有這項功能")).toBeInTheDocument();
+		expect(screen.queryByRole("heading", { name: "素材庫", level: 2 })).not.toBeInTheDocument();
+	});
 });

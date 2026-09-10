@@ -29,6 +29,16 @@ test.describe("登入與權限", () => {
 			await page.goto("/app/users");
 			await expect(page.getByRole("heading", { name: "使用者管理" })).toBeVisible();
 		});
+
+		test("開啟 /app/devices 時看到明確的權限說明，而不是空清單", async ({ page }) => {
+			await page.goto("/app/devices");
+			await expect(page.getByRole("heading", { name: "這個角色沒有這項功能" })).toBeVisible();
+			await expect(page.getByText("403").first()).toBeVisible();
+			/** 一張空表格讀起來像「裝置被刪光了」，所以裝置頁本身連標題都不該出現。 */
+			await expect(page.getByRole("heading", { name: "裝置", exact: true })).toHaveCount(0);
+			/** 導覽也不該留下入口：點進來只會再看到這一頁。 */
+			await expect(page.getByRole("link", { name: "裝置", exact: true })).toHaveCount(0);
+		});
 	});
 
 	test.describe("登出", () => {

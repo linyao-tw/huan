@@ -2,6 +2,7 @@ import { useLogoutMutation, useSessionQuery } from "@/features/auth/hooks";
 import { Brand } from "@/shared/components/Brand";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { useAdminSocket } from "@/shared/hooks/use-admin-socket";
+import type { UserRole } from "@huan/protocol";
 import { Badge, Button } from "@linyao.tw/ui";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 import { GaugeIcon } from "@phosphor-icons/react/dist/csr/Gauge";
@@ -19,17 +20,28 @@ interface NavItem {
 	label: string;
 	icon: ReactNode;
 	end?: boolean;
-	superAdminOnly?: boolean;
+	/**
+	 * 看得到這一項的角色，每一項都要寫出來。
+	 *
+	 * 先前是一個 `superAdminOnly` 布林值，那種寫法只加得了項目、拿不掉項目——
+	 * 系統管理員因此看得到自己一筆也不擁有的素材、版面、排程與裝置。
+	 */
+	roles: UserRole[];
 }
 
+const EVERY_ROLE: UserRole[] = ["super_admin", "user"];
+
+/** 素材、版面、排程與裝置都屬於個別使用者；系統管理員只管帳號，所以這四項不給它。 */
+const RESOURCE_ROLES: UserRole[] = ["user"];
+
 const NAV_ITEMS: NavItem[] = [
-	{ to: "/app", label: "總覽", icon: <GaugeIcon weight="bold" />, end: true },
-	{ to: "/app/media", label: "素材庫", icon: <ImagesSquareIcon weight="bold" /> },
-	{ to: "/app/layouts", label: "版面", icon: <SquaresFourIcon weight="bold" /> },
-	{ to: "/app/schedules", label: "排程", icon: <CalendarBlankIcon weight="bold" /> },
-	{ to: "/app/devices", label: "裝置", icon: <MonitorIcon weight="bold" /> },
-	{ to: "/app/security", label: "安全設定", icon: <ShieldCheckIcon weight="bold" /> },
-	{ to: "/app/users", label: "使用者", icon: <UsersThreeIcon weight="bold" />, superAdminOnly: true }
+	{ to: "/app", label: "總覽", icon: <GaugeIcon weight="bold" />, end: true, roles: EVERY_ROLE },
+	{ to: "/app/media", label: "素材庫", icon: <ImagesSquareIcon weight="bold" />, roles: RESOURCE_ROLES },
+	{ to: "/app/layouts", label: "版面", icon: <SquaresFourIcon weight="bold" />, roles: RESOURCE_ROLES },
+	{ to: "/app/schedules", label: "排程", icon: <CalendarBlankIcon weight="bold" />, roles: RESOURCE_ROLES },
+	{ to: "/app/devices", label: "裝置", icon: <MonitorIcon weight="bold" />, roles: RESOURCE_ROLES },
+	{ to: "/app/security", label: "安全設定", icon: <ShieldCheckIcon weight="bold" />, roles: EVERY_ROLE },
+	{ to: "/app/users", label: "使用者", icon: <UsersThreeIcon weight="bold" />, roles: ["super_admin"] }
 ];
 
 export function AppShell() {
@@ -41,7 +53,8 @@ export function AppShell() {
 
 	useAdminSocket(Boolean(user));
 
-	const items = NAV_ITEMS.filter(item => !item.superAdminOnly || isSuperAdmin);
+	/* 還沒讀到身分時寧可一項都不列：先畫出來再抽掉，等於讓人點到自己沒有的頁面。 */
+	const items = user ? NAV_ITEMS.filter(item => item.roles.includes(user.role)) : [];
 
 	return (
 		<div className="huan-shell">

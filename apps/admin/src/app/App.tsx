@@ -1,7 +1,7 @@
 import { AppProviders } from "@/app/AppProviders";
 import { NotFoundPage } from "@/app/NotFoundPage";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { RequireAuth, RequireSuperAdmin } from "@/features/auth/RequireAuth";
+import { RequireAuth, RequireResourceUser, RequireSuperAdmin } from "@/features/auth/RequireAuth";
 import { LandingPage } from "@/features/marketing/LandingPage";
 import { Loader } from "@linyao.tw/ui";
 import { lazy, Suspense, type ReactNode } from "react";
@@ -43,9 +43,20 @@ export function AppRoutes() {
 			<Route
 				path="/pair"
 				element={
-					<Lazy label="正在載入配對畫面">
-						<PairPage />
-					</Lazy>
+					/*
+					 * 配對是「把這台裝置收為己有」，不是公開頁面。
+					 *
+					 * 這一頁原本沒有任何守衛，靠 API 回 401 擋。在共用池的年代那沒差，
+					 * 現在配對的那一刻就決定了裝置屬於誰，所以要先確認是誰、而且那個人
+					 * 有資格擁有裝置——系統管理員不擁有任何資源，自然也不該配對。
+					 */
+					<RequireAuth>
+						<RequireResourceUser>
+							<Lazy label="正在載入配對畫面">
+								<PairPage />
+							</Lazy>
+						</RequireResourceUser>
+					</RequireAuth>
 				}
 			/>
 			<Route
@@ -69,49 +80,61 @@ export function AppRoutes() {
 				<Route
 					path="media"
 					element={
-						<Lazy>
-							<MediaPage />
-						</Lazy>
+						<RequireResourceUser>
+							<Lazy>
+								<MediaPage />
+							</Lazy>
+						</RequireResourceUser>
 					}
 				/>
 				<Route
 					path="layouts"
 					element={
-						<Lazy>
-							<LayoutsPage />
-						</Lazy>
+						<RequireResourceUser>
+							<Lazy>
+								<LayoutsPage />
+							</Lazy>
+						</RequireResourceUser>
 					}
 				/>
 				<Route
 					path="layouts/:layoutId"
 					element={
-						<Lazy label="正在載入版面編輯器">
-							<LayoutEditorPage />
-						</Lazy>
+						<RequireResourceUser>
+							<Lazy label="正在載入版面編輯器">
+								<LayoutEditorPage />
+							</Lazy>
+						</RequireResourceUser>
 					}
 				/>
 				<Route
 					path="schedules"
 					element={
-						<Lazy>
-							<SchedulesPage />
-						</Lazy>
+						<RequireResourceUser>
+							<Lazy>
+								<SchedulesPage />
+							</Lazy>
+						</RequireResourceUser>
 					}
 				/>
 				<Route
 					path="devices"
 					element={
-						<Lazy>
-							<DevicesPage />
-						</Lazy>
+						<RequireResourceUser>
+							<Lazy>
+								<DevicesPage />
+							</Lazy>
+						</RequireResourceUser>
 					}
 				/>
 				<Route
 					path="devices/:deviceId"
 					element={
-						<Lazy>
-							<DeviceDetailPage />
-						</Lazy>
+						<RequireResourceUser>
+							<Lazy>
+								<DeviceDetailPage />
+							</Lazy>
+						</RequireResourceUser>
 					}
 				/>
 				<Route

@@ -1,11 +1,17 @@
-import { SEED_ADMIN } from "@/fixtures";
+import { SEED_USER } from "@/fixtures";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { createHash } from "node:crypto";
 
 const API = "/api/v1";
 
+/**
+ * 配對出來的裝置屬於按下確認的那個人。
+ *
+ * 用系統管理員配對的話，裝置就掛在一個不該擁有裝置的帳號底下，
+ * 後面的指派版面與查詢狀態也會跟著跨到別人的資源，因此這裡一律用一般使用者。
+ */
 async function loginApi(request: APIRequestContext): Promise<void> {
-	const response = await request.post(`${API}/auth/login`, { data: { identifier: SEED_ADMIN.identifier, password: SEED_ADMIN.password } });
+	const response = await request.post(`${API}/auth/login`, { data: { identifier: SEED_USER.identifier, password: SEED_USER.password } });
 	expect(response.ok(), await response.text()).toBe(true);
 }
 
@@ -43,7 +49,7 @@ test.describe("裝置生命週期", () => {
 		expect(((await response.json()) as { status: string }).status).toBe("pending");
 	});
 
-	test("管理員確認配對", async ({ request }) => {
+	test("擁有者確認配對", async ({ request }) => {
 		await loginApi(request);
 
 		const lookup = await request.get(`${API}/pairing/${code}`);

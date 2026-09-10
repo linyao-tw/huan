@@ -1,4 +1,5 @@
-import { ADMIN_STATE } from "@/auth-state";
+import { USER_STATE } from "@/auth-state";
+import { SEED_USER } from "@/fixtures";
 import { computeLayoutGeometry } from "@huan/layout-engine";
 import { LayoutDocumentSchema } from "@huan/protocol";
 import { expect, test } from "@playwright/test";
@@ -6,14 +7,17 @@ import { expect, test } from "@playwright/test";
 const LAYOUT_NAME = `E2E 版面 ${Date.now()}`;
 
 test.describe.configure({ mode: "serial" });
-test.use({ storageState: ADMIN_STATE });
+
+/** 版面屬於建立它的使用者，系統管理員沒有這個頁面，所以整份測試跑在一般使用者身上。 */
+test.use({ storageState: USER_STATE });
 
 test.describe("版面編輯器", () => {
 	let layoutId = "";
 
 	test("建立版面", async ({ page }) => {
 		await page.goto("/app/layouts");
-		await page.getByRole("button", { name: "建立版面" }).click();
+		/** 一筆版面都還沒有的帳號會多一顆空狀態的同名按鈕，兩顆做的事一樣，取第一顆就好。 */
+		await page.getByRole("button", { name: "建立版面" }).first().click();
 
 		const dialog = page.getByRole("dialog");
 		await dialog.getByRole("textbox", { name: "版面名稱" }).fill(LAYOUT_NAME);
@@ -62,9 +66,7 @@ test.describe("版面編輯器", () => {
 	});
 
 	test("已發布的版面在伺服器上是 70/30，而且和版面引擎算出來的一致", async ({ request }) => {
-		const login = await request.post("/api/v1/auth/login", {
-			data: { identifier: process.env.HUAN_E2E_ADMIN ?? "admin@huan.local", password: process.env.HUAN_E2E_ADMIN_PASSWORD ?? "huan-dev-admin-2024" }
-		});
+		const login = await request.post("/api/v1/auth/login", { data: SEED_USER });
 		expect(login.ok()).toBe(true);
 
 		const detail = await request.get(`/api/v1/layouts/${layoutId}`);

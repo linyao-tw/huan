@@ -68,3 +68,35 @@ export function RequireSuperAdmin({ children }: { children: ReactNode }) {
 
 	return children;
 }
+
+/**
+ * 素材、版面、排程與裝置的守衛，方向和 `RequireSuperAdmin` 相反。
+ *
+ * 這些資源屬於個別使用者，系統管理員一筆也不擁有，伺服器對這些路由回 403。
+ * 沒有這一層的話，深連結進來看到的會是一張空表格——那讀起來像「你的東西被刪光了」，
+ * 而不是「這個角色沒有這項功能」。權限不足要看得見原因。
+ */
+export function RequireResourceUser({ children }: { children: ReactNode }) {
+	const session = useSessionQuery();
+
+	if (session.isPending) return <FullPageLoader label="正在確認權限" />;
+
+	if (session.data?.user.role === "super_admin") {
+		return (
+			<EmptyState
+				status="danger"
+				icon={<ProhibitIcon weight="bold" />}
+				eyebrow="403"
+				title="這個角色沒有這項功能"
+				description="系統管理員只負責帳號管理。素材、版面、排程與裝置都屬於各個使用者，系統管理員看不到，也不能代為操作。要自己放內容，請用一般使用者帳號登入。"
+				actions={
+					<Button render={<Link to="/app/users" />} variant="secondary">
+						去使用者管理
+					</Button>
+				}
+			/>
+		);
+	}
+
+	return children;
+}
