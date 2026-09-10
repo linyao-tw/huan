@@ -1,7 +1,7 @@
 import "@/features/marketing/landing.css";
 import { OsIcon, type OsKey } from "@/shared/components/OsIcon";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
-import { Badge, Button, Card, CardBody, CardDescription, CardTitle, Link, Separator } from "@linyao.tw/ui";
+import { Button, Card, CardBody, CardDescription, CardTitle, Link } from "@linyao.tw/ui";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
 import { BuildingOfficeIcon } from "@phosphor-icons/react/dist/csr/BuildingOffice";
@@ -27,7 +27,8 @@ const PRODUCT_TAGLINE = "跨平台的雲端媒體播放與數位看板系統，�
 interface Shot {
 	src: string;
 	alt: string;
-	caption: string;
+	/** 沒給就不畫標題列。首屏那張旁邊已經有大標，再標一次是重複。 */
+	caption?: string;
 }
 
 interface Step {
@@ -95,12 +96,6 @@ const USE_CASES: Feature[] = [
 	{ icon: <MapTrifoldIcon weight="bold" size={24} />, title: "展場導覽", description: "多台裝置播放同一份導覽內容，展期結束以日期區間自動下架，不需要現場收拾。" }
 ];
 
-const CAVEATS = [
-	{ title: "斷線期間發布的內容不會生效", text: "新版本要等所有檔案下載並校驗完成才整批切換，所以離線時發布的東西會等到連線恢復才出現。" },
-	{ title: "網頁內容需要連線", text: "版面裡的網址區塊是即時載入外部網站，那份內容不在本機，離線時會是空白。" },
-	{ title: "伺服器不長期保存素材", text: "原始檔轉檔後刪除，播放產物在所有裝置確認並過保留期後回收。之後有新裝置需要同一份素材時會標記為「需重新上傳」。" }
-];
-
 /**
  * 截圖有亮色與深色兩份，由 CSS 依主題決定顯示哪一張。
  *
@@ -111,7 +106,7 @@ function ProductShot({ shot }: { shot: Shot }) {
 	const dark = shot.src.replace(/\.png$/, "-dark.png");
 	return (
 		<figure className="huan-shot">
-			<figcaption className="huan-shot__bar">{shot.caption}</figcaption>
+			{shot.caption !== undefined && <figcaption className="huan-shot__bar">{shot.caption}</figcaption>}
 			{/* width/height 是圖的原始尺寸：沒有它，圖片載入時底下的文字會先往上擠再被推下去。 */}
 			<img className="huan-shot__image huan-shot__image--light" src={shot.src} alt={shot.alt} width={1280} height={720} loading="lazy" decoding="async" />
 			<img className="huan-shot__image huan-shot__image--dark" src={dark} alt={shot.alt} width={1280} height={720} loading="lazy" decoding="async" />
@@ -142,11 +137,10 @@ export function LandingPage() {
 				<section className="huan-landing__section huan-landing__section--hero huan-landing__inner" aria-labelledby="hero-heading">
 					<div className="huan-hero">
 						<div className="huan-hero__copy">
-							<Badge variant="accent">雲端數位看板系統</Badge>
 							<h1 className="huan-hero__title" id="hero-heading">
 								排好畫面，看板自己接手
 							</h1>
-							<p className="huan-hero__lede">在瀏覽器切版面、排時段，內容自動送到 Raspberry Pi、Windows、Ubuntu 與 macOS 的播放裝置。素材先下載到本機才播，斷網也不會變黑畫面。</p>
+							<p className="huan-hero__lede">雲端數位看板系統。在瀏覽器切版面、排時段，內容自動送到現場的播放裝置；素材存在本機，斷網也照常播。</p>
 							<div className="huan-hero__actions">
 								<Button render={<a href={MAILTO} />} nativeButton={false} size="lg" startIcon={<EnvelopeSimpleIcon weight="bold" />}>
 									來信洽詢採購
@@ -157,13 +151,12 @@ export function LandingPage() {
 							</div>
 						</div>
 
-						<ProductShot shot={{ src: "/screenshots/layout-editor.png", alt: "HUAN 的版面編輯器，畫面被切成多個區塊並各自指定內容", caption: "版面編輯器 · 1920 × 1080" }} />
+						<ProductShot shot={{ src: "/screenshots/layout-editor.png", alt: "HUAN 的版面編輯器，畫面被切成多個區塊並各自指定內容" }} />
 					</div>
 				</section>
 
 				<div className="huan-landing__band">
 					<section className="huan-landing__section huan-landing__inner" aria-labelledby="platforms-heading">
-						<span className="huan-section__eyebrow">支援平台</span>
 						<h2 className="huan-section__title" id="platforms-heading">
 							同一份內容，四種平台
 						</h2>
@@ -183,7 +176,6 @@ export function LandingPage() {
 				</div>
 
 				<section className="huan-landing__section huan-landing__inner" aria-labelledby="how-heading">
-					<span className="huan-section__eyebrow">怎麼運作</span>
 					<h2 className="huan-section__title" id="how-heading">
 						三個步驟，從素材到現場
 					</h2>
@@ -206,7 +198,6 @@ export function LandingPage() {
 					<section className="huan-landing__section huan-landing__inner" aria-labelledby="offline-heading">
 						<div className="huan-split">
 							<div>
-								<span className="huan-section__eyebrow">離線與多裝置</span>
 								<h2 className="huan-section__title" id="offline-heading">
 									網路斷了，看板還在播
 								</h2>
@@ -238,11 +229,10 @@ export function LandingPage() {
 				</div>
 
 				<section className="huan-landing__section huan-landing__inner" aria-labelledby="features-heading">
-					<span className="huan-section__eyebrow">功能</span>
 					<h2 className="huan-section__title" id="features-heading">
-						只做這條路上該做的事
+						HUAN 做得到的事
 					</h2>
-					<p className="huan-section__lede">從內容製作到現場播放，HUAN 只負責把這條路走完，不做多餘的事。</p>
+					<p className="huan-section__lede">從上傳素材到現場播放，這條路上需要的功能都在裡面。</p>
 					<div className="huan-feature-grid huan-section__body">
 						{FEATURES.map(feature => (
 							<div className="huan-feature" key={feature.title}>
@@ -258,7 +248,6 @@ export function LandingPage() {
 
 				<div className="huan-landing__band">
 					<section className="huan-landing__section huan-landing__inner" aria-labelledby="usecases-heading">
-						<span className="huan-section__eyebrow">使用情境</span>
 						<h2 className="huan-section__title" id="usecases-heading">
 							同一套系統，四種完全不同的現場
 						</h2>
@@ -280,29 +269,13 @@ export function LandingPage() {
 					</section>
 				</div>
 
-				<section className="huan-landing__section huan-landing__inner" aria-labelledby="honest-heading">
-					<span className="huan-section__eyebrow">我們把話說清楚</span>
-					<h2 className="huan-section__title" id="honest-heading">
-						離線做得到什麼，做不到什麼
-					</h2>
-					<p className="huan-section__lede">我們選擇把這個取捨寫在這裡，而不是等你在後台遇到才發現。</p>
-					<ul className="huan-caveats huan-section__body">
-						{CAVEATS.map(caveat => (
-							<li key={caveat.title}>
-								<h3 className="huan-caveat__title">{caveat.title}</h3>
-								<p className="huan-caveat__text">{caveat.text}</p>
-							</li>
-						))}
-					</ul>
-				</section>
-
 				<div className="huan-landing__band">
 					<section className="huan-landing__section huan-landing__section--cta huan-landing__inner" aria-labelledby="cta-heading">
 						<div className="huan-cta">
 							<h2 className="huan-cta__title" id="cta-heading">
 								想導入 HUAN？
 							</h2>
-							<p className="huan-hero__lede">告訴我們場域、裝置數量與想播的內容，我們會回覆合適的部署方式與報價。</p>
+							<p className="huan-cta__lede">告訴我們場域、裝置數量與想播的內容，我們會回覆合適的部署方式與報價。</p>
 							<div className="huan-cta__actions">
 								<Button render={<a href={MAILTO} />} nativeButton={false} size="lg" startIcon={<EnvelopeSimpleIcon weight="bold" />}>
 									寄信給 {CONTACT_EMAIL}
@@ -337,7 +310,6 @@ export function LandingPage() {
 							</Link>
 						</nav>
 					</div>
-					<Separator spacing="none" />
 					<div className="huan-landing__footer-bottom">
 						<p className="huan-landing__caption">© 麟曜數位工作室</p>
 					</div>

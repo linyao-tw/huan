@@ -12,15 +12,7 @@ describe("官網首頁", () => {
 		expect(screen.getByRole("heading", { name: "排好畫面，看板自己接手", level: 1 })).toBeInTheDocument();
 		expect(screen.getAllByText(/跨平台的雲端媒體播放與數位看板系統/).length).toBeGreaterThan(0);
 
-		for (const heading of [
-			"同一份內容，四種平台",
-			"三個步驟，從素材到現場",
-			"網路斷了，看板還在播",
-			"只做這條路上該做的事",
-			"同一套系統，四種完全不同的現場",
-			"離線做得到什麼，做不到什麼",
-			"想導入 HUAN？"
-		]) {
+		for (const heading of ["同一份內容，四種平台", "三個步驟，從素材到現場", "網路斷了，看板還在播", "HUAN 做得到的事", "同一套系統，四種完全不同的現場", "想導入 HUAN？"]) {
 			expect(screen.getByRole("heading", { name: heading, level: 2 })).toBeInTheDocument();
 		}
 
@@ -50,14 +42,6 @@ describe("官網首頁", () => {
 			expect(shot).toHaveAttribute("height");
 			expect(shot.getAttribute("alt")).not.toBe("");
 		}
-	});
-
-	it("誠實說明離線播放做不到的事", () => {
-		renderWithProviders(<LandingPage />, { session: null });
-
-		expect(screen.getByRole("heading", { name: "斷線期間發布的內容不會生效" })).toBeInTheDocument();
-		expect(screen.getByRole("heading", { name: "網頁內容需要連線" })).toBeInTheDocument();
-		expect(screen.getByText(/需重新上傳/)).toBeInTheDocument();
 	});
 
 	it("採購只提供 Email 洽詢，沒有任何付款流程", () => {

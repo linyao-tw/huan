@@ -67,15 +67,6 @@
  * 自己的背景盒。拿來當區段標題的結果是 h2 比它底下的 h3 還小、還輕，而那個
  * 背景盒在 band 上讀起來像一個停用的輸入框。
  */
-.huan-section__eyebrow {
-	display: block;
-	margin-block-end: var(--space-2);
-	color: var(--text-accent);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	letter-spacing: var(--letter-spacing-technical);
-}
-
 .huan-section__title {
 	margin: 0;
 	color: var(--text-title);
@@ -94,9 +85,30 @@
 	line-height: var(--line-height-body);
 }
 
-/* 標題群組和它的內容之間要比群組內部大，才看得出從屬關係。 */
-.huan-section__body {
+/*
+ * 標題群組和它的內容之間要比群組內部大，才看得出從屬關係。
+ *
+ * 多包一層 `.huan-landing` 是為了權重。清單類的容器（平台帶、勾選列點）都要
+ * 寫 `margin: 0` 清掉瀏覽器預設的 ul 上下邊距，而那條速記在檔案裡排得比較
+ * 後面、權重又一樣，於是連這裡的 --space-10 一起清掉——說明和它底下的列點
+ * 就直接貼在一起。這一層讓區段的間距不會被後面的重設誤傷。
+ */
+.huan-landing .huan-section__body {
 	margin-block-start: var(--space-10);
+}
+
+/*
+ * 段落後面直接接列點時要有距離。
+ *
+ * 這一頁的內文下邊距都是 0，距離一律由後面的元素自己宣告：區段內容是
+ * `.huan-section__body` 的 --space-10，flex 容器裡則是 `gap`。少寫一次，
+ * 段落和列點就會黏成一塊。列點是最容易漏的那一種，所以那個情況補在這裡。
+ *
+ * 只補沒有自己宣告距離的：套了 `.huan-section__body` 的清單照它自己的來，
+ * 不然這條規則反而會把 --space-10 縮成 --space-4。
+ */
+.huan-landing p + :is(ul, ol):not(.huan-section__body) {
+	margin-block-start: var(--space-4);
 }
 
 /* ── 首屏 ─────────────────────────────────────────────────── */
@@ -455,37 +467,6 @@
 	}
 }
 
-/* ── 我們把話說清楚 ───────────────────────────────────────── */
-
-.huan-caveats {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--space-6);
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-
-@media (max-width: 60rem) {
-	.huan-caveats {
-		grid-template-columns: minmax(0, 1fr);
-	}
-}
-
-.huan-caveat__title {
-	margin: 0 0 var(--space-2);
-	color: var(--text-title);
-	font-size: var(--font-size-md);
-	font-weight: var(--font-weight-semibold);
-}
-
-.huan-caveat__text {
-	margin: 0;
-	color: var(--text-secondary);
-	font-size: var(--font-size-sm);
-	line-height: var(--line-height-body);
-}
-
 /* ── 行動呼籲 ─────────────────────────────────────────────── */
 
 .huan-cta {
@@ -506,6 +487,21 @@
 	font-weight: var(--font-weight-bold);
 	letter-spacing: var(--letter-spacing-tight);
 	line-height: var(--line-height-tight);
+}
+
+/*
+ * 讓瀏覽器把兩行的長度分平均。
+ *
+ * 這句話在 CTA 的欄寬下會斷成「⋯⋯報」加上單獨一個「價」，只有一個字的第二
+ * 行看起來像排版壞掉。手動塞 <br> 會在別的視窗寬度斷在錯的位置，交給
+ * text-wrap 決定。
+ */
+.huan-cta__lede {
+	margin: 0;
+	color: var(--text-secondary);
+	font-size: clamp(var(--font-size-md), 1.5vw, var(--font-size-xl));
+	line-height: var(--line-height-body);
+	text-wrap: balance;
 }
 
 .huan-cta__actions {
