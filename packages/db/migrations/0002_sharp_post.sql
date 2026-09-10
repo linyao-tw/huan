@@ -1,0 +1,4 @@
+ALTER TABLE "devices" ADD CONSTRAINT "devices_default_layout_same_owner_fk" FOREIGN KEY ("default_layout_id","owner_id") REFERENCES "public"."layouts"("id","owner_id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "schedule_devices" ADD CONSTRAINT "schedule_devices_schedule_same_owner_fk" FOREIGN KEY ("schedule_id","owner_id") REFERENCES "public"."schedules"("id","owner_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "schedule_devices" ADD CONSTRAINT "schedule_devices_device_same_owner_fk" FOREIGN KEY ("device_id","owner_id") REFERENCES "public"."devices"("id","owner_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "schedules" ADD CONSTRAINT "schedules_layout_same_owner_fk" FOREIGN KEY ("layout_id","owner_id") REFERENCES "public"."layouts"("id","owner_id") ON DELETE cascade ON UPDATE no action;

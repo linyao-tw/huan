@@ -1,6 +1,6 @@
 {
-  "id": "9c5f2c56-34d9-4451-847a-b6d60eadcda6",
-  "prevId": "3a6cdb7b-62ee-4eae-8ce5-d6b9b525d516",
+  "id": "75593d91-b708-4d7b-8dee-d33365383f6e",
+  "prevId": "9c5f2c56-34d9-4451-847a-b6d60eadcda6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -688,6 +688,21 @@
           ],
           "columnsTo": [
             "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "devices_default_layout_same_owner_fk": {
+          "name": "devices_default_layout_same_owner_fk",
+          "tableFrom": "devices",
+          "tableTo": "layouts",
+          "columnsFrom": [
+            "default_layout_id",
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_id"
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
@@ -1609,6 +1624,36 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
+        },
+        "schedule_devices_schedule_same_owner_fk": {
+          "name": "schedule_devices_schedule_same_owner_fk",
+          "tableFrom": "schedule_devices",
+          "tableTo": "schedules",
+          "columnsFrom": [
+            "schedule_id",
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "schedule_devices_device_same_owner_fk": {
+          "name": "schedule_devices_device_same_owner_fk",
+          "tableFrom": "schedule_devices",
+          "tableTo": "devices",
+          "columnsFrom": [
+            "device_id",
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -1797,6 +1842,21 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "schedules_layout_same_owner_fk": {
+          "name": "schedules_layout_same_owner_fk",
+          "tableFrom": "schedules",
+          "tableTo": "layouts",
+          "columnsFrom": [
+            "layout_id",
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
