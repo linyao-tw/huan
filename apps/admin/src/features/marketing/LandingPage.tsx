@@ -54,7 +54,7 @@ const STEPS: Step[] = [
 		number: "03",
 		title: "排時段、發布",
 		text: "以星期與時段安排版面，支援跨午夜與日期範圍。多個排程同時命中時依優先度與精確度決定，規則是公開的。",
-		shot: { src: "/screenshots/schedules.png", alt: "排程畫面，顯示週視圖與衝突判定規則", caption: "排程" }
+		shot: { src: "/screenshots/schedules.png", alt: "排程畫面，顯示週視圖，以及同一時間有多個排程時播哪一個", caption: "排程" }
 	}
 ];
 
@@ -101,12 +101,20 @@ const CAVEATS = [
 	{ title: "伺服器不長期保存素材", text: "原始檔轉檔後刪除，播放產物在所有裝置確認並過保留期後回收。之後有新裝置需要同一份素材時會標記為「需重新上傳」。" }
 ];
 
+/**
+ * 截圖有亮色與深色兩份，由 CSS 依主題決定顯示哪一張。
+ *
+ * 只放亮色的話，深色頁面上會出現一塊發光的白方塊。不用 JS 切換是因為主題在
+ * 第一次繪製前就決定好了，交給 CSS 可以避免載入後才換圖的閃動。
+ */
 function ProductShot({ shot }: { shot: Shot }) {
+	const dark = shot.src.replace(/\.png$/, "-dark.png");
 	return (
 		<figure className="huan-shot">
 			<figcaption className="huan-shot__bar">{shot.caption}</figcaption>
 			{/* width/height 是圖的原始尺寸：沒有它，圖片載入時底下的文字會先往上擠再被推下去。 */}
-			<img className="huan-shot__image" src={shot.src} alt={shot.alt} width={1280} height={720} loading="lazy" decoding="async" />
+			<img className="huan-shot__image huan-shot__image--light" src={shot.src} alt={shot.alt} width={1280} height={720} loading="lazy" decoding="async" />
+			<img className="huan-shot__image huan-shot__image--dark" src={dark} alt={shot.alt} width={1280} height={720} loading="lazy" decoding="async" />
 		</figure>
 	);
 }

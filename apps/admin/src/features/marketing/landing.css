@@ -187,6 +187,25 @@
 	object-position: top left;
 }
 
+/*
+ * 兩張圖只顯示一張。
+ *
+ * 用 display 而不是 opacity：隱藏的那一張如果還佔位置，框的高度會變成兩倍。
+ * 兩張都標了 loading="lazy"，Chromium 實測不會去下載 display:none 的那一張；
+ * 就算有瀏覽器兩張都抓，代價也只是多一張截圖。
+ */
+.huan-shot__image--dark {
+	display: none;
+}
+
+:root[data-lyds-theme="dark"] .huan-shot__image--light {
+	display: none;
+}
+
+:root[data-lyds-theme="dark"] .huan-shot__image--dark {
+	display: block;
+}
+
 /* ── 支援平台 ─────────────────────────────────────────────── */
 
 /*
