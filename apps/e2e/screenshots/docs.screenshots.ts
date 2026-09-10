@@ -1,12 +1,12 @@
 import { ADMIN_STATE, ANONYMOUS_STATE } from "@/auth-state";
 import { settle } from "@/fixtures";
-import { screenshotDir } from "@/screenshot-dir";
+import { destinationsFor, screenshotDirs } from "@/screenshot-dir";
 import { expect, test, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const OUTPUT_DIR = screenshotDir(dirname(fileURLToPath(import.meta.url)));
+const DIRS = screenshotDirs(dirname(fileURLToPath(import.meta.url)));
 
 /**
  * 文件截圖跑在 `pnpm db:seed` 建立的環境上。
@@ -15,12 +15,32 @@ const OUTPUT_DIR = screenshotDir(dirname(fileURLToPath(import.meta.url)));
  * 文件不會因為重新截圖而整份變動。
  */
 test.beforeAll(async () => {
-	await mkdir(OUTPUT_DIR, { recursive: true });
+	for (const dir of Object.values(DIRS)) await mkdir(dir, { recursive: true });
 });
 
+/**
+ * 每個畫面都拍亮色與深色兩份。
+ *
+ * 官網把截圖放在深色頁面上時，只有亮色的那一套會變成一塊發光的白色方塊。
+ * 主題是從 localStorage 讀的，所以要寫進去再重新載入 —— 直接改 DOM 屬性會被
+ * ThemeProvider 的 effect 蓋回去。
+ */
 async function shoot(page: Page, name: string): Promise<void> {
 	await settle(page);
-	await page.screenshot({ path: resolve(OUTPUT_DIR, `${name}.png`) });
+	const buffers: [string, Buffer][] = [[`${name}.png`, await page.screenshot()]];
+
+	await page.evaluate(() => globalThis.localStorage.setItem("huan.theme", "dark"));
+	await page.reload();
+	await settle(page);
+	buffers.push([`${name}-dark.png`, await page.screenshot()]);
+
+	await page.evaluate(() => globalThis.localStorage.removeItem("huan.theme"));
+	await page.reload();
+	await settle(page);
+
+	for (const dir of destinationsFor(DIRS, name)) {
+		for (const [file, buffer] of buffers) await writeFile(resolve(dir, file), buffer);
+	}
 }
 
 test.describe.configure({ mode: "serial" });
