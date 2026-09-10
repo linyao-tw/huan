@@ -1,4 +1,5 @@
 import { useLogoutMutation, useSessionQuery } from "@/features/auth/hooks";
+import { Brand } from "@/shared/components/Brand";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { useAdminSocket } from "@/shared/hooks/use-admin-socket";
 import { Badge, Button } from "@linyao.tw/ui";
@@ -50,8 +51,7 @@ export function AppShell() {
 
 			<aside className="huan-shell__sidebar">
 				<NavLink to="/" className="huan-shell__brand">
-					<span className="huan-shell__brand-mark">HUAN</span>
-					<span className="huan-shell__brand-han">讙</span>
+					<Brand />
 				</NavLink>
 
 				<nav className="huan-shell__nav" aria-label="主要導覽">

@@ -3,6 +3,7 @@ import "@/features/devices/devices.css";
 import { PlatformLabel } from "@/features/devices/DeviceStatus";
 import { useConfirmPairingMutation, usePairingLookupQuery } from "@/features/devices/hooks";
 import { useLayoutListQuery } from "@/features/layouts/hooks";
+import { Brand } from "@/shared/components/Brand";
 import { QueryErrorAlert } from "@/shared/components/QueryState";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { isApiError } from "@/shared/services/http";
@@ -63,8 +64,7 @@ export function PairPage() {
 				<h1 className="huan-visually-hidden">裝置配對</h1>
 				<div className="huan-row huan-row--between">
 					<RouterLink to="/app" className="huan-shell__brand">
-						<span className="huan-shell__brand-mark">HUAN</span>
-						<span className="huan-shell__brand-han">讙</span>
+						<Brand />
 					</RouterLink>
 					<ThemeToggle />
 				</div>

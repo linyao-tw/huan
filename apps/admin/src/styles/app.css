@@ -143,12 +143,34 @@ body {
 
 .huan-shell__brand {
 	display: flex;
-	align-items: baseline;
+	/* 標誌是圖，跟著文字的基線排會浮在半空；改成對齊視覺中線。 */
+	align-items: center;
 	gap: var(--space-2);
 	text-decoration: none;
 	color: var(--text-title);
 	padding: var(--space-2);
 	border-radius: var(--radius-sm);
+}
+
+/*
+ * 標誌用遮罩上色。
+ *
+ * 這隻獸是單一路徑的線稿，遮罩只取形狀，顏色一律來自 currentColor——也就是
+ * 上面那行 `color: var(--text-title)`。字標和標誌因此永遠同色，換主題也不用
+ * 準備第二個檔案。
+ *
+ * 尺寸不能再小。線稿裡有斑點、鬍鬚和項圈的珠子，量下來 32px 以下那些線就糊
+ * 成一團，只剩一個看不出是什麼的深色團塊；36px 是還讀得出是一隻獸的下限。
+ */
+.huan-shell__brand-logo {
+	display: block;
+	flex: none;
+	inline-size: var(--huan-brand-logo-size, 2.25rem);
+	/* 原圖 994 × 1015，高比寬多一點點；照原比例給，線條才不會被拉扁。 */
+	block-size: calc(var(--huan-brand-logo-size, 2.25rem) * 1015 / 994);
+	background: currentColor;
+	mask: url("/logo.svg") no-repeat center / contain;
+	-webkit-mask: url("/logo.svg") no-repeat center / contain;
 }
 
 .huan-shell__brand:focus-visible {

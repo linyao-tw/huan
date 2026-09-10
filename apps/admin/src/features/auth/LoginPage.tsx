@@ -1,4 +1,5 @@
 import { useLoginMutation, useSessionQuery, useTotpChallengeMutation } from "@/features/auth/hooks";
+import { Brand } from "@/shared/components/Brand";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { isApiError, type ApiError } from "@/shared/services/http";
 import { queryKeys } from "@/shared/services/query-keys";
@@ -108,8 +109,7 @@ export function LoginPage() {
 				<h1 className="huan-visually-hidden">登入 HUAN 讙 後台</h1>
 				<div className="huan-row huan-row--between">
 					<RouterLink to="/" className="huan-shell__brand">
-						<span className="huan-shell__brand-mark">HUAN</span>
-						<span className="huan-shell__brand-han">讙</span>
+						<Brand />
 					</RouterLink>
 					<ThemeToggle />
 				</div>

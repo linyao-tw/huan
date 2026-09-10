@@ -1,4 +1,5 @@
 import "@/features/marketing/landing.css";
+import { Brand } from "@/shared/components/Brand";
 import { OsIcon, type OsKey } from "@/shared/components/OsIcon";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { Button, Card, CardBody, CardDescription, CardTitle, Link } from "@linyao.tw/ui";
@@ -158,8 +159,7 @@ export function LandingPage() {
 		<div className="huan-landing">
 			<header className="huan-landing__header huan-landing__inner">
 				<RouterLink to="/" className="huan-shell__brand">
-					<span className="huan-shell__brand-mark">HUAN</span>
-					<span className="huan-shell__brand-han">讙</span>
+					<Brand />
 				</RouterLink>
 				<div className="huan-row huan-row--tight">
 					<ThemeToggle />
@@ -328,8 +328,7 @@ export function LandingPage() {
 					<div className="huan-landing__footer-top">
 						<div className="huan-stack huan-stack--sm">
 							<div className="huan-shell__brand">
-								<span className="huan-shell__brand-mark">HUAN</span>
-								<span className="huan-shell__brand-han">讙</span>
+								<Brand />
 							</div>
 							<p className="huan-landing__caption">{PRODUCT_TAGLINE}</p>
 						</div>
