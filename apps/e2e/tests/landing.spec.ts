@@ -11,7 +11,7 @@ test.describe("官網", () => {
 		/** 品牌是獨立的視覺元素，不一定落在 h1 裡；重點是它在畫面上。 */
 		await expect(page.getByText("HUAN").first()).toBeVisible();
 		await expect(page.getByText("讙").first()).toBeVisible();
-		await expect(page.getByText(/跨平台的雲端媒體播放與數位看板系統/).first()).toBeVisible();
+		await expect(page.getByText(/企業級雲端數位看板與媒體播放平台/).first()).toBeVisible();
 		for (const platform of ["Raspberry Pi", "Windows", "Ubuntu", "macOS"]) {
 			await expect(page.getByText(platform).first()).toBeVisible();
 		}

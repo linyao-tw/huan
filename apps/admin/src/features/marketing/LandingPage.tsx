@@ -22,7 +22,7 @@ const CONTACT_EMAIL = "contact@linyao.tw";
 const MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("HUAN 讙 採購諮詢")}`;
 
 /** 目錄條目式的敘述：適合 meta description 與頁尾，不適合當首屏的主打。 */
-const PRODUCT_TAGLINE = "跨平台的雲端媒體播放與數位看板系統，支援影片、圖片與文字內容，並可從遠端集中上傳、排程、同步與管理多台播放裝置。";
+const PRODUCT_TAGLINE = "企業級雲端數位看板與媒體播放平台，支援影片、圖片、文字與網頁內容，並提供遠端素材管理、版面編排、排程發布、多裝置同步與離線播放能力。";
 
 interface Shot {
 	src: string;
@@ -41,29 +41,29 @@ interface Step {
 const STEPS: Step[] = [
 	{
 		number: "01",
-		title: "上傳素材",
-		text: "影片、圖片與 HTML 拖進瀏覽器就好。伺服器會自己轉檔、產生縮圖與播放版本，狀態一路看得到。",
+		title: "上傳與管理素材",
+		text: "直接在瀏覽器上傳影片、圖片與 HTML 內容。系統會自動完成轉檔、縮圖與播放版本處理，並即時顯示每筆素材的處理狀態。",
 		shot: { src: "/screenshots/media.png", alt: "素材庫畫面，顯示上傳區與各素材的處理狀態", caption: "素材庫" }
 	},
 	{
 		number: "02",
-		title: "切版面",
-		text: "把畫面水平或垂直切開，每一塊都能再切一次。比例用拖的或直接輸入數字，同一份版面在 1080p 與 4K 上維持相同構圖。",
+		title: "設計多區域版面",
+		text: "以水平或垂直方式分割畫面，每個區域皆可進一步建立巢狀配置。區域比例可透過拖曳調整或直接輸入數值，確保相同版面在不同解析度下維持一致構圖。",
 		shot: { src: "/screenshots/layout-editor.png", alt: "版面編輯器，左側素材、中間預覽、右側屬性面板", caption: "版面編輯器" }
 	},
 	{
 		number: "03",
-		title: "排時段、發布",
-		text: "以星期與時段安排版面，支援跨午夜與日期範圍。多個排程同時命中時依優先度與精確度決定，規則是公開的。",
+		title: "建立排程並發布",
+		text: "依星期、日期與時段安排播放內容，支援跨午夜排程與有效日期區間。當多個排程同時符合條件時，系統會依優先度與匹配精確度自動決定播放內容，讓排程結果明確且可預期。",
 		shot: { src: "/screenshots/schedules.png", alt: "排程畫面，顯示週視圖，以及同一時間有多個排程時播哪一個", caption: "排程" }
 	}
 ];
 
 const PLATFORMS: { os: OsKey; name: string; note: string }[] = [
-	{ os: "raspberry-pi", name: "Raspberry Pi", note: "arm64 / armhf，適合單機看板" },
-	{ os: "windows", name: "Windows", note: "x64，可沿用既有數位看板電腦" },
-	{ os: "ubuntu", name: "Ubuntu", note: "x64 / arm64，伺服器與工控機常見的選擇" },
-	{ os: "macos", name: "macOS", note: "Apple Silicon 與 Intel" }
+	{ os: "raspberry-pi", name: "Raspberry Pi", note: "支援 arm64 / armhf，適合空間受限、低功耗或單機型數位看板部署。" },
+	{ os: "windows", name: "Windows", note: "支援 x64，可直接延用既有數位看板電腦與商用終端設備。" },
+	{ os: "ubuntu", name: "Ubuntu", note: "支援 x64 / arm64，適合工控設備、商用終端與 Linux 部署環境。" },
+	{ os: "macos", name: "macOS", note: "支援 Apple Silicon 與 Intel 平台。" }
 ];
 
 interface Feature {
@@ -73,27 +73,66 @@ interface Feature {
 }
 
 const FEATURES: Feature[] = [
-	{ icon: <BroadcastIcon weight="bold" size={24} />, title: "遠端集中管理", description: "在瀏覽器上傳素材、編排畫面並指定播放裝置。內容送出後由裝置自行下載與驗證，不需要現場人員插隨身碟。" },
+	{
+		icon: <BroadcastIcon weight="bold" size={24} />,
+		title: "集中式遠端管理",
+		description: "透過瀏覽器統一管理素材、版面、排程與播放裝置。發布內容後，各裝置會自動完成下載、驗證與更新，降低人工維護與現場操作需求。"
+	},
 	{
 		icon: <SquaresFourIcon weight="bold" size={24} />,
-		title: "遞迴分割排版",
-		description: "把畫面任意水平或垂直切分，每一塊都能再切一次。文字、跑馬燈、圖片、影片、網頁各自獨立設定，比例可以拖曳也可以用鍵盤微調。"
+		title: "彈性的多區域版面",
+		description: "以水平或垂直方式建立多層次區域配置，每個區域皆可獨立呈現文字、跑馬燈、圖片、影片與網頁內容。尺寸比例支援拖曳調整與精確數值輸入，滿足不同畫面配置需求。"
 	},
-	{ icon: <CalendarBlankIcon weight="bold" size={24} />, title: "時段排程", description: "以 IANA 時區、星期與時段安排版面，支援跨午夜區間與日期範圍。衝突時依優先度與精確度決定，規則公開可預期。" },
+	{
+		icon: <CalendarBlankIcon weight="bold" size={24} />,
+		title: "可預期的播放排程",
+		description: "依 IANA 時區、星期、時段與日期區間設定播放規則，並支援跨午夜情境。當排程條件重疊時，系統依既定優先度與精確度規則解析，確保播放結果透明且一致。"
+	},
 	{
 		icon: <MonitorIcon weight="bold" size={24} />,
-		title: "多裝置同步",
-		description: "發布之後不會出現一半新、一半舊的畫面。裝置要把所有檔案下載並校驗完成才整批切換，切換的那一刻不會閃黑或播到殘缺內容。"
+		title: "一致的多裝置發布",
+		description: "每台裝置會在所有檔案下載與驗證完成後才啟用新版本，避免部分內容提前更新。版本切換以完整狀態進行，降低播放中斷、畫面閃黑與缺檔風險。"
 	},
-	{ icon: <CloudSlashIcon weight="bold" size={24} />, title: "離線續播", description: "素材先下載到本機才播放。網路中斷時看板照常運作，恢復連線後再自動補上新版本。" },
-	{ icon: <ShieldCheckIcon weight="bold" size={24} />, title: "安全與稽核", description: "密碼以 Argon2id 保存、支援兩步驟驗證，登入、配對、發布與刪除都會留下含操作者與對象的紀錄。" }
+	{
+		icon: <CloudSlashIcon weight="bold" size={24} />,
+		title: "本機優先的離線播放",
+		description: "播放素材預先同步至裝置本機，網路中斷時仍可持續正常播放。重新連線後，裝置會自動同步並套用最新可用版本。"
+	},
+	{
+		icon: <ShieldCheckIcon weight="bold" size={24} />,
+		title: "安全性與操作稽核",
+		description: "帳號密碼採用 Argon2id 雜湊保存，並支援兩步驟驗證。登入、裝置配對、內容發布與刪除等重要操作皆會保留操作者與操作對象紀錄，提供完整的稽核依據。"
+	}
 ];
 
 const USE_CASES: Feature[] = [
-	{ icon: <ForkKnifeIcon weight="bold" size={24} />, title: "餐飲點餐看板", description: "早午餐與正餐菜單依時段自動切換，價格調整當天就能同步到所有分店。" },
-	{ icon: <StorefrontIcon weight="bold" size={24} />, title: "零售櫥窗", description: "整面牆的影片搭配側邊跑馬燈促銷資訊，畫面比例在後台先看到，實機呈現一致。" },
-	{ icon: <BuildingOfficeIcon weight="bold" size={24} />, title: "辦公室公告", description: "公司公告、會議室狀態與內部儀表板網頁併排顯示，行政人員自己就能更新。" },
-	{ icon: <MapTrifoldIcon weight="bold" size={24} />, title: "展場導覽", description: "多台裝置播放同一份導覽內容，展期結束以日期區間自動下架，不需要現場收拾。" }
+	{
+		icon: <ForkKnifeIcon weight="bold" size={24} />,
+		title: "餐飲菜單看板",
+		description: "依早餐、午餐、晚餐或促銷時段自動切換菜單內容。價格與品項更新後即可集中發布至各分店，降低逐店維護成本。"
+	},
+	{
+		icon: <StorefrontIcon weight="bold" size={24} />,
+		title: "零售與櫥窗展示",
+		description: "將品牌影片、商品資訊與即時促銷訊息整合於同一畫面。版面可預先於後台確認，確保不同門市與顯示設備維持一致的視覺呈現。"
+	},
+	{
+		icon: <BuildingOfficeIcon weight="bold" size={24} />,
+		title: "企業內部資訊發布",
+		description: "整合公司公告、會議室資訊、營運數據與內部網頁，讓行政與營運團隊可直接維護內容，快速發布至辦公空間中的各類顯示設備。"
+	},
+	{
+		icon: <MapTrifoldIcon weight="bold" size={24} />,
+		title: "展覽與活動導覽",
+		description: "將導覽內容同步發布至多台裝置，並透過日期區間控制上線與下架時間。活動結束後可依排程自動停止播放，減少現場人工操作。"
+	}
+];
+
+/** 離線那一段的三個要點：每一項都有自己的小標，掃過去就知道在講什麼。 */
+const OFFLINE_POINTS: { title: string; text: string }[] = [
+	{ title: "離線持續播放", text: "網路中斷時，裝置持續播放已同步至本機的內容，不因連線異常而出現黑畫面或錯誤頁面。" },
+	{ title: "完整版本切換", text: "新版本會在所有必要檔案下載並驗證完成後一次套用，避免內容處於新舊版本混合的狀態。" },
+	{ title: "集中掌握裝置狀態", text: "從後台查看每台裝置的連線狀態、軟體版本、磁碟使用量與最後回報時間，快速掌握現場運作情況。" }
 ];
 
 /**
@@ -138,9 +177,11 @@ export function LandingPage() {
 					<div className="huan-hero">
 						<div className="huan-hero__copy">
 							<h1 className="huan-hero__title" id="hero-heading">
-								排好畫面，看板自己接手
+								集中管理每一個畫面，穩定發布到每一台裝置
 							</h1>
-							<p className="huan-hero__lede">雲端數位看板系統。在瀏覽器切版面、排時段，內容自動送到現場的播放裝置；素材存在本機，斷網也照常播。</p>
+							<p className="huan-hero__lede">
+								HUAN 是專為數位看板打造的雲端內容管理與播放平台。從版面設計、內容排程到裝置發布，都可直接在瀏覽器完成；播放內容預先同步至裝置本機，即使網路中斷，現場畫面依然持續穩定播放。
+							</p>
 							<div className="huan-hero__actions">
 								<Button render={<a href={MAILTO} />} nativeButton={false} size="lg" startIcon={<EnvelopeSimpleIcon weight="bold" />}>
 									來信洽詢採購
@@ -158,9 +199,9 @@ export function LandingPage() {
 				<div className="huan-landing__band">
 					<section className="huan-landing__section huan-landing__inner" aria-labelledby="platforms-heading">
 						<h2 className="huan-section__title" id="platforms-heading">
-							同一份內容，四種平台
+							跨平台部署，一套內容一致呈現
 						</h2>
-						<p className="huan-section__lede">播放器以 Electron 打包，同一份版面在四種作業系統上呈現一致。</p>
+						<p className="huan-section__lede">HUAN Player 以 Electron 建構，支援主流桌面與嵌入式作業系統。無論部署於單機看板、既有商用電腦或工控設備，都能使用相同的版面、內容與管理流程。</p>
 						<ul className="huan-platform-strip huan-section__body">
 							{PLATFORMS.map(platform => (
 								<li key={platform.name}>
@@ -177,9 +218,9 @@ export function LandingPage() {
 
 				<section className="huan-landing__section huan-landing__inner" aria-labelledby="how-heading">
 					<h2 className="huan-section__title" id="how-heading">
-						三個步驟，從素材到現場
+						三個步驟，完成從內容到現場的發布流程
 					</h2>
-					<p className="huan-section__lede">整條路只有這三步。做完之後裝置會自己把內容拿下去播，不需要有人到現場。</p>
+					<p className="huan-section__lede">從素材建立、版面編排到播放排程，HUAN 將完整工作流程整合於同一套管理介面。發布完成後，各播放裝置會自動同步、驗證並套用最新內容，無需逐台進行現場操作。</p>
 					<div className="huan-steps huan-section__body">
 						{STEPS.map(step => (
 							<article className="huan-step" key={step.number}>
@@ -199,28 +240,21 @@ export function LandingPage() {
 						<div className="huan-split">
 							<div>
 								<h2 className="huan-section__title" id="offline-heading">
-									網路斷了，看板還在播
+									即使網路中斷，播放仍持續運作
 								</h2>
-								<p className="huan-section__lede">HUAN 是本機優先播放：素材一定要先完整下載到裝置、通過 SHA-256 校驗之後才會播。</p>
+								<p className="huan-section__lede">HUAN 採用本機優先的播放架構。所有素材都必須完整下載至播放裝置，並通過 SHA-256 完整性驗證後才會正式啟用，降低網路品質對現場播放的影響。</p>
 								<ul className="huan-points huan-section__body">
-									<li>
-										<span className="huan-points__icon">
-											<CheckCircleIcon weight="fill" size={20} />
-										</span>
-										<span>網路中斷時繼續播已經在本機的內容，不會變成黑畫面或錯誤訊息。</span>
-									</li>
-									<li>
-										<span className="huan-points__icon">
-											<CheckCircleIcon weight="fill" size={20} />
-										</span>
-										<span>新版本整批切換，不會出現一半新、一半舊的畫面。</span>
-									</li>
-									<li>
-										<span className="huan-points__icon">
-											<CheckCircleIcon weight="fill" size={20} />
-										</span>
-										<span>每台裝置的線上狀態、版本、磁碟與最後回報時間都看得到。</span>
-									</li>
+									{OFFLINE_POINTS.map(point => (
+										<li key={point.title}>
+											<span className="huan-points__icon">
+												<CheckCircleIcon weight="fill" size={20} />
+											</span>
+											<span className="huan-points__copy">
+												<span className="huan-points__title">{point.title}</span>
+												<span className="huan-points__text">{point.text}</span>
+											</span>
+										</li>
+									))}
 								</ul>
 							</div>
 							<ProductShot shot={{ src: "/screenshots/devices.png", alt: "裝置列表，顯示每台裝置的線上狀態、平台、版本與磁碟使用量", caption: "裝置" }} />
@@ -230,9 +264,9 @@ export function LandingPage() {
 
 				<section className="huan-landing__section huan-landing__inner" aria-labelledby="features-heading">
 					<h2 className="huan-section__title" id="features-heading">
-						HUAN 做得到的事
+						為數位看板營運所設計的完整能力
 					</h2>
-					<p className="huan-section__lede">從上傳素材到現場播放，這條路上需要的功能都在裡面。</p>
+					<p className="huan-section__lede">從內容建立、排程發布到多裝置管理，HUAN 提供數位看板日常營運所需的核心功能，讓內容管理與現場播放維持一致、可靠且可控。</p>
 					<div className="huan-feature-grid huan-section__body">
 						{FEATURES.map(feature => (
 							<div className="huan-feature" key={feature.title}>
@@ -249,8 +283,9 @@ export function LandingPage() {
 				<div className="huan-landing__band">
 					<section className="huan-landing__section huan-landing__inner" aria-labelledby="usecases-heading">
 						<h2 className="huan-section__title" id="usecases-heading">
-							同一套系統，四種完全不同的現場
+							一套平台，適用多種數位顯示場景
 						</h2>
+						<p className="huan-section__lede">從單一門市到多據點部署，HUAN 可依不同產業與現場需求組合版面、內容與播放規則，在同一套管理平台上維持一致的營運流程。</p>
 						<div className="huan-usecase-grid huan-section__body">
 							{USE_CASES.map(useCase => (
 								<Card key={useCase.title} variant="elevated">
@@ -273,16 +308,16 @@ export function LandingPage() {
 					<section className="huan-landing__section huan-landing__section--cta huan-landing__inner" aria-labelledby="cta-heading">
 						<div className="huan-cta">
 							<h2 className="huan-cta__title" id="cta-heading">
-								想導入 HUAN？
+								準備導入 HUAN？
 							</h2>
-							<p className="huan-cta__lede">告訴我們場域、裝置數量與想播的內容，我們會回覆合適的部署方式與報價。</p>
+							<p className="huan-cta__lede">告訴我們您的使用場域、預計部署的裝置數量，以及希望呈現的內容形式。我們會依實際需求提供合適的部署建議與報價。</p>
 							<div className="huan-cta__actions">
 								<Button render={<a href={MAILTO} />} nativeButton={false} size="lg" startIcon={<EnvelopeSimpleIcon weight="bold" />}>
 									寄信給 {CONTACT_EMAIL}
 								</Button>
 								<Link href="/docs/">閱讀文件</Link>
 							</div>
-							<p className="huan-landing__caption">採購僅接受 Email 洽詢，本站不提供線上付款流程。</p>
+							<p className="huan-landing__caption">HUAN 採專案洽詢方式提供導入與採購服務，目前不提供線上付款。</p>
 						</div>
 					</section>
 				</div>

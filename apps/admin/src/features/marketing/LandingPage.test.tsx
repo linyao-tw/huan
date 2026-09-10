@@ -9,14 +9,21 @@ describe("官網首頁", () => {
 
 		expect(screen.getAllByText("HUAN").length).toBeGreaterThan(0);
 		expect(screen.getAllByText("讙").length).toBeGreaterThan(0);
-		expect(screen.getByRole("heading", { name: "排好畫面，看板自己接手", level: 1 })).toBeInTheDocument();
-		expect(screen.getAllByText(/跨平台的雲端媒體播放與數位看板系統/).length).toBeGreaterThan(0);
+		expect(screen.getByRole("heading", { name: "集中管理每一個畫面，穩定發布到每一台裝置", level: 1 })).toBeInTheDocument();
+		expect(screen.getAllByText(/企業級雲端數位看板與媒體播放平台/).length).toBeGreaterThan(0);
 
-		for (const heading of ["同一份內容，四種平台", "三個步驟，從素材到現場", "網路斷了，看板還在播", "HUAN 做得到的事", "同一套系統，四種完全不同的現場", "想導入 HUAN？"]) {
+		for (const heading of [
+			"跨平台部署，一套內容一致呈現",
+			"三個步驟，完成從內容到現場的發布流程",
+			"即使網路中斷，播放仍持續運作",
+			"為數位看板營運所設計的完整能力",
+			"一套平台，適用多種數位顯示場景",
+			"準備導入 HUAN？"
+		]) {
 			expect(screen.getByRole("heading", { name: heading, level: 2 })).toBeInTheDocument();
 		}
 
-		for (const feature of ["遠端集中管理", "遞迴分割排版", "時段排程", "離線續播", "多裝置同步", "安全與稽核"]) {
+		for (const feature of ["集中式遠端管理", "彈性的多區域版面", "可預期的播放排程", "一致的多裝置發布", "本機優先的離線播放", "安全性與操作稽核"]) {
 			expect(screen.getByRole("heading", { name: feature })).toBeInTheDocument();
 		}
 
@@ -24,7 +31,7 @@ describe("官網首頁", () => {
 			expect(screen.getByText(platform)).toBeInTheDocument();
 		}
 
-		for (const useCase of ["餐飲點餐看板", "零售櫥窗", "辦公室公告", "展場導覽"]) {
+		for (const useCase of ["餐飲菜單看板", "零售與櫥窗展示", "企業內部資訊發布", "展覽與活動導覽"]) {
 			expect(screen.getByRole("heading", { name: useCase })).toBeInTheDocument();
 		}
 	});
@@ -49,7 +56,7 @@ describe("官網首頁", () => {
 
 		const mailLinks = screen.getAllByRole("link", { name: /contact@linyao\.tw/ });
 		expect(mailLinks.length).toBeGreaterThan(0);
-		expect(screen.getByText(/本站不提供線上付款流程/)).toBeInTheDocument();
+		expect(screen.getByText(/目前不提供線上付款/)).toBeInTheDocument();
 		expect(screen.queryByRole("button", { name: /立即購買|線上付款|加入購物車/ })).not.toBeInTheDocument();
 	});
 
