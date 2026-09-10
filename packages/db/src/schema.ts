@@ -1,6 +1,6 @@
 import type { AuditAction, DesiredState, LayoutDocument, MediaProbe, ReportedState } from "@huan/protocol";
 import { relations, sql } from "drizzle-orm";
-import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, foreignKey, index, integer, jsonb, pgTable, primaryKey, smallint, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const now = sql`now()`;
 
@@ -126,10 +126,26 @@ export const mediaAssets = pgTable(
 		status: text("status").$type<"uploading" | "uploaded" | "processing" | "ready" | "failed" | "needs_reupload">().notNull().default("uploading"),
 		errorMessage: text("error_message"),
 		probe: jsonb("probe").$type<MediaProbe>(),
+		/**
+		 * 擁有這筆資料的使用者。
+		 *
+		 * 和 `createdBy` 是兩件事：`createdBy` 是「誰建的」，屬於稽核來源，可以是
+		 * null（帳號刪掉之後）；`ownerId` 是「這是誰的」，是租戶邊界，不能是 null——
+		 * 沒有擁有者的資料等於「不屬於任何人」或「屬於所有人」，兩種都不能接受。
+		 * 因此用 restrict：還有資料的帳號不准刪，要先轉移或清空。
+		 */
+		ownerId: uuid("owner_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "restrict" }),
 		createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
 		...timestamps
 	},
-	table => [index("media_assets_status_idx").on(table.status), index("media_assets_kind_idx").on(table.kind), index("media_assets_created_at_idx").on(table.createdAt)]
+	table => [
+		index("media_assets_owner_idx").on(table.ownerId),
+		index("media_assets_status_idx").on(table.status),
+		index("media_assets_kind_idx").on(table.kind),
+		index("media_assets_created_at_idx").on(table.createdAt)
+	]
 );
 
 export const mediaVariants = pgTable(
@@ -196,10 +212,32 @@ export const layouts = pgTable(
 		draft: jsonb("draft").$type<LayoutDocument>().notNull(),
 		publishedRevisionId: uuid("published_revision_id"),
 		draftUpdatedAt: timestamp("draft_updated_at", { withTimezone: true }).notNull().default(now),
+		/**
+		 * 擁有這筆資料的使用者。
+		 *
+		 * 和 `createdBy` 是兩件事：`createdBy` 是「誰建的」，屬於稽核來源，可以是
+		 * null（帳號刪掉之後）；`ownerId` 是「這是誰的」，是租戶邊界，不能是 null——
+		 * 沒有擁有者的資料等於「不屬於任何人」或「屬於所有人」，兩種都不能接受。
+		 * 因此用 restrict：還有資料的帳號不准刪，要先轉移或清空。
+		 */
+		ownerId: uuid("owner_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "restrict" }),
 		createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
 		...timestamps
 	},
-	table => [index("layouts_created_at_idx").on(table.createdAt)]
+	table => [
+		index("layouts_owner_idx").on(table.ownerId),
+		index("layouts_created_at_idx").on(table.createdAt),
+		/*
+		 * 給複合外鍵用的目標。
+		 *
+		 * (id, owner_id) 在 id 已經是主鍵的情況下必然唯一，這條 unique 不是為了防重複，
+		 * 是因為 Postgres 的外鍵只能指向有唯一索引的欄位組。有了它，排程與裝置才能宣告
+		 * 「我指向的版面必須跟我同一個擁有者」，讓跨租戶的連結在資料庫層就寫不進去。
+		 */
+		unique("layouts_id_owner_key").on(table.id, table.ownerId)
+	]
 );
 
 /** 每次發布都是一筆不可變的修訂。Device 的目標狀態指向修訂 id，而不是版面 id。 */
@@ -225,9 +263,8 @@ export const schedules = pgTable(
 		id: uuid("id").primaryKey().defaultRandom(),
 		name: text("name").notNull(),
 		enabled: boolean("enabled").notNull().default(true),
-		layoutId: uuid("layout_id")
-			.notNull()
-			.references(() => layouts.id, { onDelete: "cascade" }),
+		/** 搭配 `ownerId` 組成複合外鍵：指向的版面必須是同一個人的。 */
+		layoutId: uuid("layout_id").notNull(),
 		/** IANA 時區。排程的判定完全以此為準，不使用 Server 或 Device 的本機時區。 */
 		timezone: text("timezone").notNull(),
 		priority: integer("priority").notNull().default(100),
@@ -237,23 +274,52 @@ export const schedules = pgTable(
 		daysOfWeek: smallint("days_of_week").array().notNull(),
 		startTime: text("start_time").notNull(),
 		endTime: text("end_time").notNull(),
+		/**
+		 * 擁有這筆資料的使用者。
+		 *
+		 * 和 `createdBy` 是兩件事：`createdBy` 是「誰建的」，屬於稽核來源，可以是
+		 * null（帳號刪掉之後）；`ownerId` 是「這是誰的」，是租戶邊界，不能是 null——
+		 * 沒有擁有者的資料等於「不屬於任何人」或「屬於所有人」，兩種都不能接受。
+		 * 因此用 restrict：還有資料的帳號不准刪，要先轉移或清空。
+		 */
+		ownerId: uuid("owner_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "restrict" }),
 		createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
 		...timestamps
 	},
-	table => [index("schedules_layout_idx").on(table.layoutId), index("schedules_enabled_idx").on(table.enabled)]
+	table => [
+		index("schedules_owner_idx").on(table.ownerId),
+		index("schedules_layout_idx").on(table.layoutId),
+		index("schedules_enabled_idx").on(table.enabled),
+		unique("schedules_id_owner_key").on(table.id, table.ownerId),
+		foreignKey({ columns: [table.layoutId, table.ownerId], foreignColumns: [layouts.id, layouts.ownerId], name: "schedules_layout_same_owner_fk" }).onDelete("cascade")
+	]
 );
 
+/**
+ * 排程指派到哪些裝置。
+ *
+ * `ownerId` 是刻意的反正規化：兩條複合外鍵各自要求「排程是這個人的」與「裝置是
+ * 這個人的」，同一個欄位同時參與兩條，等於強制兩端同屬一人。少了它，服務層只要
+ * 有一條路徑忘記檢查，就能把別人的裝置排進自己的排程。寫成約束之後，那件事在
+ * 資料庫層就表達不出來。
+ */
 export const scheduleDevices = pgTable(
 	"schedule_devices",
 	{
-		scheduleId: uuid("schedule_id")
+		scheduleId: uuid("schedule_id").notNull(),
+		deviceId: uuid("device_id").notNull(),
+		ownerId: uuid("owner_id")
 			.notNull()
-			.references(() => schedules.id, { onDelete: "cascade" }),
-		deviceId: uuid("device_id")
-			.notNull()
-			.references(() => devices.id, { onDelete: "cascade" })
+			.references(() => users.id, { onDelete: "restrict" })
 	},
-	table => [primaryKey({ columns: [table.scheduleId, table.deviceId] }), index("schedule_devices_device_idx").on(table.deviceId)]
+	table => [
+		primaryKey({ columns: [table.scheduleId, table.deviceId] }),
+		index("schedule_devices_device_idx").on(table.deviceId),
+		foreignKey({ columns: [table.scheduleId, table.ownerId], foreignColumns: [schedules.id, schedules.ownerId], name: "schedule_devices_schedule_same_owner_fk" }).onDelete("cascade"),
+		foreignKey({ columns: [table.deviceId, table.ownerId], foreignColumns: [devices.id, devices.ownerId], name: "schedule_devices_device_same_owner_fk" }).onDelete("cascade")
+	]
 );
 
 /* ── 裝置 ─────────────────────────────────────────────────────────────── */
@@ -264,17 +330,40 @@ export const devices = pgTable(
 		id: uuid("id").primaryKey().defaultRandom(),
 		name: text("name").notNull(),
 		status: text("status").$type<"active" | "revoked">().notNull().default("active"),
-		defaultLayoutId: uuid("default_layout_id").references(() => layouts.id, { onDelete: "set null" }),
+		/**
+		 * 搭配 `ownerId` 組成複合外鍵：指定的版面必須是同一個人的。
+		 *
+		 * 可以是 null（還沒指定）。Postgres 的複合外鍵預設是 MATCH SIMPLE，只要有一欄
+		 * 是 null 就不檢查，所以「沒指定版面」不會被這條約束擋下來。
+		 */
+		defaultLayoutId: uuid("default_layout_id"),
 		/** 每次目標狀態有任何變化就 +1。Device 用它判斷自己是不是落後了。 */
 		desiredVersion: integer("desired_version").notNull().default(0),
 		desiredState: jsonb("desired_state").$type<DesiredState>(),
 		reportedState: jsonb("reported_state").$type<ReportedState>(),
 		lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 		pairedAt: timestamp("paired_at", { withTimezone: true }),
+		/**
+		 * 擁有這筆資料的使用者。
+		 *
+		 * 和 `createdBy` 是兩件事：`createdBy` 是「誰建的」，屬於稽核來源，可以是
+		 * null（帳號刪掉之後）；`ownerId` 是「這是誰的」，是租戶邊界，不能是 null——
+		 * 沒有擁有者的資料等於「不屬於任何人」或「屬於所有人」，兩種都不能接受。
+		 * 因此用 restrict：還有資料的帳號不准刪，要先轉移或清空。
+		 */
+		ownerId: uuid("owner_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "restrict" }),
 		pairedBy: uuid("paired_by").references(() => users.id, { onDelete: "set null" }),
 		...timestamps
 	},
-	table => [index("devices_status_idx").on(table.status), index("devices_last_seen_idx").on(table.lastSeenAt)]
+	table => [
+		index("devices_owner_idx").on(table.ownerId),
+		index("devices_status_idx").on(table.status),
+		index("devices_last_seen_idx").on(table.lastSeenAt),
+		unique("devices_id_owner_key").on(table.id, table.ownerId),
+		foreignKey({ columns: [table.defaultLayoutId, table.ownerId], foreignColumns: [layouts.id, layouts.ownerId], name: "devices_default_layout_same_owner_fk" }).onDelete("set null")
+	]
 );
 
 export const deviceCredentials = pgTable(
