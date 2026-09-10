@@ -146,8 +146,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
       '@linyao.tw/ui':
-        specifier: 1.4.1
-        version: 1.4.1(@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: 1.5.0
+        version: 1.5.0(@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -1462,8 +1462,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@linyao.tw/ui@1.4.1':
-    resolution: {integrity: sha512-oJAR+MY4hcZhy0+KCS4i9XWBFXbP9GLIkNfYNnj6nU2rcJHXIHW6IYzVeeFKMr5jJYTJJsOK9oeb+jnou7qqhg==}
+  '@linyao.tw/ui@1.5.0':
+    resolution: {integrity: sha512-dIPgcGG8PJ24AuCr8wxveyGa0nWhkOxLiV+syFVjaN3R/nM+S9tWnGYD1wjtSxAeG3QyzwaiSDhdRtQ4xBNP2g==}
     peerDependencies:
       '@phosphor-icons/react': ^2.1.10
       react: ^19.0.0
@@ -5156,7 +5156,7 @@ snapshots:
       - '@types/react'
       - date-fns
 
-  '@linyao.tw/ui@1.4.1(@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@linyao.tw/ui@1.5.0(@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@base-ui/react': 1.8.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@internationalized/date': 3.12.4

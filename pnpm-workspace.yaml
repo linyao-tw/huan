@@ -10,4 +10,4 @@ allowBuilds:
   sharp: true
 
 minimumReleaseAgeExclude:
-  - "@linyao.tw/ui@1.4.1"
+  - "@linyao.tw/ui@1.5.0"
