@@ -63,7 +63,14 @@ describe("官網首頁", () => {
 	it("提供文件與登入的入口", () => {
 		renderWithProviders(<LandingPage />, { session: null });
 
-		expect(screen.getAllByRole("link", { name: "文件" }).length).toBeGreaterThan(0);
+		/* 文件站是另一個站台，連結會開新分頁——無障礙名稱因此帶著「（在新視窗開啟）」。 */
+		const docsLinks = screen.getAllByRole("link", { name: /^文件/ });
+		expect(docsLinks.length).toBeGreaterThan(0);
+		for (const link of docsLinks) {
+			expect(link).toHaveAttribute("target", "_blank");
+			expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+		}
+
 		expect(screen.getAllByRole("link", { name: "登入" }).length).toBeGreaterThan(0);
 	});
 });

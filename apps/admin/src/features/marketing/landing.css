@@ -527,6 +527,22 @@
 	text-align: center;
 }
 
+/*
+ * 收尾的標誌。
+ *
+ * 和頁首那個共用同一個檔案與同一套遮罩做法，只是大得多——這裡有空間，線稿的
+ * 斑點與鬍鬚在 88px 下看得清楚。顏色壓到次要色，它是署名不是標題，不該比底下
+ * 那行字更搶。
+ */
+.huan-cta__mark {
+	display: block;
+	inline-size: 5.5rem;
+	block-size: calc(5.5rem * 1015 / 994);
+	background: var(--icon-secondary);
+	mask: url("/logo.svg") no-repeat center / contain;
+	-webkit-mask: url("/logo.svg") no-repeat center / contain;
+}
+
 .huan-cta__title {
 	margin: 0;
 	color: var(--text-title);

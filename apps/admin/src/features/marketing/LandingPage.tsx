@@ -163,7 +163,7 @@ export function LandingPage() {
 				</RouterLink>
 				<div className="huan-row huan-row--tight">
 					<ThemeToggle />
-					<Button render={<a href="/docs/" />} nativeButton={false} variant="quiet" size="sm">
+					<Button aria-label="文件（在新視窗開啟）" render={<a href="/docs/" target="_blank" rel="noopener noreferrer" />} nativeButton={false} variant="quiet" size="sm">
 						文件
 					</Button>
 					<Button render={<RouterLink to="/login" />} nativeButton={false} variant="secondary" size="sm">
@@ -307,6 +307,8 @@ export function LandingPage() {
 				<div className="huan-landing__band">
 					<section className="huan-landing__section huan-landing__section--cta huan-landing__inner" aria-labelledby="cta-heading">
 						<div className="huan-cta">
+							{/* 整頁最後看到的是這隻獸，當作署名。純裝飾，旁邊就是產品名。 */}
+							<span className="huan-cta__mark" aria-hidden="true" />
 							<h2 className="huan-cta__title" id="cta-heading">
 								準備導入 HUAN？
 							</h2>
@@ -315,7 +317,9 @@ export function LandingPage() {
 								<Button render={<a href={MAILTO} />} nativeButton={false} size="lg" startIcon={<EnvelopeSimpleIcon weight="bold" />}>
 									寄信給 {CONTACT_EMAIL}
 								</Button>
-								<Link href="/docs/">閱讀文件</Link>
+								<Link href="/docs/" target="_blank" rel="noopener noreferrer">
+									閱讀文件
+								</Link>
 							</div>
 							<p className="huan-landing__caption">HUAN 採專案洽詢方式提供導入與採購服務，目前不提供線上付款。</p>
 						</div>
@@ -333,7 +337,7 @@ export function LandingPage() {
 							<p className="huan-landing__caption">{PRODUCT_TAGLINE}</p>
 						</div>
 						<nav aria-label="頁尾" className="huan-landing__footer-nav">
-							<Link href="/docs/" size="sm">
+							<Link href="/docs/" size="sm" target="_blank" rel="noopener noreferrer">
 								文件
 							</Link>
 							<Link href={`mailto:${CONTACT_EMAIL}`} size="sm">
