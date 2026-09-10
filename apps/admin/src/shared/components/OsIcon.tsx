@@ -1,6 +1,6 @@
 import type { DevicePlatform } from "@huan/protocol";
 import { WindowsLogoIcon } from "@phosphor-icons/react/dist/csr/WindowsLogo";
-import { siLinux, siMacos, siRaspberrypi, siUbuntu } from "simple-icons";
+import { siApple, siLinux, siRaspberrypi, siUbuntu } from "simple-icons";
 
 /**
  * 作業系統的品牌標誌。
@@ -10,13 +10,16 @@ import { siLinux, siMacos, siRaspberrypi, siUbuntu } from "simple-icons";
  * 把微軟整組移除了，所以那一個回頭用 Phosphor 的實心版本，視覺上跟其他
  * 實心品牌標誌是同一個調性。
  *
+ * macOS 用 Apple 的標誌而不是 Simple Icons 的 macOS 字標：字標是一整串細筆畫的
+ * 字母，縮到跟旁邊三個圖形標誌一樣大就糊成一團。
+ *
  * `simple-icons` 標了 `sideEffects: false` 且是具名匯出的 ESM，
  * 因此打包時只會帶進這裡實際 import 的那幾個，不是全部三千多個。
  */
 export type OsKey = "windows" | "macos" | "linux" | "ubuntu" | "raspberry-pi";
 
 const PATHS: Record<Exclude<OsKey, "windows">, string> = {
-	macos: siMacos.path,
+	macos: siApple.path,
 	linux: siLinux.path,
 	ubuntu: siUbuntu.path,
 	"raspberry-pi": siRaspberrypi.path
