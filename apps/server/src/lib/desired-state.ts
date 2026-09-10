@@ -28,11 +28,15 @@ function settingsFrom(env: ServerEnv): DesiredState["settings"] {
  *
  * 只有「發布過」的版面修訂會進來：草稿永遠不會離開 Admin，所以草稿引用的素材
  * 也不會被派送出去。這是刻意的，編輯到一半的畫面不應該出現在店裡的螢幕上。
+ *
+ * 每一個查詢都以裝置擁有者為條件，是最後一道防線：派送是真的會讓別人的影片
+ * 出現在現場螢幕上的那一步，不能只靠上游的路由每次都記得檢查。
  */
 export async function buildDesiredState(ctx: AppContext, deviceId: string): Promise<DesiredStateCore | null> {
 	const { db, env } = ctx;
 	const [device] = await db.select().from(devices).where(eq(devices.id, deviceId)).limit(1);
 	if (!device) return null;
+	const ownerId = device.ownerId;
 
 	const bundleByRevisionId = new Map<string, LayoutBundle>();
 
@@ -41,7 +45,7 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
 			.select({ layout: layouts, revision: layoutRevisions })
 			.from(layouts)
 			.innerJoin(layoutRevisions, eq(layoutRevisions.id, layouts.publishedRevisionId))
-			.where(eq(layouts.id, layoutId))
+			.where(and(eq(layouts.id, layoutId), eq(layouts.ownerId, ownerId)))
 			.limit(1);
 		if (!row) return null;
 		const bundle: LayoutBundle = {
@@ -61,7 +65,7 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
 		.select({ schedule: schedules })
 		.from(scheduleDevices)
 		.innerJoin(schedules, eq(schedules.id, scheduleDevices.scheduleId))
-		.where(and(eq(scheduleDevices.deviceId, deviceId), eq(schedules.enabled, true)));
+		.where(and(eq(scheduleDevices.deviceId, deviceId), eq(schedules.enabled, true), eq(schedules.ownerId, ownerId)));
 
 	const scheduleEntries: ScheduleManifestEntry[] = [];
 	for (const { schedule } of scheduleRows) {
@@ -90,7 +94,7 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
 		for (const assetId of collectAssetIds(bundle.document)) requiredAssetIds.add(assetId);
 	}
 
-	const assets = requiredAssetIds.size > 0 ? await buildAssetManifest(db, [...requiredAssetIds]) : [];
+	const assets = requiredAssetIds.size > 0 ? await buildAssetManifest(db, [...requiredAssetIds], ownerId) : [];
 
 	return {
 		deviceId: device.id,
@@ -110,12 +114,15 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
  * 沒有可用產物（還在轉檔、轉檔失敗、或產物已經被回收）的素材會被略過：
  * `AssetManifestEntry` 需要 sha256 與物件才有意義，硬塞一筆假的只會讓 Device
  * 反覆下載一個不存在的檔案。素材本身的狀態由 Admin 呈現，不靠 desired state 傳達。
+ *
+ * 不屬於這位擁有者的素材同樣會被略過。版面文件是 JSONB，引用哪個素材沒有外鍵管得住，
+ * 所以這裡必須自己確認一次。
  */
-async function buildAssetManifest(db: Database, assetIds: readonly string[]): Promise<AssetManifestEntry[]> {
+async function buildAssetManifest(db: Database, assetIds: readonly string[], ownerId: string): Promise<AssetManifestEntry[]> {
 	const assetRows = await db
 		.select()
 		.from(mediaAssets)
-		.where(inArray(mediaAssets.id, [...assetIds]));
+		.where(and(inArray(mediaAssets.id, [...assetIds]), eq(mediaAssets.ownerId, ownerId)));
 	if (assetRows.length === 0) return [];
 
 	const variantRows = await db
@@ -197,7 +204,7 @@ export async function bumpDeviceDesiredState(ctx: AppContext, deviceId: string, 
 	const core = await buildDesiredState(ctx, deviceId);
 	if (!core) return { version: 0, changed: false, notified: 0 };
 
-	const [device] = await db.select({ desiredVersion: devices.desiredVersion, desiredState: devices.desiredState }).from(devices).where(eq(devices.id, deviceId)).limit(1);
+	const [device] = await db.select({ ownerId: devices.ownerId, desiredVersion: devices.desiredVersion, desiredState: devices.desiredState }).from(devices).where(eq(devices.id, deviceId)).limit(1);
 	if (!device) return { version: 0, changed: false, notified: 0 };
 
 	const previous = device.desiredState ? fingerprint(coreOf(device.desiredState)) : null;
@@ -212,7 +219,7 @@ export async function bumpDeviceDesiredState(ctx: AppContext, deviceId: string, 
 	await syncDeviceAssetRows(db, deviceId, core.assets, version);
 
 	const notified = changed || options.force ? hub.notifyDesiredStateChanged(deviceId, version) : 0;
-	if (changed) hub.broadcastAdmin({ type: "device_changed", deviceId });
+	if (changed) hub.broadcastAdmin(device.ownerId, { type: "device_changed", deviceId });
 
 	return { version, changed, notified };
 }
@@ -241,9 +248,16 @@ async function syncDeviceAssetRows(db: Database, deviceId: string, assets: reado
 }
 
 /** 一個版面被發布時，哪些裝置會受影響：把它當預設版面的，以及被排程指到的。 */
-export async function deviceIdsAffectedByLayout(db: Database, layoutId: string): Promise<string[]> {
-	const byDefault = await db.select({ id: devices.id }).from(devices).where(eq(devices.defaultLayoutId, layoutId));
-	const bySchedule = await db.select({ id: scheduleDevices.deviceId }).from(scheduleDevices).innerJoin(schedules, eq(schedules.id, scheduleDevices.scheduleId)).where(eq(schedules.layoutId, layoutId));
+export async function deviceIdsAffectedByLayout(db: Database, layoutId: string, ownerId: string): Promise<string[]> {
+	const byDefault = await db
+		.select({ id: devices.id })
+		.from(devices)
+		.where(and(eq(devices.defaultLayoutId, layoutId), eq(devices.ownerId, ownerId)));
+	const bySchedule = await db
+		.select({ id: scheduleDevices.deviceId })
+		.from(scheduleDevices)
+		.innerJoin(schedules, eq(schedules.id, scheduleDevices.scheduleId))
+		.where(and(eq(schedules.layoutId, layoutId), eq(schedules.ownerId, ownerId)));
 	return [...new Set([...byDefault.map(row => row.id), ...bySchedule.map(row => row.id)])];
 }
 

@@ -1,4 +1,4 @@
-import { checkEnvironment, createHarness, createReadyAsset, createUser, login, pairDevice, singleAssetDocument, type TestHarness } from "@/test/helpers";
+import { checkEnvironment, createHarness, createReadyAsset, createUser, login, pairDevice, singleAssetDocument, type SeededUser, type TestHarness } from "@/test/helpers";
 import { mediaAssets } from "@huan/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -9,6 +9,7 @@ if (!environment.ready) console.warn(`[跳過] 版面與排程整合測試：${e
 
 suite("版面、排程與目標狀態", () => {
 	let harness: TestHarness;
+	let owner: SeededUser;
 	let cookie: string;
 
 	beforeAll(async () => {
@@ -21,8 +22,9 @@ suite("版面、排程與目標狀態", () => {
 
 	beforeEach(async () => {
 		await harness.truncate();
-		const admin = await createUser(harness, { role: "super_admin" });
-		cookie = await login(harness, admin.email, admin.password);
+		/** 素材、版面、排程與裝置都只有一般使用者能擁有，最高管理員只負責帳號管理。 */
+		owner = await createUser(harness, { role: "user" });
+		cookie = await login(harness, owner.email, owner.password);
 	});
 
 	async function createLayout(name: string): Promise<string> {
@@ -47,7 +49,7 @@ suite("版面、排程與目標狀態", () => {
 	}
 
 	it("發布會建立修訂並推進裝置的目標狀態版本", async () => {
-		const asset = await createReadyAsset(harness);
+		const asset = await createReadyAsset(harness, owner.id);
 		const layoutId = await createLayout("門市主畫面");
 		await setDraft(layoutId, asset.assetId);
 
@@ -88,7 +90,7 @@ suite("版面、排程與目標狀態", () => {
 	});
 
 	it("重算目標狀態但內容沒變時不會浪費一個版本號", async () => {
-		const asset = await createReadyAsset(harness);
+		const asset = await createReadyAsset(harness, owner.id);
 		const layoutId = await createLayout("穩定版面");
 		await setDraft(layoutId, asset.assetId);
 		await harness.app.inject({ method: "POST", url: harness.url(`/layouts/${layoutId}/publish`), headers: { cookie }, payload: { note: null } });
@@ -105,7 +107,7 @@ suite("版面、排程與目標狀態", () => {
 	});
 
 	it("引用未就緒素材的版面不能發布", async () => {
-		const asset = await createReadyAsset(harness);
+		const asset = await createReadyAsset(harness, owner.id);
 		await harness.ctx.db.update(mediaAssets).set({ status: "processing" }).where(eq(mediaAssets.id, asset.assetId));
 
 		const layoutId = await createLayout("尚未就緒");
@@ -118,8 +120,8 @@ suite("版面、排程與目標狀態", () => {
 	});
 
 	it("草稿引用的素材不會被派送出去", async () => {
-		const published = await createReadyAsset(harness, "video", "已發布素材");
-		const draftOnly = await createReadyAsset(harness, "image", "只在草稿裡的素材");
+		const published = await createReadyAsset(harness, owner.id, "video", "已發布素材");
+		const draftOnly = await createReadyAsset(harness, owner.id, "image", "只在草稿裡的素材");
 
 		const layoutId = await createLayout("草稿測試");
 		await setDraft(layoutId, published.assetId);
@@ -134,7 +136,7 @@ suite("版面、排程與目標狀態", () => {
 	});
 
 	it("排程的新增、修改與刪除都會反映在裝置的目標狀態", async () => {
-		const asset = await createReadyAsset(harness, "image", "午餐主視覺");
+		const asset = await createReadyAsset(harness, owner.id, "image", "午餐主視覺");
 		const layoutId = await createLayout("午餐時段");
 		await setDraft(layoutId, asset.assetId);
 		const publishedRevision = await harness.app.inject({ method: "POST", url: harness.url(`/layouts/${layoutId}/publish`), headers: { cookie }, payload: { note: null } });
@@ -228,7 +230,7 @@ suite("版面、排程與目標狀態", () => {
 	});
 
 	it("被排程或裝置引用的版面不能刪除", async () => {
-		const asset = await createReadyAsset(harness);
+		const asset = await createReadyAsset(harness, owner.id);
 		const layoutId = await createLayout("被引用的版面");
 		await setDraft(layoutId, asset.assetId);
 		await harness.app.inject({ method: "POST", url: harness.url(`/layouts/${layoutId}/publish`), headers: { cookie }, payload: { note: null } });

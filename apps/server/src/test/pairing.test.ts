@@ -29,8 +29,8 @@ suite("裝置配對", () => {
 	});
 
 	it("從索取配對碼到裝置能夠自我驗證的完整流程", async () => {
-		const admin = await createUser(harness, { role: "super_admin" });
-		const cookie = await login(harness, admin.email, admin.password);
+		const owner = await createUser(harness, { role: "user" });
+		const cookie = await login(harness, owner.email, owner.password);
 
 		const started = await harness.app.inject({ method: "POST", url: harness.url("/device/pairing/start"), payload: START_PAIRING_BODY });
 		expect(started.statusCode).toBe(201);
@@ -115,8 +115,8 @@ suite("裝置配對", () => {
 	});
 
 	it("同一組配對碼不能被確認兩次", async () => {
-		const admin = await createUser(harness, { role: "super_admin" });
-		const cookie = await login(harness, admin.email, admin.password);
+		const owner = await createUser(harness, { role: "user" });
+		const cookie = await login(harness, owner.email, owner.password);
 		const started = await harness.app.inject({ method: "POST", url: harness.url("/device/pairing/start"), payload: START_PAIRING_BODY });
 		const { code } = started.json();
 
@@ -141,8 +141,8 @@ suite("裝置配對", () => {
 	});
 
 	it("Admin 端查詢不存在的配對碼回 404", async () => {
-		const admin = await createUser(harness, { role: "super_admin" });
-		const cookie = await login(harness, admin.email, admin.password);
+		const owner = await createUser(harness, { role: "user" });
+		const cookie = await login(harness, owner.email, owner.password);
 		const response = await harness.app.inject({ method: "GET", url: harness.url("/pairing/ABCD2345"), headers: { cookie } });
 		expect(response.statusCode).toBe(404);
 	});

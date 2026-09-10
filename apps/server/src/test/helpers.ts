@@ -172,8 +172,11 @@ export interface ReadyAsset {
  *
  * 直接寫資料庫而不是走轉檔流程：Worker 不在這個 app 的測試範圍內，
  * 但派送需要一份雜湊對得上的真實物件，否則裝置端的驗證測試沒有意義。
+ *
+ * `ownerId` 是必填而不是給個預設值：素材一定屬於某個人，讓呼叫端非講不可，
+ * 才不會寫出「不知道是誰的素材」這種在產品裡不存在的狀態。
  */
-export async function createReadyAsset(harness: TestHarness, kind: "video" | "image" = "video", name = "測試素材"): Promise<ReadyAsset> {
+export async function createReadyAsset(harness: TestHarness, ownerId: string, kind: "video" | "image" = "video", name = "測試素材"): Promise<ReadyAsset> {
 	const assetId = randomUUID();
 	const variantId = randomUUID();
 	const contentType = kind === "video" ? "video/mp4" : "image/png";
@@ -188,7 +191,9 @@ export async function createReadyAsset(harness: TestHarness, kind: "video" | "im
 		originalFilename: `${name}.${kind === "video" ? "mp4" : "png"}`,
 		contentType,
 		sizeBytes: body.byteLength,
-		status: "ready"
+		status: "ready",
+		ownerId,
+		createdBy: ownerId
 	});
 	await harness.ctx.db.insert(mediaVariants).values({
 		id: variantId,
@@ -242,4 +247,77 @@ export async function pairDevice(harness: TestHarness, cookie: string, deviceNam
 	const status = await harness.app.inject({ method: "GET", url: harness.url("/device/pairing/status"), headers: { "x-huan-pairing-token": pairingToken } });
 	const credential: string = status.json().credential;
 	return { deviceId: confirmed.json().id, credential, authorization: `Bearer ${credential}` };
+}
+
+export interface TenantFixture {
+	user: SeededUser;
+	cookie: string;
+	asset: ReadyAsset;
+	layoutId: string;
+	revisionId: string;
+	deviceId: string;
+	scheduleId: string;
+}
+
+/**
+ * 一個完整的租戶：一位一般使用者，加上他自己的素材、版面、裝置與排程。
+ *
+ * 隔離測試需要的是「兩份長得一樣但屬於不同人的資料」，每個測試各自手刻一遍
+ * 只會讓斷言被建立資料的雜訊淹沒；而且一律走 API 建立，順便保證擁有者是
+ * 伺服器自己從 session 推出來的，不是測試硬塞進資料庫的。
+ */
+export async function createTenant(harness: TestHarness, label: string): Promise<TenantFixture> {
+	const user = await createUser(harness, { role: "user" });
+	const cookie = await login(harness, user.email, user.password);
+	const asset = await createReadyAsset(harness, user.id, "image", `${label}的素材`);
+
+	const layout = await harness.app.inject({
+		method: "POST",
+		url: harness.url("/layouts"),
+		headers: { cookie },
+		payload: { name: `${label}的版面`, description: null, canvas: { width: 1920, height: 1080 } }
+	});
+	if (layout.statusCode !== 201) throw new Error(`建立版面失敗（${layout.statusCode}）：${layout.body}`);
+	const layoutId: string = layout.json().id;
+
+	const draft = await harness.app.inject({
+		method: "PATCH",
+		url: harness.url(`/layouts/${layoutId}`),
+		headers: { cookie },
+		payload: { draft: singleAssetDocument(asset.assetId, "image") }
+	});
+	if (draft.statusCode !== 200) throw new Error(`更新草稿失敗（${draft.statusCode}）：${draft.body}`);
+
+	const published = await harness.app.inject({ method: "POST", url: harness.url(`/layouts/${layoutId}/publish`), headers: { cookie }, payload: { note: null } });
+	if (published.statusCode !== 201) throw new Error(`發布版面失敗（${published.statusCode}）：${published.body}`);
+	const revisionId: string = published.json().id;
+
+	const device = await pairDevice(harness, cookie, `${label}的裝置`, layoutId);
+
+	const schedule = await harness.app.inject({
+		method: "POST",
+		url: harness.url("/schedules"),
+		headers: { cookie },
+		payload: scheduleBody({ name: `${label}的排程`, layoutId, deviceIds: [device.deviceId] })
+	});
+	if (schedule.statusCode !== 201) throw new Error(`建立排程失敗（${schedule.statusCode}）：${schedule.body}`);
+
+	return { user, cookie, asset, layoutId, revisionId, deviceId: device.deviceId, scheduleId: schedule.json().id };
+}
+
+/** 排程的請求主體欄位很多且全部必填，測試只關心其中兩三個，其餘給固定值。 */
+export function scheduleBody(params: { name: string; layoutId: string; deviceIds: readonly string[] }): Record<string, unknown> {
+	return {
+		name: params.name,
+		enabled: true,
+		layoutId: params.layoutId,
+		timezone: "Asia/Taipei",
+		priority: 100,
+		startDate: null,
+		endDate: null,
+		daysOfWeek: [1, 2, 3, 4, 5],
+		startTime: "11:00",
+		endTime: "14:00",
+		deviceIds: [...params.deviceIds]
+	};
 }

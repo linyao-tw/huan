@@ -4,7 +4,7 @@ import { clientIp, deviceOf, requireDevice } from "@/lib/auth";
 import { bumpDeviceDesiredState } from "@/lib/desired-state";
 import { ApiProblem, conflict, forbidden, notFound, unauthorized } from "@/lib/errors";
 import { routeRateLimit, type RateLimitTuning } from "@/plugins/rate-limit";
-import { deviceCredentials, devicePairingCodes, devices, mediaDeviceSync, mediaVariants } from "@huan/db";
+import { deviceCredentials, devicePairingCodes, devices, mediaAssets, mediaDeviceSync, mediaVariants } from "@huan/db";
 import {
 	AssetAckRequestSchema,
 	DesiredStateSchema,
@@ -143,7 +143,7 @@ export const deviceApiRoutes: FastifyPluginAsyncZod<DeviceApiRouteOptions> = asy
 			const { device } = deviceOf(request);
 			const now = new Date();
 			await db.update(devices).set({ reportedState: request.body.reported, lastSeenAt: now, updatedAt: now }).where(eq(devices.id, device.id));
-			hub.broadcastAdmin({ type: "device_changed", deviceId: device.id });
+			hub.broadcastAdmin(device.ownerId, { type: "device_changed", deviceId: device.id });
 			return { desiredVersion: device.desiredVersion, serverTime: now.toISOString() };
 		}
 	);
@@ -222,7 +222,13 @@ export const deviceApiRoutes: FastifyPluginAsyncZod<DeviceApiRouteOptions> = asy
 			}
 		}
 
-		hub.broadcastAdmin({ type: "media_changed", assetId });
+		/**
+		 * 事件送給素材的擁有者，而不是裝置的擁有者。
+		 * 兩者在正常情況下是同一個人（派送本身就只會送同一個擁有者的素材），
+		 * 但「誰的素材變了」這件事的答案只能由素材自己回答。
+		 */
+		const [owner] = await db.select({ ownerId: mediaAssets.ownerId }).from(mediaAssets).where(eq(mediaAssets.id, assetId)).limit(1);
+		if (owner) hub.broadcastAdmin(owner.ownerId, { type: "media_changed", assetId });
 		return { ok: true as const };
 	});
 
@@ -234,7 +240,7 @@ export const deviceApiRoutes: FastifyPluginAsyncZod<DeviceApiRouteOptions> = asy
 		await db.update(devices).set({ status: "revoked", updatedAt: now }).where(eq(devices.id, device.id));
 		await db.delete(mediaDeviceSync).where(eq(mediaDeviceSync.deviceId, device.id));
 
-		hub.broadcastAdmin({ type: "device_changed", deviceId: device.id });
+		hub.broadcastAdmin(device.ownerId, { type: "device_changed", deviceId: device.id });
 		await recordAudit(db, {
 			action: "device.unbound",
 			actorDeviceId: device.id,

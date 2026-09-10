@@ -24,7 +24,13 @@ const SOCKET_OPEN = 1;
  */
 export class SocketHub {
 	private readonly deviceSockets = new Map<string, Set<SocketLike>>();
-	private readonly adminSockets = new Set<SocketLike>();
+	/**
+	 * Admin 連線以使用者 id 分組。
+	 *
+	 * 事件本身只帶 id，看起來無害，但「哪一台裝置在什麼時候變了」合起來就是別人的
+	 * 營運狀況；而且 Admin 收到事件就會重新打 REST，讓它為別人的變更白跑一趟也沒有意義。
+	 */
+	private readonly adminSockets = new Map<string, Set<SocketLike>>();
 
 	attachDevice(deviceId: string, socket: SocketLike): void {
 		let sockets = this.deviceSockets.get(deviceId);
@@ -77,18 +83,29 @@ export class SocketHub {
 		return { commandId, delivered: this.sendToDevice(deviceId, { type: "command", commandId, command }) };
 	}
 
-	attachAdmin(socket: SocketLike): void {
-		this.adminSockets.add(socket);
+	attachAdmin(userId: string, socket: SocketLike): void {
+		let sockets = this.adminSockets.get(userId);
+		if (!sockets) {
+			sockets = new Set();
+			this.adminSockets.set(userId, sockets);
+		}
+		sockets.add(socket);
 	}
 
-	detachAdmin(socket: SocketLike): void {
-		this.adminSockets.delete(socket);
+	detachAdmin(userId: string, socket: SocketLike): void {
+		const sockets = this.adminSockets.get(userId);
+		if (!sockets) return;
+		sockets.delete(socket);
+		if (sockets.size === 0) this.adminSockets.delete(userId);
 	}
 
-	broadcastAdmin(event: AdminEvent): number {
+	/** `ownerId` 是這筆變更的資料擁有者；事件只送給他自己開著的後台分頁。 */
+	broadcastAdmin(ownerId: string, event: AdminEvent): number {
+		const sockets = this.adminSockets.get(ownerId);
+		if (!sockets) return 0;
 		const payload = JSON.stringify(event);
 		let delivered = 0;
-		for (const socket of this.adminSockets) {
+		for (const socket of sockets) {
 			if (socket.readyState !== SOCKET_OPEN) continue;
 			socket.send(payload);
 			delivered += 1;
@@ -101,7 +118,9 @@ export class SocketHub {
 			for (const socket of sockets) socket.close(1001, "server shutdown");
 		}
 		this.deviceSockets.clear();
-		for (const socket of this.adminSockets) socket.close(1001, "server shutdown");
+		for (const sockets of this.adminSockets.values()) {
+			for (const socket of sockets) socket.close(1001, "server shutdown");
+		}
 		this.adminSockets.clear();
 	}
 }

@@ -2,7 +2,7 @@ import type { StorageService } from "@/lib/storage";
 import { devices, layoutRevisions, layouts, mediaAssets, mediaDeviceSync, mediaVariants, schedules, type Database } from "@huan/db";
 import { collectAssetIds } from "@huan/layout-engine";
 import type { MediaAsset, MediaKind, MediaUsage, MediaVariant, MediaVariantRole } from "@huan/protocol";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 export type MediaAssetRow = typeof mediaAssets.$inferSelect;
 export type MediaVariantRow = typeof mediaVariants.$inferSelect;
@@ -120,9 +120,12 @@ export function distributionVariant(kind: MediaKind, variants: readonly MediaVar
  *
  * 版面文件是 JSONB，沒辦法用索引查「引用了哪個素材」，所以直接把版面全部讀出來
  * 在記憶體裡比對。版面的數量是「使用者手工排出來的畫面」等級，不是資料流等級。
+ *
+ * 掃描範圍限制在同一個擁有者：這份結果會直接顯示成版面、排程與裝置的名稱，
+ * 沒有 `ownerId` 就等於把別人的版面名稱藉著「這個素材被誰用了」洩出去。
  */
-export async function computeMediaUsage(db: Database, assetId: string): Promise<MediaUsage> {
-	const layoutRows = await db.select({ id: layouts.id, name: layouts.name, draft: layouts.draft, publishedRevisionId: layouts.publishedRevisionId }).from(layouts);
+export async function computeMediaUsage(db: Database, assetId: string, ownerId: string): Promise<MediaUsage> {
+	const layoutRows = await db.select({ id: layouts.id, name: layouts.name, draft: layouts.draft, publishedRevisionId: layouts.publishedRevisionId }).from(layouts).where(eq(layouts.ownerId, ownerId));
 
 	const publishedRevisionIds = layoutRows.map(row => row.publishedRevisionId).filter((value): value is string => value !== null);
 	const revisionRows =
@@ -145,15 +148,28 @@ export async function computeMediaUsage(db: Database, assetId: string): Promise<
 		if (inPublished) publishedLayoutIds.push(layout.id);
 	}
 
-	const usedSchedules = publishedLayoutIds.length > 0 ? await db.select({ id: schedules.id, name: schedules.name }).from(schedules).where(inArray(schedules.layoutId, publishedLayoutIds)) : [];
+	const usedSchedules =
+		publishedLayoutIds.length > 0
+			? await db
+					.select({ id: schedules.id, name: schedules.name })
+					.from(schedules)
+					.where(and(inArray(schedules.layoutId, publishedLayoutIds), eq(schedules.ownerId, ownerId)))
+			: [];
 
 	const deviceMap = new Map<string, { id: string; name: string }>();
 	if (publishedLayoutIds.length > 0) {
-		const byDefaultLayout = await db.select({ id: devices.id, name: devices.name }).from(devices).where(inArray(devices.defaultLayoutId, publishedLayoutIds));
+		const byDefaultLayout = await db
+			.select({ id: devices.id, name: devices.name })
+			.from(devices)
+			.where(and(inArray(devices.defaultLayoutId, publishedLayoutIds), eq(devices.ownerId, ownerId)));
 		for (const device of byDefaultLayout) deviceMap.set(device.id, device);
 	}
 
-	const bySync = await db.select({ id: devices.id, name: devices.name }).from(mediaDeviceSync).innerJoin(devices, eq(devices.id, mediaDeviceSync.deviceId)).where(eq(mediaDeviceSync.assetId, assetId));
+	const bySync = await db
+		.select({ id: devices.id, name: devices.name })
+		.from(mediaDeviceSync)
+		.innerJoin(devices, eq(devices.id, mediaDeviceSync.deviceId))
+		.where(and(eq(mediaDeviceSync.assetId, assetId), eq(devices.ownerId, ownerId)));
 	for (const device of bySync) deviceMap.set(device.id, device);
 
 	return { layouts: usedLayouts, schedules: usedSchedules, devices: [...deviceMap.values()] };

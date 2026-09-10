@@ -31,8 +31,9 @@ export function registerDeviceSocket(app: FastifyInstance): void {
 		}
 
 		const deviceId = actor.device.id;
+		const ownerId = actor.device.ownerId;
 		ctx.hub.attachDevice(deviceId, socket);
-		ctx.hub.broadcastAdmin({ type: "device_changed", deviceId });
+		ctx.hub.broadcastAdmin(ownerId, { type: "device_changed", deviceId });
 		send(socket, { type: "hello", serverTime: new Date().toISOString(), protocolVersion: PROTOCOL_VERSION, desiredVersion: actor.device.desiredVersion });
 
 		socket.on("message", (raw: unknown) => {
@@ -41,7 +42,7 @@ export function registerDeviceSocket(app: FastifyInstance): void {
 
 		socket.on("close", () => {
 			ctx.hub.detachDevice(deviceId, socket);
-			ctx.hub.broadcastAdmin({ type: "device_changed", deviceId });
+			ctx.hub.broadcastAdmin(ownerId, { type: "device_changed", deviceId });
 		});
 
 		socket.on("error", (error: Error) => {
@@ -78,7 +79,7 @@ export function registerDeviceSocket(app: FastifyInstance): void {
 				if (message.type === "heartbeat") {
 					const now = new Date();
 					await ctx.db.update(devices).set({ reportedState: message.reported, lastSeenAt: now, updatedAt: now }).where(eq(devices.id, deviceId));
-					ctx.hub.broadcastAdmin({ type: "device_changed", deviceId });
+					ctx.hub.broadcastAdmin(ownerId, { type: "device_changed", deviceId });
 					return;
 				}
 

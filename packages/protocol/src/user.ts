@@ -2,9 +2,12 @@ import { z } from "zod";
 import { IdSchema, IsoDateTimeSchema } from "./common.js";
 
 /**
- * HUAN 只有兩種角色。
- * - `super_admin`：可以管理使用者、所有裝置與稽核紀錄。
- * - `user`：可以操作素材、版面、排程與裝置，但不能管理其他使用者。
+ * HUAN 只有兩種角色，而且兩者的範圍不重疊。
+ *
+ * - `super_admin`：只負責帳號管理與稽核紀錄。他不擁有任何素材、版面、排程或裝置，
+ *   資源相關的 API 會直接回 403，而不是回一個空清單——看得到空清單的人會以為東西不見了。
+ * - `user`：擁有自己的素材、版面、排程與裝置，看不到也動不了別人的，
+ *   跨擁有者的存取一律回 404，讓 id 不可列舉。
  */
 export const UserRoleSchema = z.enum(["super_admin", "user"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;

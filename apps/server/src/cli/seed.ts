@@ -18,6 +18,10 @@ import { join } from "node:path";
  * 目標是「打開 Admin 就有東西可以看」：素材有各種狀態、裝置有線上與離線、
  * 版面有草稿與已發布的差異、排程涵蓋早餐與午餐兩個時段。
  * 可以重複執行，每一列都以固定的 UUID upsert，不會愈跑愈多。
+ *
+ * 資料刻意分給兩個一般使用者，而最高管理員什麼都不擁有：
+ * 這樣 seed 本身就是「每個人只看得到自己的東西」這條規則的示範，
+ * 拿最高管理員登入會看到資源頁面直接回 403，而不是一張空表格。
  */
 
 /**
@@ -33,12 +37,14 @@ function excluded(columnName: string): SQL {
 const ID = {
 	adminUser: "00000000-0000-4000-8000-000000000001",
 	editorUser: "00000000-0000-4000-8000-000000000002",
+	partnerUser: "00000000-0000-4000-8000-000000000003",
 
 	assetVideoReady: "00000000-0000-4000-8000-000000000101",
 	assetImageReady: "00000000-0000-4000-8000-000000000102",
 	assetVideoProcessing: "00000000-0000-4000-8000-000000000103",
 	assetImageFailed: "00000000-0000-4000-8000-000000000104",
 	assetVideoNeedsReupload: "00000000-0000-4000-8000-000000000105",
+	assetPartnerPoster: "00000000-0000-4000-8000-000000000106",
 
 	variantVideoReadyPlayback: "00000000-0000-4000-8000-000000000111",
 	variantVideoReadyThumbnail: "00000000-0000-4000-8000-000000000112",
@@ -50,13 +56,17 @@ const ID = {
 	variantImageFailedOriginal: "00000000-0000-4000-8000-000000000118",
 	variantNeedsReuploadPlayback: "00000000-0000-4000-8000-000000000119",
 	variantNeedsReuploadThumbnail: "00000000-0000-4000-8000-00000000011a",
+	variantPartnerPlayback: "00000000-0000-4000-8000-00000000011b",
+	variantPartnerThumbnail: "00000000-0000-4000-8000-00000000011c",
 
 	layoutMain: "00000000-0000-4000-8000-000000000201",
 	layoutBreakfast: "00000000-0000-4000-8000-000000000202",
 	layoutLunch: "00000000-0000-4000-8000-000000000203",
+	layoutPartner: "00000000-0000-4000-8000-000000000204",
 	revisionMain: "00000000-0000-4000-8000-000000000211",
 	revisionBreakfast: "00000000-0000-4000-8000-000000000212",
 	revisionLunch: "00000000-0000-4000-8000-000000000213",
+	revisionPartner: "00000000-0000-4000-8000-000000000214",
 
 	deviceLobby: "00000000-0000-4000-8000-000000000301",
 	deviceCounter: "00000000-0000-4000-8000-000000000302",
@@ -202,7 +212,7 @@ function mainDocument(published: boolean): LayoutDocument {
 	});
 }
 
-function mealDocument(params: { title: string; subtitle: string; accent: string }): LayoutDocument {
+function mealDocument(params: { title: string; subtitle: string; accent: string; assetId: string }): LayoutDocument {
 	return LayoutDocumentSchema.parse({
 		canvas: { width: 1920, height: 1080 },
 		background: { color: "#0b0b0b", imageAssetId: null, imageFit: "cover" },
@@ -215,7 +225,7 @@ function mealDocument(params: { title: string; subtitle: string; accent: string 
 			first: {
 				type: "slot",
 				id: "slot-meal-image",
-				content: { type: "image", assetId: ID.assetImageReady, fit: "cover", backgroundColor: "#000000" }
+				content: { type: "image", assetId: params.assetId, fit: "cover", backgroundColor: "#000000" }
 			},
 			second: {
 				type: "slot",
@@ -298,12 +308,19 @@ try {
 
 	const adminHash = await hashPassword(adminPassword);
 	const editorHash = await hashPassword(userPassword);
+	const partnerHash = await hashPassword(userPassword);
 
+	/**
+	 * 三個帳號，對應三種角色關係：
+	 * `admin` 只管帳號，不擁有任何資源；`editor` 是主要的示範租戶；
+	 * `partner` 存在的唯一目的，是證明 `editor` 看不到別人的東西。
+	 */
 	await db
 		.insert(users)
 		.values([
 			{ id: ID.adminUser, email: "admin@huan.local", username: "admin", displayName: "示範管理員", role: "super_admin", status: "active", passwordHash: adminHash },
-			{ id: ID.editorUser, email: "editor@huan.local", username: "editor", displayName: "示範編輯", role: "user", status: "active", passwordHash: editorHash }
+			{ id: ID.editorUser, email: "editor@huan.local", username: "editor", displayName: "示範編輯", role: "user", status: "active", passwordHash: editorHash },
+			{ id: ID.partnerUser, email: "partner@huan.local", username: "partner", displayName: "示範夥伴門市", role: "user", status: "active", passwordHash: partnerHash }
 		])
 		.onConflictDoUpdate({
 			target: users.id,
@@ -386,7 +403,9 @@ try {
 			width: 1,
 			height: 1,
 			durationMs: null
-		}
+		},
+		{ id: ID.variantPartnerPlayback, assetId: ID.assetPartnerPoster, role: "playback", contentType: "image/png", body: ONE_PIXEL_PNG, available: true, width: 1, height: 1, durationMs: null },
+		{ id: ID.variantPartnerThumbnail, assetId: ID.assetPartnerPoster, role: "thumbnail", contentType: "image/png", body: ONE_PIXEL_PNG, available: true, width: 1, height: 1, durationMs: null }
 	];
 
 	await db
@@ -401,7 +420,8 @@ try {
 				sizeBytes: 96 * 1024,
 				status: "ready",
 				probe: READY_VIDEO_PROBE,
-				createdBy: ID.adminUser
+				ownerId: ID.editorUser,
+				createdBy: ID.editorUser
 			},
 			{
 				id: ID.assetImageReady,
@@ -412,6 +432,7 @@ try {
 				sizeBytes: ONE_PIXEL_PNG.byteLength,
 				status: "ready",
 				probe: READY_IMAGE_PROBE,
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			},
 			{
@@ -422,6 +443,7 @@ try {
 				contentType: "video/mp4",
 				sizeBytes: 48 * 1024,
 				status: "processing",
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			},
 			{
@@ -433,6 +455,7 @@ try {
 				sizeBytes: ONE_PIXEL_PNG.byteLength,
 				status: "failed",
 				errorMessage: "圖片解析失敗，請確認檔案沒有損毀後重新上傳",
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			},
 			{
@@ -444,7 +467,20 @@ try {
 				sizeBytes: 1024,
 				status: "needs_reupload",
 				errorMessage: "播放版本已回收，需要重新上傳原始檔",
-				createdBy: ID.adminUser
+				ownerId: ID.editorUser,
+				createdBy: ID.editorUser
+			},
+			{
+				id: ID.assetPartnerPoster,
+				kind: "image",
+				name: "夥伴門市海報",
+				originalFilename: "partner-poster.png",
+				contentType: "image/png",
+				sizeBytes: ONE_PIXEL_PNG.byteLength,
+				status: "ready",
+				probe: READY_IMAGE_PROBE,
+				ownerId: ID.partnerUser,
+				createdBy: ID.partnerUser
 			}
 		])
 		.onConflictDoUpdate({
@@ -458,6 +494,7 @@ try {
 				status: excluded("status"),
 				errorMessage: excluded("error_message"),
 				probe: excluded("probe"),
+				ownerId: excluded("owner_id"),
 				updatedAt: new Date()
 			}
 		});
@@ -499,8 +536,10 @@ try {
 
 	/* ── 版面 ─────────────────────────────────────────────────────────── */
 
-	const breakfastDocument = mealDocument({ title: "早餐時段", subtitle: "07:00 – 11:00　套餐現點現做", accent: "#ffd166" });
-	const lunchDocument = mealDocument({ title: "午餐時段", subtitle: "11:00 – 14:00　主餐附湯與飲品", accent: "#8ecae6" });
+	/** 每個版面只引用自己擁有者的素材：發布前的檢查會把引用別人素材的版面當成「素材不存在」擋下來。 */
+	const breakfastDocument = mealDocument({ title: "早餐時段", subtitle: "07:00 – 11:00　套餐現點現做", accent: "#ffd166", assetId: ID.assetImageReady });
+	const lunchDocument = mealDocument({ title: "午餐時段", subtitle: "11:00 – 14:00　主餐附湯與飲品", accent: "#8ecae6", assetId: ID.assetImageReady });
+	const partnerDocument = mealDocument({ title: "夥伴門市", subtitle: "另一個租戶的畫面　彼此看不到", accent: "#a0e7a0", assetId: ID.assetPartnerPoster });
 
 	await db
 		.insert(layouts)
@@ -513,7 +552,8 @@ try {
 				canvasHeight: 1080,
 				draft: mainDocument(false),
 				publishedRevisionId: ID.revisionMain,
-				createdBy: ID.adminUser
+				ownerId: ID.editorUser,
+				createdBy: ID.editorUser
 			},
 			{
 				id: ID.layoutBreakfast,
@@ -523,6 +563,7 @@ try {
 				canvasHeight: 1080,
 				draft: breakfastDocument,
 				publishedRevisionId: ID.revisionBreakfast,
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			},
 			{
@@ -533,20 +574,40 @@ try {
 				canvasHeight: 1080,
 				draft: lunchDocument,
 				publishedRevisionId: ID.revisionLunch,
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
+			},
+			{
+				id: ID.layoutPartner,
+				name: "夥伴門市主畫面",
+				description: "另一個租戶的版面",
+				canvasWidth: 1920,
+				canvasHeight: 1080,
+				draft: partnerDocument,
+				publishedRevisionId: ID.revisionPartner,
+				ownerId: ID.partnerUser,
+				createdBy: ID.partnerUser
 			}
 		])
 		.onConflictDoUpdate({
 			target: layouts.id,
-			set: { name: excluded("name"), description: excluded("description"), draft: excluded("draft"), publishedRevisionId: excluded("published_revision_id"), updatedAt: new Date() }
+			set: {
+				name: excluded("name"),
+				description: excluded("description"),
+				draft: excluded("draft"),
+				publishedRevisionId: excluded("published_revision_id"),
+				ownerId: excluded("owner_id"),
+				updatedAt: new Date()
+			}
 		});
 
 	await db
 		.insert(layoutRevisions)
 		.values([
-			{ id: ID.revisionMain, layoutId: ID.layoutMain, revisionNumber: 1, document: mainDocument(true), note: "初版", publishedBy: ID.adminUser },
+			{ id: ID.revisionMain, layoutId: ID.layoutMain, revisionNumber: 1, document: mainDocument(true), note: "初版", publishedBy: ID.editorUser },
 			{ id: ID.revisionBreakfast, layoutId: ID.layoutBreakfast, revisionNumber: 1, document: breakfastDocument, note: "初版", publishedBy: ID.editorUser },
-			{ id: ID.revisionLunch, layoutId: ID.layoutLunch, revisionNumber: 1, document: lunchDocument, note: "初版", publishedBy: ID.editorUser }
+			{ id: ID.revisionLunch, layoutId: ID.layoutLunch, revisionNumber: 1, document: lunchDocument, note: "初版", publishedBy: ID.editorUser },
+			{ id: ID.revisionPartner, layoutId: ID.layoutPartner, revisionNumber: 1, document: partnerDocument, note: "初版", publishedBy: ID.partnerUser }
 		])
 		.onConflictDoUpdate({ target: layoutRevisions.id, set: { document: excluded("document"), note: excluded("note") } });
 
@@ -555,6 +616,7 @@ try {
 	const now = new Date();
 	const twoDaysAgo = new Date(now.getTime() - 2 * 86_400_000);
 
+	/** 裝置全部屬於 `editor`：誰確認配對碼誰就是擁有者，而最高管理員連配對都不能做。 */
 	await db
 		.insert(devices)
 		.values([
@@ -565,7 +627,8 @@ try {
 				defaultLayoutId: ID.layoutMain,
 				lastSeenAt: now,
 				pairedAt: new Date(now.getTime() - 30 * 86_400_000),
-				pairedBy: ID.adminUser
+				ownerId: ID.editorUser,
+				pairedBy: ID.editorUser
 			},
 			{
 				id: ID.deviceCounter,
@@ -574,7 +637,8 @@ try {
 				defaultLayoutId: ID.layoutMain,
 				lastSeenAt: twoDaysAgo,
 				pairedAt: new Date(now.getTime() - 20 * 86_400_000),
-				pairedBy: ID.adminUser
+				ownerId: ID.editorUser,
+				pairedBy: ID.editorUser
 			},
 			{
 				id: ID.deviceSpare,
@@ -583,7 +647,8 @@ try {
 				defaultLayoutId: null,
 				lastSeenAt: new Date(now.getTime() - 45 * 86_400_000),
 				pairedAt: new Date(now.getTime() - 60 * 86_400_000),
-				pairedBy: ID.adminUser
+				ownerId: ID.editorUser,
+				pairedBy: ID.editorUser
 			}
 		])
 		.onConflictDoUpdate({
@@ -594,6 +659,7 @@ try {
 				defaultLayoutId: excluded("default_layout_id"),
 				lastSeenAt: excluded("last_seen_at"),
 				pairedAt: excluded("paired_at"),
+				ownerId: excluded("owner_id"),
 				pairedBy: excluded("paired_by"),
 				updatedAt: new Date()
 			}
@@ -634,6 +700,7 @@ try {
 				daysOfWeek: [1, 2, 3, 4, 5],
 				startTime: "08:00",
 				endTime: "11:00",
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			},
 			{
@@ -648,6 +715,7 @@ try {
 				daysOfWeek: [1, 2, 3, 4, 5],
 				startTime: "11:00",
 				endTime: "14:00",
+				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			}
 		])
@@ -661,17 +729,19 @@ try {
 				priority: excluded("priority"),
 				daysOfWeek: excluded("days_of_week"),
 				startTime: excluded("start_time"),
-				endTime: excluded("end_time")
+				endTime: excluded("end_time"),
+				ownerId: excluded("owner_id")
 			}
 		});
 
 	await db.delete(scheduleDevices).where(eq(scheduleDevices.scheduleId, ID.scheduleBreakfast));
 	await db.delete(scheduleDevices).where(eq(scheduleDevices.scheduleId, ID.scheduleLunch));
+	/** 排程與裝置同屬 `editor`；`ownerId` 同時參與兩條複合外鍵，跨擁有者的指派在資料庫層就寫不進去。 */
 	await db.insert(scheduleDevices).values([
-		{ scheduleId: ID.scheduleBreakfast, deviceId: ID.deviceLobby },
-		{ scheduleId: ID.scheduleBreakfast, deviceId: ID.deviceCounter },
-		{ scheduleId: ID.scheduleLunch, deviceId: ID.deviceLobby },
-		{ scheduleId: ID.scheduleLunch, deviceId: ID.deviceCounter }
+		{ scheduleId: ID.scheduleBreakfast, deviceId: ID.deviceLobby, ownerId: ID.editorUser },
+		{ scheduleId: ID.scheduleBreakfast, deviceId: ID.deviceCounter, ownerId: ID.editorUser },
+		{ scheduleId: ID.scheduleLunch, deviceId: ID.deviceLobby, ownerId: ID.editorUser },
+		{ scheduleId: ID.scheduleLunch, deviceId: ID.deviceCounter, ownerId: ID.editorUser }
 	]);
 
 	/* ── 背景工作 ─────────────────────────────────────────────────────── */
@@ -708,10 +778,14 @@ try {
 	console.log("✓ 示範資料已寫入。");
 	console.log("");
 	console.log("  使用者");
-	console.log(`    admin@huan.local   / ${adminPassword}   （super_admin）`);
-	console.log(`    editor@huan.local  / ${userPassword}   （user）`);
+	console.log(`    admin@huan.local    / ${adminPassword}   （super_admin：只管帳號與稽核紀錄，不擁有任何資源）`);
+	console.log(`    editor@huan.local   / ${userPassword}   （user：5 個涵蓋各種狀態的素材、3 個版面、3 台裝置、2 個排程）`);
+	console.log(`    partner@huan.local  / ${userPassword}   （user：另一個租戶，只有 1 個素材與 1 個版面）`);
 	console.log("");
-	console.log("  裝置憑證（Authorization: Bearer <deviceId>.<secret>）");
+	console.log("  用 admin 登入時，素材、版面、排程與裝置都會回 403；那是預期行為，不是壞掉。");
+	console.log("  用 editor 或 partner 登入，各自只會看到自己的那一份。");
+	console.log("");
+	console.log("  裝置憑證（Authorization: Bearer <deviceId>.<secret>），兩台都屬於 editor");
 	console.log(`    大廳主螢幕：${ID.deviceLobby}.${lobbySecret}`);
 	console.log(`    櫃檯螢幕：  ${ID.deviceCounter}.${counterSecret}`);
 	console.log("");

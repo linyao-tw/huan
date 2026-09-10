@@ -11,6 +11,13 @@ const AuditLogListResponseSchema = paginatedSchema(AuditLogSchema);
 export const auditRoutes: FastifyPluginAsyncZod = async app => {
 	const { db } = app.ctx;
 
+	/**
+	 * 稽核紀錄刻意保持全域，而且只有最高管理員看得到。
+	 *
+	 * 其他資源一律按擁有者切開，這裡是唯一的例外：稽核的用途是「誰在這個安裝上做了什麼」，
+	 * 按擁有者切開就再也回答不了跨帳號的問題。代價是 `targetLabel` 會出現別人的資源名稱，
+	 * 因此它不開放給一般使用者——一般使用者要看的是自己的資料，不是這份紀錄。
+	 */
 	app.get(
 		"/audit-logs",
 		{

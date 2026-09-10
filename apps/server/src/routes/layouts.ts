@@ -1,5 +1,5 @@
 import { recordAudit } from "@/lib/audit";
-import { clientIp, requireSession, sessionOf } from "@/lib/auth";
+import { clientIp, loadOwned, ownerOf, requireResourceOwner, sessionOf } from "@/lib/auth";
 import { bumpDevices, deviceIdsAffectedByLayout } from "@/lib/desired-state";
 import { conflict, notFound } from "@/lib/errors";
 import { describeAssetProblems, findAssetProblems, loadLayoutDetail, nextRevisionNumber, publishedRevisionNumbers, serializeLayoutSummary, serializeRevision } from "@/lib/layouts";
@@ -30,11 +30,12 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 
 	app.get(
 		"/layouts",
-		{ preHandler: requireSession, schema: { tags: ["layouts"], summary: "列出版面", querystring: PaginationQuerySchema, response: { 200: LayoutListResponseSchema } } },
+		{ preHandler: requireResourceOwner, schema: { tags: ["layouts"], summary: "列出版面", querystring: PaginationQuerySchema, response: { 200: LayoutListResponseSchema } } },
 		async request => {
+			const ownerId = ownerOf(request);
 			const { limit, offset } = request.query;
-			const rows = await db.select().from(layouts).orderBy(desc(layouts.updatedAt)).limit(limit).offset(offset);
-			const [total] = await db.select({ value: count() }).from(layouts);
+			const rows = await db.select().from(layouts).where(eq(layouts.ownerId, ownerId)).orderBy(desc(layouts.updatedAt)).limit(limit).offset(offset);
+			const [total] = await db.select({ value: count() }).from(layouts).where(eq(layouts.ownerId, ownerId));
 			const numbers = await publishedRevisionNumbers(
 				db,
 				rows.map(row => row.publishedRevisionId).filter((value): value is string => value !== null)
@@ -50,7 +51,7 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 
 	app.post(
 		"/layouts",
-		{ preHandler: requireSession, schema: { tags: ["layouts"], summary: "建立版面", body: CreateLayoutRequestSchema, response: { 201: LayoutDetailSchema } } },
+		{ preHandler: requireResourceOwner, schema: { tags: ["layouts"], summary: "建立版面", body: CreateLayoutRequestSchema, response: { 201: LayoutDetailSchema } } },
 		async (request, reply) => {
 			const actor = sessionOf(request);
 			const { name, description, canvas } = request.body;
@@ -63,6 +64,7 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 					canvasWidth: canvas.width,
 					canvasHeight: canvas.height,
 					draft: createEmptyDocument(canvas),
+					ownerId: actor.user.id,
 					createdBy: actor.user.id
 				})
 				.returning();
@@ -78,7 +80,7 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 				ipAddress: clientIp(request)
 			});
 
-			const detail = await loadLayoutDetail(db, created.id);
+			const detail = await loadLayoutDetail(db, created.id, actor.user.id);
 			if (!detail) throw notFound("找不到剛建立的版面");
 			return reply.status(201).send(detail);
 		}
@@ -86,9 +88,9 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 
 	app.get(
 		"/layouts/:id",
-		{ preHandler: requireSession, schema: { tags: ["layouts"], summary: "取得版面", params: z.object({ id: IdSchema }), response: { 200: LayoutDetailSchema } } },
+		{ preHandler: requireResourceOwner, schema: { tags: ["layouts"], summary: "取得版面", params: z.object({ id: IdSchema }), response: { 200: LayoutDetailSchema } } },
 		async request => {
-			const detail = await loadLayoutDetail(db, request.params.id);
+			const detail = await loadLayoutDetail(db, request.params.id, ownerOf(request));
 			if (!detail) throw notFound("找不到這個版面");
 			return detail;
 		}
@@ -97,13 +99,12 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 	app.patch(
 		"/layouts/:id",
 		{
-			preHandler: requireSession,
+			preHandler: requireResourceOwner,
 			schema: { tags: ["layouts"], summary: "更新草稿", params: z.object({ id: IdSchema }), body: UpdateLayoutDraftRequestSchema, response: { 200: LayoutDetailSchema } }
 		},
 		async request => {
 			const actor = sessionOf(request);
-			const [existing] = await db.select().from(layouts).where(eq(layouts.id, request.params.id)).limit(1);
-			if (!existing) throw notFound("找不到這個版面");
+			const existing = await loadOwned(db, layouts, request.params.id, actor.user.id, "找不到這個版面");
 
 			const now = new Date();
 			const { name, description, draft } = request.body;
@@ -128,7 +129,7 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 				metadata: { draftChanged: draft !== undefined }
 			});
 
-			const detail = await loadLayoutDetail(db, existing.id);
+			const detail = await loadLayoutDetail(db, existing.id, actor.user.id);
 			if (!detail) throw notFound("找不到這個版面");
 			return detail;
 		}
@@ -137,15 +138,14 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 	app.post(
 		"/layouts/:id/publish",
 		{
-			preHandler: requireSession,
+			preHandler: requireResourceOwner,
 			schema: { tags: ["layouts"], summary: "發布草稿為新的修訂", params: z.object({ id: IdSchema }), body: PublishLayoutRequestSchema, response: { 201: LayoutRevisionSchema } }
 		},
 		async (request, reply) => {
 			const actor = sessionOf(request);
-			const [existing] = await db.select().from(layouts).where(eq(layouts.id, request.params.id)).limit(1);
-			if (!existing) throw notFound("找不到這個版面");
+			const existing = await loadOwned(db, layouts, request.params.id, actor.user.id, "找不到這個版面");
 
-			const problems = await findAssetProblems(db, existing.draft);
+			const problems = await findAssetProblems(db, existing.draft, existing.ownerId);
 			if (problems.length > 0) {
 				throw conflict(describeAssetProblems(problems), { assets: problems });
 			}
@@ -157,7 +157,7 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 			await db.update(layouts).set({ publishedRevisionId: revision.id, updatedAt: new Date() }).where(eq(layouts.id, existing.id));
 
 			/** 發布之後才輪到派送：把每一台會用到這個版面的裝置重算一次目標狀態。 */
-			await bumpDevices(ctx, await deviceIdsAffectedByLayout(db, existing.id));
+			await bumpDevices(ctx, await deviceIdsAffectedByLayout(db, existing.id, existing.ownerId));
 
 			await recordAudit(db, {
 				action: "layout.published",
@@ -177,41 +177,53 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 	app.get(
 		"/layouts/:id/revisions/:revisionId",
 		{
-			preHandler: requireSession,
+			preHandler: requireResourceOwner,
 			schema: { tags: ["layouts"], summary: "取得指定修訂", params: z.object({ id: IdSchema, revisionId: IdSchema }), response: { 200: LayoutRevisionSchema } }
 		},
 		async request => {
-			const [revision] = await db
-				.select()
+			/** 修訂自己沒有擁有者，它跟著版面；因此一定要 join 回 `layouts` 才算驗證過歸屬。 */
+			const [row] = await db
+				.select({ revision: layoutRevisions })
 				.from(layoutRevisions)
-				.where(and(eq(layoutRevisions.id, request.params.revisionId), eq(layoutRevisions.layoutId, request.params.id)))
+				.innerJoin(layouts, eq(layouts.id, layoutRevisions.layoutId))
+				.where(and(eq(layoutRevisions.id, request.params.revisionId), eq(layoutRevisions.layoutId, request.params.id), eq(layouts.ownerId, ownerOf(request))))
 				.limit(1);
-			if (!revision) throw notFound("找不到這個版面修訂");
-			return serializeRevision(revision);
+			if (!row) throw notFound("找不到這個版面修訂");
+			return serializeRevision(row.revision);
 		}
 	);
 
-	app.delete("/layouts/:id", { preHandler: requireSession, schema: { tags: ["layouts"], summary: "刪除版面", params: z.object({ id: IdSchema }), response: { 200: OkSchema } } }, async request => {
-		const actor = sessionOf(request);
-		const [existing] = await db.select().from(layouts).where(eq(layouts.id, request.params.id)).limit(1);
-		if (!existing) throw notFound("找不到這個版面");
+	app.delete(
+		"/layouts/:id",
+		{ preHandler: requireResourceOwner, schema: { tags: ["layouts"], summary: "刪除版面", params: z.object({ id: IdSchema }), response: { 200: OkSchema } } },
+		async request => {
+			const actor = sessionOf(request);
+			const existing = await loadOwned(db, layouts, request.params.id, actor.user.id, "找不到這個版面");
 
-		const usingSchedules = await db.select({ id: schedules.id, name: schedules.name }).from(schedules).where(eq(schedules.layoutId, existing.id));
-		const usingDevices = await db.select({ id: devices.id, name: devices.name }).from(devices).where(eq(devices.defaultLayoutId, existing.id));
-		if (usingSchedules.length > 0 || usingDevices.length > 0) {
-			throw conflict("這個版面正在被排程或裝置使用，請先移除引用再刪除", { schedules: usingSchedules, devices: usingDevices });
+			/** 引用檢查也限制在同一個擁有者：複合外鍵保證不會有別人的排程或裝置指過來。 */
+			const usingSchedules = await db
+				.select({ id: schedules.id, name: schedules.name })
+				.from(schedules)
+				.where(and(eq(schedules.layoutId, existing.id), eq(schedules.ownerId, existing.ownerId)));
+			const usingDevices = await db
+				.select({ id: devices.id, name: devices.name })
+				.from(devices)
+				.where(and(eq(devices.defaultLayoutId, existing.id), eq(devices.ownerId, existing.ownerId)));
+			if (usingSchedules.length > 0 || usingDevices.length > 0) {
+				throw conflict("這個版面正在被排程或裝置使用，請先移除引用再刪除", { schedules: usingSchedules, devices: usingDevices });
+			}
+
+			await db.delete(layouts).where(eq(layouts.id, existing.id));
+			await recordAudit(db, {
+				action: "layout.deleted",
+				actorUserId: actor.user.id,
+				actorLabel: actor.user.username,
+				targetType: "layout",
+				targetId: existing.id,
+				targetLabel: existing.name,
+				ipAddress: clientIp(request)
+			});
+			return { ok: true as const };
 		}
-
-		await db.delete(layouts).where(eq(layouts.id, existing.id));
-		await recordAudit(db, {
-			action: "layout.deleted",
-			actorUserId: actor.user.id,
-			actorLabel: actor.user.username,
-			targetType: "layout",
-			targetId: existing.id,
-			targetLabel: existing.name,
-			ipAddress: clientIp(request)
-		});
-		return { ok: true as const };
-	});
+	);
 };

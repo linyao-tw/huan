@@ -8,7 +8,7 @@ import { CreateBucketCommand, HeadBucketCommand, S3Client } from "@aws-sdk/clien
 import type { WorkerEnv } from "@huan/config";
 import { loadWorkerEnv } from "@huan/config";
 import type { Database } from "@huan/db";
-import { createDatabase, mediaAssets, mediaVariants, workerJobs } from "@huan/db";
+import { createDatabase, mediaAssets, mediaVariants, users, workerJobs } from "@huan/db";
 import type { MediaKind, WorkerJobKind } from "@huan/protocol";
 import { sql } from "drizzle-orm";
 import { spawn } from "node:child_process";
@@ -29,6 +29,13 @@ export interface TestHarness {
 	binaries: FfmpegBinaries;
 	trackAsset: (assetId: string) => void;
 	trackDevice: (deviceId: string) => void;
+	/**
+	 * 測試素材與裝置的擁有者。
+	 *
+	 * 資源表的 `ownerId` 是 NOT NULL，所以連 worker 的測試夾具都得先有一個帳號。
+	 * 每個 harness 建一個自己的，測試之間才不會互相看到對方的東西。
+	 */
+	ownerId: string;
 	cleanup: () => Promise<void>;
 }
 
@@ -97,6 +104,19 @@ export async function createHarness(): Promise<HarnessResult> {
 	const assets: string[] = [];
 	const devices: string[] = [];
 
+	/* 密碼雜湊欄位不能是 null，但這個帳號永遠不會登入，放一個明顯不是雜湊的字串。 */
+	const suffix = randomUUID();
+	const owner = await connection.db
+		.insert(users)
+		.values({
+			email: `worker-fixture+${suffix}@huan.invalid`,
+			username: `worker-fixture-${suffix}`,
+			displayName: "Worker 測試夾具",
+			passwordHash: "not-a-login-account"
+		})
+		.returning({ id: users.id });
+	const ownerId = owner[0]!.id;
+
 	const harness: TestHarness = {
 		env,
 		db: connection.db,
@@ -106,6 +126,7 @@ export async function createHarness(): Promise<HarnessResult> {
 		binaries: binariesFromEnv(),
 		trackAsset: assetId => assets.push(assetId),
 		trackDevice: deviceId => devices.push(deviceId),
+		ownerId,
 		cleanup: async () => {
 			for (const assetId of assets) {
 				const keys = await connection.db
@@ -116,6 +137,8 @@ export async function createHarness(): Promise<HarnessResult> {
 				await connection.db.delete(mediaAssets).where(sql`${mediaAssets.id} = ${assetId}`);
 			}
 			for (const deviceId of devices) await connection.db.execute(sql`delete from devices where id = ${deviceId}`);
+			/* 擁有者最後刪：ownerId 是 restrict，名下還有資料的帳號刪不掉。 */
+			await connection.db.delete(users).where(sql`${users.id} = ${ownerId}`);
 			storage.destroy();
 			await connection.close();
 		}
@@ -187,7 +210,8 @@ export async function seedAsset(harness: TestHarness, options: { kind: MediaKind
 			originalFilename: options.filename ?? `fixture${options.extension}`,
 			contentType: options.contentType,
 			sizeBytes: info.size,
-			status: "uploaded"
+			status: "uploaded",
+			ownerId: harness.ownerId
 		})
 		.returning({ id: mediaAssets.id });
 
@@ -319,7 +343,7 @@ export async function hasFastStart(filePath: string): Promise<boolean> {
 }
 
 export async function seedDevice(harness: TestHarness, name: string): Promise<string> {
-	const rows = await harness.db.execute<{ id: string }>(sql`insert into devices (name) values (${name}) returning id`);
+	const rows = await harness.db.execute<{ id: string }>(sql`insert into devices (name, owner_id) values (${name}, ${harness.ownerId}) returning id`);
 	const deviceId = rows[0]!.id;
 	harness.trackDevice(deviceId);
 	return deviceId;

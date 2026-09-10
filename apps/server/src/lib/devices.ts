@@ -1,4 +1,5 @@
 import type { AppContext } from "@/context";
+import { ownedBy } from "@/lib/auth";
 import type { DeviceRow } from "@/lib/device-auth";
 import type { SocketHub } from "@/ws/hub";
 import { devices, layouts, type Database } from "@huan/db";
@@ -35,8 +36,14 @@ export function serializeDevice(ctx: AppContext, row: DeviceRow, defaultLayoutNa
 	};
 }
 
-export async function loadDeviceWithLayout(db: Database, deviceId: string): Promise<{ device: DeviceRow; layoutName: string | null } | null> {
-	const [row] = await db.select({ device: devices, layoutName: layouts.name }).from(devices).leftJoin(layouts, eq(layouts.id, devices.defaultLayoutId)).where(eq(devices.id, deviceId)).limit(1);
+/** 一律連同擁有者一起查。少了 `ownerId`，`:id` 就等於「輸入任何一台裝置的 id 都拿得到」。 */
+export async function loadDeviceWithLayout(db: Database, deviceId: string, ownerId: string): Promise<{ device: DeviceRow; layoutName: string | null } | null> {
+	const [row] = await db
+		.select({ device: devices, layoutName: layouts.name })
+		.from(devices)
+		.leftJoin(layouts, eq(layouts.id, devices.defaultLayoutId))
+		.where(ownedBy(devices, deviceId, ownerId))
+		.limit(1);
 	if (!row) return null;
 	return { device: row.device, layoutName: row.layoutName ?? null };
 }

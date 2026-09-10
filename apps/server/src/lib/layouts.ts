@@ -1,7 +1,8 @@
+import { ownedBy } from "@/lib/auth";
 import { layoutRevisions, layouts, mediaAssets, type Database } from "@huan/db";
 import { collectAssetIds } from "@huan/layout-engine";
 import type { LayoutDetail, LayoutDocument, LayoutRevision, LayoutSummary } from "@huan/protocol";
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 export type LayoutRow = typeof layouts.$inferSelect;
 export type LayoutRevisionRow = typeof layoutRevisions.$inferSelect;
@@ -32,8 +33,12 @@ export function serializeLayoutSummary(row: LayoutRow, publishedRevisionNumber: 
 	};
 }
 
-export async function loadLayoutDetail(db: Database, layoutId: string): Promise<LayoutDetail | null> {
-	const [row] = await db.select().from(layouts).where(eq(layouts.id, layoutId)).limit(1);
+export async function loadLayoutDetail(db: Database, layoutId: string, ownerId: string): Promise<LayoutDetail | null> {
+	const [row] = await db
+		.select()
+		.from(layouts)
+		.where(ownedBy(layouts, layoutId, ownerId))
+		.limit(1);
 	if (!row) return null;
 
 	const revisions = await db.select().from(layoutRevisions).where(eq(layoutRevisions.layoutId, layoutId)).orderBy(desc(layoutRevisions.revisionNumber));
@@ -82,12 +87,19 @@ export interface AssetReadinessProblem {
  *
  * 允許發布一個指向「還在轉檔」或「已刪除」素材的版面，等於允許把黑畫面
  * 推到現場的螢幕上；問題要在使用者還看得到編輯器的時候就講清楚。
+ *
+ * 查詢連 `ownerId` 一起帶：版面文件是 JSONB，沒有外鍵能阻止它引用別人的素材，
+ * 因此別人的素材在這裡必須被當成「不存在」，發布才不會把別人的檔案派送出去。
  */
-export async function findAssetProblems(db: Database, document: LayoutDocument): Promise<AssetReadinessProblem[]> {
+export async function findAssetProblems(db: Database, document: LayoutDocument, ownerId: string): Promise<AssetReadinessProblem[]> {
 	const assetIds = collectAssetIds(document);
 	if (assetIds.length === 0) return [];
 
-	const rows = await db.select({ id: mediaAssets.id, name: mediaAssets.name, status: mediaAssets.status }).from(mediaAssets).where(inArray(mediaAssets.id, assetIds)).orderBy(asc(mediaAssets.name));
+	const rows = await db
+		.select({ id: mediaAssets.id, name: mediaAssets.name, status: mediaAssets.status })
+		.from(mediaAssets)
+		.where(and(inArray(mediaAssets.id, assetIds), eq(mediaAssets.ownerId, ownerId)))
+		.orderBy(asc(mediaAssets.name));
 	const byId = new Map(rows.map(row => [row.id, row]));
 
 	const problems: AssetReadinessProblem[] = [];

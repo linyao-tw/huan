@@ -1,4 +1,4 @@
-import { checkEnvironment, createHarness, createReadyAsset, createUser, login, pairDevice, singleAssetDocument, type TestHarness } from "@/test/helpers";
+import { checkEnvironment, createHarness, createReadyAsset, createUser, login, pairDevice, singleAssetDocument, type SeededUser, type TestHarness } from "@/test/helpers";
 import { mediaDeviceSync, mediaVariants, workerJobs } from "@huan/db";
 import { sha256Hex } from "@huan/shared/node";
 import { and, eq } from "drizzle-orm";
@@ -10,6 +10,7 @@ if (!environment.ready) console.warn(`[跳過] 素材整合測試：${environmen
 
 suite("素材生命週期", () => {
 	let harness: TestHarness;
+	let owner: SeededUser;
 	let cookie: string;
 
 	beforeAll(async () => {
@@ -22,8 +23,9 @@ suite("素材生命週期", () => {
 
 	beforeEach(async () => {
 		await harness.truncate();
-		const admin = await createUser(harness, { role: "super_admin" });
-		cookie = await login(harness, admin.email, admin.password);
+		/** 素材、版面、排程與裝置都只有一般使用者能擁有，最高管理員只負責帳號管理。 */
+		owner = await createUser(harness, { role: "user" });
+		cookie = await login(harness, owner.email, owner.password);
 	});
 
 	async function createUpload(overrides: Partial<{ kind: string; name: string; filename: string; contentType: string; sizeBytes: number }> = {}) {
@@ -96,7 +98,7 @@ suite("素材生命週期", () => {
 	});
 
 	it("裝置下載與 ACK：雜湊不符會被拒絕，正確才標記完成", async () => {
-		const asset = await createReadyAsset(harness);
+		const asset = await createReadyAsset(harness, owner.id);
 		const layout = await harness.app.inject({
 			method: "POST",
 			url: harness.url("/layouts"),
@@ -157,8 +159,8 @@ suite("素材生命週期", () => {
 	});
 
 	it("裝置不能下載不在自己目標狀態裡的檔案", async () => {
-		const inUse = await createReadyAsset(harness, "video", "有派送的素材");
-		const unrelated = await createReadyAsset(harness, "image", "沒有派送的素材");
+		const inUse = await createReadyAsset(harness, owner.id, "video", "有派送的素材");
+		const unrelated = await createReadyAsset(harness, owner.id, "image", "沒有派送的素材");
 
 		const layout = await harness.app.inject({
 			method: "POST",
@@ -182,7 +184,7 @@ suite("素材生命週期", () => {
 	});
 
 	it("被引用的素材不能刪除，未被引用的可以，而且物件會一起清掉", async () => {
-		const asset = await createReadyAsset(harness, "image", "海報");
+		const asset = await createReadyAsset(harness, owner.id, "image", "海報");
 		const layout = await harness.app.inject({
 			method: "POST",
 			url: harness.url("/layouts"),
@@ -204,7 +206,7 @@ suite("素材生命週期", () => {
 		expect(blocked.json().details.layouts[0]).toMatchObject({ id: layoutId, published: true });
 		expect(blocked.json().details.devices).toHaveLength(1);
 
-		const free = await createReadyAsset(harness, "image", "沒人用的素材");
+		const free = await createReadyAsset(harness, owner.id, "image", "沒人用的素材");
 		const removed = await harness.app.inject({ method: "DELETE", url: harness.url(`/media/${free.assetId}`), headers: { cookie } });
 		expect(removed.statusCode).toBe(200);
 		expect(await harness.ctx.storage.head(free.objectKey)).toBeNull();
@@ -214,8 +216,8 @@ suite("素材生命週期", () => {
 	});
 
 	it("素材列表支援種類、狀態與名稱篩選，並附上簽章的縮圖網址", async () => {
-		const video = await createReadyAsset(harness, "video", "宣傳影片");
-		await createReadyAsset(harness, "image", "宣傳海報");
+		const video = await createReadyAsset(harness, owner.id, "video", "宣傳影片");
+		await createReadyAsset(harness, owner.id, "image", "宣傳海報");
 		await harness.ctx.db.insert(mediaVariants).values({
 			assetId: video.assetId,
 			role: "thumbnail",

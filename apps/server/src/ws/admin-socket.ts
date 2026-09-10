@@ -26,7 +26,13 @@ export function registerAdminSocket(app: FastifyInstance): void {
 			return;
 		}
 
-		ctx.hub.attachAdmin(socket);
+		/**
+		 * 以使用者 id 登記。
+		 *
+		 * 最高管理員同樣連得上，但他不擁有任何資源，因此這條通道對他永遠是安靜的；
+		 * 拒絕他連線只會讓後台多一個需要解釋的錯誤狀態。
+		 */
+		ctx.hub.attachAdmin(actor.user.id, socket);
 		send(socket, { type: "hello", serverTime: new Date().toISOString() });
 
 		socket.on("message", (raw: unknown) => {
@@ -44,7 +50,7 @@ export function registerAdminSocket(app: FastifyInstance): void {
 		});
 
 		socket.on("close", () => {
-			ctx.hub.detachAdmin(socket);
+			ctx.hub.detachAdmin(actor.user.id, socket);
 		});
 
 		socket.on("error", (error: Error) => {

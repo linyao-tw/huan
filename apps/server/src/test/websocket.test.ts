@@ -1,4 +1,4 @@
-import { checkEnvironment, createHarness, createReadyAsset, createUser, login, pairDevice, singleAssetDocument, type TestHarness } from "@/test/helpers";
+import { checkEnvironment, createHarness, createReadyAsset, createUser, login, pairDevice, singleAssetDocument, type SeededUser, type TestHarness } from "@/test/helpers";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const environment = await checkEnvironment();
@@ -22,6 +22,17 @@ function nextMessage(socket: TestSocket, timeoutMs = 5_000): Promise<Record<stri
 	});
 }
 
+/** 「什麼都沒收到」也要能斷言：逾時沒訊息就回 null，收到就把那筆訊息交出來讓測試指出它。 */
+function messageWithin(socket: TestSocket, windowMs: number): Promise<Record<string, unknown> | null> {
+	return new Promise(resolve => {
+		const timer = setTimeout(() => resolve(null), windowMs);
+		socket.once("message", (raw: unknown) => {
+			clearTimeout(timer);
+			resolve(JSON.parse(String(raw)) as Record<string, unknown>);
+		});
+	});
+}
+
 function nextClose(socket: TestSocket, timeoutMs = 5_000): Promise<number> {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(() => reject(new Error("等待 WebSocket 關閉逾時")), timeoutMs);
@@ -34,6 +45,7 @@ function nextClose(socket: TestSocket, timeoutMs = 5_000): Promise<number> {
 
 suite("WebSocket 控制通道", () => {
 	let harness: TestHarness;
+	let owner: SeededUser;
 	let cookie: string;
 
 	beforeAll(async () => {
@@ -46,8 +58,9 @@ suite("WebSocket 控制通道", () => {
 
 	beforeEach(async () => {
 		await harness.truncate();
-		const admin = await createUser(harness, { role: "super_admin" });
-		cookie = await login(harness, admin.email, admin.password);
+		/** 素材、版面、排程與裝置都只有一般使用者能擁有，最高管理員只負責帳號管理。 */
+		owner = await createUser(harness, { role: "user" });
+		cookie = await login(harness, owner.email, owner.password);
 	});
 
 	it("裝置以查詢字串的 token 連線、收到 hello 並能 ping/pong", async () => {
@@ -82,7 +95,7 @@ suite("WebSocket 控制通道", () => {
 	});
 
 	it("發布版面會把 desired_state_changed 推給連線中的裝置", async () => {
-		const asset = await createReadyAsset(harness);
+		const asset = await createReadyAsset(harness, owner.id);
 		const layout = await harness.app.inject({
 			method: "POST",
 			url: harness.url("/layouts"),
@@ -129,6 +142,27 @@ suite("WebSocket 控制通道", () => {
 		expect(await changed).toMatchObject({ type: "device_changed", deviceId: device.deviceId });
 
 		adminSocket.close();
+	});
+
+	it("Admin 的即時事件只送給資料的擁有者", async () => {
+		const stranger = await createUser(harness, { role: "user" });
+		const strangerCookie = await login(harness, stranger.email, stranger.password);
+
+		const ownerSocket = (await harness.app.injectWS("/api/v1/admin/socket", { headers: { cookie } })) as unknown as TestSocket;
+		const strangerSocket = (await harness.app.injectWS("/api/v1/admin/socket", { headers: { cookie: strangerCookie } })) as unknown as TestSocket;
+		expect(await nextMessage(ownerSocket)).toMatchObject({ type: "hello" });
+		expect(await nextMessage(strangerSocket)).toMatchObject({ type: "hello" });
+
+		const ownerSees = nextMessage(ownerSocket);
+		const strangerSees = messageWithin(strangerSocket, 1_000);
+		const device = await pairDevice(harness, cookie, "只有擁有者看得到的裝置");
+
+		expect(await ownerSees).toMatchObject({ type: "device_changed", deviceId: device.deviceId });
+		/** 事件只帶 id，但「誰的螢幕在什麼時候變了」本身就是別人的營運狀況。 */
+		expect(await strangerSees).toBeNull();
+
+		ownerSocket.close();
+		strangerSocket.close();
 	});
 
 	it("未登入的 Admin 連線會被關閉", async () => {
