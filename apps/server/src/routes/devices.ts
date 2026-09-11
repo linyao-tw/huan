@@ -5,7 +5,7 @@ import { loadDeviceWithLayout, serializeDevice } from "@/lib/devices";
 import { conflict, notFound } from "@/lib/errors";
 import { toCount } from "@/lib/pagination";
 import { routeRateLimit, type RateLimitTuning } from "@/plugins/rate-limit";
-import { deviceCredentials, devicePairingCodes, devices, layouts, mediaDeviceSync } from "@huan/db";
+import { deviceCredentials, devicePairingCodes, devices, layouts } from "@huan/db";
 import {
 	ConfirmPairingRequestSchema,
 	DeviceSchema,
@@ -119,23 +119,15 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 
 	app.delete(
 		"/devices/:id",
-		{ preHandler: requireResourceOwner, schema: { tags: ["devices"], summary: "解除裝置綁定", params: z.object({ id: IdSchema }), response: { 200: OkSchema } } },
+		{ preHandler: requireResourceOwner, schema: { tags: ["devices"], summary: "移除裝置", params: z.object({ id: IdSchema }), response: { 200: OkSchema } } },
 		async request => {
 			const actor = sessionOf(request);
 			const { device } = await loadOrThrow(request.params.id, actor.user.id);
-			const now = new Date();
 
-			await db
-				.update(deviceCredentials)
-				.set({ revokedAt: now })
-				.where(and(eq(deviceCredentials.deviceId, device.id), isNull(deviceCredentials.revokedAt)));
-			await db.update(devices).set({ status: "revoked", updatedAt: now }).where(eq(devices.id, device.id));
-			/** 同步紀錄留著只會讓 Worker 的回收判斷永遠等一台不會再回報的裝置。 */
-			await db.delete(mediaDeviceSync).where(eq(mediaDeviceSync.deviceId, device.id));
-
+			/** 先叫還連著的裝置停下來，再把它切掉——刪掉之後憑證失效，這個指令就送不出去了。 */
 			hub.sendCommand(device.id, "unbind");
-			hub.broadcastAdmin(device.ownerId, { type: "device_changed", deviceId: device.id });
 
+			/** 稽核在刪除前記，targetLabel 這時還拿得到裝置名稱。targetId 是純文字欄位，不受刪除影響。 */
 			await recordAudit(db, {
 				action: "device.unbound",
 				actorUserId: actor.user.id,
@@ -146,6 +138,17 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 				ipAddress: clientIp(request),
 				metadata: { initiatedBy: "admin" }
 			});
+
+			/**
+			 * 直接刪掉整列，不留「已移除」的殘影。
+			 *
+			 * 憑證、同步紀錄、排程指派、配對碼都以 onDelete cascade 掛在 devices 上，一起
+			 * 消失；稽核日誌的 actorDeviceId 是 set null，紀錄本身留著。因此不必手動一張張
+			 * 清，一個 delete 就乾淨。
+			 */
+			await db.delete(devices).where(eq(devices.id, device.id));
+
+			hub.broadcastAdmin(device.ownerId, { type: "device_changed", deviceId: device.id });
 			return { ok: true as const };
 		}
 	);
