@@ -4,6 +4,7 @@ import "@/features/users/users.css";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatDateTime, formatRelativeTime } from "@/shared/utils/format";
 import { EmailSchema, PasswordSchema, UsernameSchema, type User, type UserRole } from "@huan/protocol";
 import {
@@ -350,6 +351,8 @@ function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => voi
 }
 
 export function UsersPage() {
+	useDocumentTitle("使用者");
+
 	const currentUser = useCurrentUser();
 	const users = useUserListQuery(currentUser?.role === "super_admin");
 	const update = useUpdateUserMutation();

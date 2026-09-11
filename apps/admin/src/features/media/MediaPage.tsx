@@ -6,6 +6,7 @@ import { MediaUploadPanel } from "@/features/media/MediaUploadPanel";
 import { useMediaUploader } from "@/features/media/use-media-uploader";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { CardsSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatDateTime, formatResolution } from "@/shared/utils/format";
 import type { MediaAsset, MediaKind, MediaStatus } from "@huan/protocol";
 import { formatBytes, formatDurationMs } from "@huan/shared";
@@ -54,6 +55,8 @@ function MediaThumb({ asset }: { asset: MediaAsset }) {
 }
 
 export function MediaPage() {
+	useDocumentTitle("素材庫");
+
 	const [view, setView] = useState<ViewMode>("grid");
 	const [search, setSearch] = useState("");
 	const [kind, setKind] = useState<MediaKind | "all">("all");

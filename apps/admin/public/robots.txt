@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /login
+Disallow: /pair
+
+Sitemap: https://huan.linyao.tw/sitemap.xml

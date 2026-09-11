@@ -1,0 +1,24 @@
+{
+	"name": "HUAN 讙",
+	"short_name": "HUAN",
+	"description": "企業級雲端數位看板與媒體播放平台，支援影片、圖片、文字與網頁內容，並提供遠端素材管理、版面編排、排程發布、多裝置同步與離線播放能力。",
+	"lang": "zh-Hant-TW",
+	"dir": "ltr",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#fdfcfb",
+	"theme_color": "#fdfcfb",
+	"icons": [
+		{
+			"src": "/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}

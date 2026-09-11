@@ -3,6 +3,7 @@ import { DeviceContentBadge, DeviceOnlineBadge, DiskMeter, PlatformLabel } from 
 import { useDeviceListQuery } from "@/features/devices/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatRelativeTime, formatResolution } from "@/shared/utils/format";
 import { Button, EmptyState, Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from "@linyao.tw/ui";
 import { MonitorIcon } from "@phosphor-icons/react/dist/csr/Monitor";
@@ -10,6 +11,8 @@ import { PlugsConnectedIcon } from "@phosphor-icons/react/dist/csr/PlugsConnecte
 import { Link as RouterLink } from "react-router";
 
 export function DevicesPage() {
+	useDocumentTitle("裝置");
+
 	const devices = useDeviceListQuery();
 	const items = devices.data?.items ?? [];
 

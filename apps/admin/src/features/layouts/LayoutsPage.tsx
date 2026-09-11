@@ -3,6 +3,7 @@ import { useDeleteLayoutMutation, useLayoutListQuery } from "@/features/layouts/
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatRelativeTime } from "@/shared/utils/format";
 import type { LayoutSummary } from "@huan/protocol";
 import { Badge, Button, EmptyState, Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow, useToastManager } from "@linyao.tw/ui";
@@ -14,6 +15,8 @@ import { useState } from "react";
 import { Link as RouterLink } from "react-router";
 
 export function LayoutsPage() {
+	useDocumentTitle("版面");
+
 	const layouts = useLayoutListQuery();
 	const remove = useDeleteLayoutMutation();
 	const toast = useToastManager();

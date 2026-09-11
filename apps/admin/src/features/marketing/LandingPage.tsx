@@ -2,6 +2,7 @@ import "@/features/marketing/landing.css";
 import { Brand } from "@/shared/components/Brand";
 import { OsIcon, type OsKey } from "@/shared/components/OsIcon";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
+import { MARKETING_TITLE, usePageTitle } from "@/shared/hooks/use-document-title";
 import { Button, Card, CardBody, CardDescription, CardTitle, Link } from "@linyao.tw/ui";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
@@ -155,6 +156,8 @@ function ProductShot({ shot }: { shot: Shot }) {
 }
 
 export function LandingPage() {
+	usePageTitle(MARKETING_TITLE);
+
 	return (
 		<div className="huan-landing">
 			<header className="huan-landing__header huan-landing__inner">

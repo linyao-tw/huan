@@ -9,6 +9,7 @@ import { WeeklyTimeline } from "@/features/schedules/WeeklyTimeline";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatDate, formatWeekdays } from "@/shared/utils/format";
 import { browserTimeZone } from "@/shared/utils/timezones";
 import type { Schedule } from "@huan/protocol";
@@ -21,6 +22,8 @@ import { useState } from "react";
 
 /** 判定順序寫死在 @huan/shared，這裡只是把它翻成人話；改一邊就要改另一邊。 */
 export function SchedulesPage() {
+	useDocumentTitle("排程");
+
 	const schedules = useScheduleListQuery();
 	const layouts = useLayoutListQuery();
 	const devices = useDeviceListQuery();

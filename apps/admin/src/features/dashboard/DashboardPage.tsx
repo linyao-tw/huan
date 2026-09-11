@@ -8,6 +8,7 @@ import { useScheduleListQuery } from "@/features/schedules/hooks";
 import { useUserListQuery } from "@/features/users/hooks";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatRelativeTime } from "@/shared/utils/format";
 import { Badge, Button, Card, CardBody, EmptyState, ListCell, SectionHeading, Skeleton } from "@linyao.tw/ui";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
@@ -251,6 +252,8 @@ function AccountAdminDashboard() {
 }
 
 export function DashboardPage() {
+	useDocumentTitle("總覽");
+
 	const user = useCurrentUser();
 
 	/*

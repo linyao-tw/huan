@@ -5,6 +5,7 @@ import { RecoveryCodePanel, TotpSetupDialog } from "@/features/security/TotpSetu
 import { describeUserAgent } from "@/features/security/user-agent";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { formatDate, formatDateTime, formatRelativeTime } from "@/shared/utils/format";
 import { PasswordSchema, type SessionSummary } from "@huan/protocol";
 import {
@@ -123,6 +124,8 @@ const SESSION_PREVIEW_COUNT = 8;
 type TotpDialog = "setup" | "disable" | "regenerate" | null;
 
 export function SecurityPage() {
+	useDocumentTitle("安全設定");
+
 	const user = useCurrentUser();
 	const overview = useSecurityOverviewQuery();
 	const disable = useTotpDisableMutation();

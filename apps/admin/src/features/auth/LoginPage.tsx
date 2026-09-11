@@ -1,6 +1,7 @@
 import { useLoginMutation, useSessionQuery, useTotpChallengeMutation } from "@/features/auth/hooks";
 import { Brand } from "@/shared/components/Brand";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
+import { useDocumentTitle } from "@/shared/hooks/use-document-title";
 import { isApiError, type ApiError } from "@/shared/services/http";
 import { queryKeys } from "@/shared/services/query-keys";
 import { Alert, AlertDescription, AlertTitle, Button, Card, CardBody, CodeField, Link, PasswordField, SectionHeading, Separator, TextField } from "@linyao.tw/ui";
@@ -33,6 +34,8 @@ function loginErrorTitle(error: ApiError): string {
 }
 
 export function LoginPage() {
+	useDocumentTitle("登入");
+
 	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
