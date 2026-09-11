@@ -1,0 +1,46 @@
+# 疊在 docker/compose.yaml 之上，加入 Caddy 反向代理。
+#
+#   docker compose -f docker/compose.yaml -f docker/compose.caddy.yaml up -d
+#
+# Caddy 接手對外的 80/443，後端（server）與物件儲存（rustfs）不再直接對主機開埠，
+# 只在 compose 內部網路上供 Caddy 連。需要的網域與憑證信箱從 .env 帶進來，並把
+# server 切到「在反向代理後面」該有的設定：信任一跳代理、送出 Secure cookie。
+#
+# `!reset []` 需要 Docker Compose v2.24 以上；用來清掉 base compose 為了本機開發
+# 而發布的埠。版本較舊時，改成手動把 base compose 裡 server 與 rustfs 的 ports 拿掉。
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - server
+      - rustfs
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?請設定 APP_DOMAIN，例如 huan.example.com}
+      STORAGE_DOMAIN: ${STORAGE_DOMAIN:?請設定 STORAGE_DOMAIN，例如 storage.huan.example.com}
+      CADDY_EMAIL: ${CADDY_EMAIL:?請設定 CADDY_EMAIL 供 Let's Encrypt 申請憑證}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # 憑證與 ACME 帳號，務必持久化，否則每次重啟都重新申請
+      - caddy-config:/config
+
+  server:
+    # Caddy 對外，server 不再自己開埠
+    ports: !reset []
+    environment:
+      # Caddy 是唯一且可信的那一跳，採信它補的 X-Forwarded-For
+      TRUST_PROXY: "1"
+      # 對外是 HTTPS，cookie 一律帶 Secure
+      SESSION_COOKIE_SECURE: "true"
+
+  rustfs:
+    ports: !reset []
+
+volumes:
+  caddy-data:
+  caddy-config:

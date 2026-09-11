@@ -75,7 +75,13 @@ services:
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-336}
       # 反向代理尚未接上 TLS 時，把這個設為 false 才收得到 cookie。
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      # 要信任幾層反向代理。直接對外時保持 false；放在 Caddy 後面設為 1，
+      # 否則速率限制會以代理的 IP 為鍵，被偽造的 X-Forwarded-For 繞過。
+      TRUST_PROXY: ${TRUST_PROXY:-false}
       TOTP_ISSUER: ${TOTP_ISSUER:-HUAN}
+      # 加密 TOTP 密鑰用的金鑰（base64 的 32 bytes，openssl rand -base64 32）。
+      # NODE_ENV=production 下沒有它 server 會拒絕啟動，因此設成必填。
+      TOTP_SECRET_KEY: ${TOTP_SECRET_KEY:?請在 .env 設定 TOTP_SECRET_KEY（openssl rand -base64 32）}
       SIGNED_URL_TTL_SECONDS: ${SIGNED_URL_TTL_SECONDS:-900}
       DISTRIBUTION_RETENTION_HOURS: ${DISTRIBUTION_RETENTION_HOURS:-24}
       DEVICE_HEARTBEAT_SECONDS: ${DEVICE_HEARTBEAT_SECONDS:-60}

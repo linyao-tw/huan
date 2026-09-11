@@ -1,0 +1,40 @@
+# HUAN 讙 — 正式部署的反向代理設定
+#
+# 兩個對外網域，後端與物件儲存分開：
+#   {$APP_DOMAIN}      後台、官網、API 與 WebSocket（都由 server 容器服務）
+#   {$STORAGE_DOMAIN}  物件儲存（RustFS），瀏覽器與裝置直接下載／上傳的地方
+#
+# 網域與憑證信箱從環境變數帶進來（見 compose.caddy.yaml）。Caddy 會自動向
+# Let's Encrypt 申請並續期兩個網域的憑證。
+
+{
+	email {$CADDY_EMAIL}
+}
+
+# ── 後台 + 官網 + API + WebSocket ─────────────────────────────────────────
+#
+# server 容器同時服務 SPA（ADMIN_DIST_DIR）、`/api` 與 `/api/v1/.../socket`，
+# 所以整個網域直接轉給它，後台與 API 因此同源，不需要跨來源設定。
+# reverse_proxy 會自動接手 WebSocket 的 Upgrade，不必額外寫。
+#
+# Caddy 會補上 X-Forwarded-For；server 端要設 TRUST_PROXY=1 才會採信這一跳的
+# 來源 IP（速率限制與登入節流以它為鍵），否則所有請求看起來都來自 Caddy。
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy server:4000
+}
+
+# ── 物件儲存（RustFS）────────────────────────────────────────────────────
+#
+# 簽章網址（presigned URL）的 host 就是這個網域：server 以 S3_PUBLIC_ENDPOINT
+# = https://{$STORAGE_DOMAIN} 簽出網址，瀏覽器再直接把檔案 PUT 到這裡。
+#
+# 關鍵：S3 SigV4 的簽章涵蓋 Host 標頭。Caddy 的 reverse_proxy 預設會保留原始
+# Host 往上游送，因此 RustFS 收到的 Host 與 server 簽章時用的一致，簽章才驗得過。
+# 千萬不要用 `header_up Host` 去覆寫它，一改簽章就對不上、上傳全部 403。
+#
+# 不加 encode：素材本來就是壓縮過的二進位，再壓一次沒有意義。上傳的請求本體
+# 由 Caddy 串流轉送、沒有大小上限，4 GB 的影片也過得去。
+{$STORAGE_DOMAIN} {
+	reverse_proxy rustfs:9000
+}
