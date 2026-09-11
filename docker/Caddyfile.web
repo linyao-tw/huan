@@ -1,0 +1,28 @@
+# HUAN 讙 — Zeabur 上的邊緣 + 前端 Caddy
+#
+# 這個服務綁 huan.linyao.tw：直接服務 admin 的靜態建置，並把 /api 與 WebSocket
+# 反代到同專案內網的後端服務。Zeabur 的 ingress 已經終止 TLS，所以 Caddy 只在
+# 內網跑 http、關掉自動 HTTPS。
+
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+
+	# API 與健康檢查、WebSocket（都在 /api 底下）轉給後端。
+	# reverse_proxy 會自動接手 Upgrade，WS 不需要額外設定；預設保留原始 Host。
+	@backend path /api/* /health/*
+	handle @backend {
+		reverse_proxy server.zeabur.internal:4000
+	}
+
+	# 其餘是 SPA：找得到就給檔案，找不到一律回 index.html 交給前端路由。
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

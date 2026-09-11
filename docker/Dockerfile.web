@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+
+# ── 建置 admin 靜態檔 ────────────────────────────────────────────────────
+# admin 依賴 @huan/protocol 等本地套件，必須整個 workspace 一起建置。
+FROM node:24.20-bookworm-slim AS builder
+
+ENV PNPM_HOME="/pnpm" \
+	PATH="/pnpm:$PATH" \
+	CI=true
+RUN corepack enable
+
+WORKDIR /app
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm build:packages \
+	&& pnpm --filter @huan/admin build
+
+# ── Caddy 邊緣 + 前端 ────────────────────────────────────────────────────
+FROM caddy:2-alpine
+
+COPY --from=builder /app/apps/admin/dist /srv
+COPY docker/Caddyfile.web /etc/caddy/Caddyfile
+
+EXPOSE 8080
