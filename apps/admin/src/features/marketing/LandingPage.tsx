@@ -21,6 +21,7 @@ import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router";
 
 const CONTACT_EMAIL = "contact@linyao.tw";
+const DOCS_URL = "https://docs.linyao.tw/huan";
 const MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("HUAN 讙 採購諮詢")}`;
 
 /** 目錄條目式的敘述：適合 meta description 與頁尾，不適合當首屏的主打。 */
@@ -166,7 +167,7 @@ export function LandingPage() {
 				</RouterLink>
 				<div className="huan-row huan-row--tight">
 					<ThemeToggle />
-					<Button aria-label="文件（在新視窗開啟）" render={<a href="/docs/" target="_blank" rel="noopener noreferrer" />} nativeButton={false} variant="quiet" size="sm">
+					<Button aria-label="文件（在新視窗開啟）" render={<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" />} nativeButton={false} variant="quiet" size="sm">
 						文件
 					</Button>
 					<Button render={<RouterLink to="/login" />} nativeButton={false} variant="secondary" size="sm">
@@ -320,7 +321,7 @@ export function LandingPage() {
 								<Button render={<a href={MAILTO} />} nativeButton={false} size="lg" startIcon={<EnvelopeSimpleIcon weight="bold" />}>
 									寄信給 {CONTACT_EMAIL}
 								</Button>
-								<Link href="/docs/" target="_blank" rel="noopener noreferrer">
+								<Link href={DOCS_URL} target="_blank" rel="noopener noreferrer">
 									閱讀文件
 								</Link>
 							</div>
@@ -340,7 +341,7 @@ export function LandingPage() {
 							<p className="huan-landing__caption">{PRODUCT_TAGLINE}</p>
 						</div>
 						<nav aria-label="頁尾" className="huan-landing__footer-nav">
-							<Link href="/docs/" size="sm" target="_blank" rel="noopener noreferrer">
+							<Link href={DOCS_URL} size="sm" target="_blank" rel="noopener noreferrer">
 								文件
 							</Link>
 							<Link href={`mailto:${CONTACT_EMAIL}`} size="sm">
