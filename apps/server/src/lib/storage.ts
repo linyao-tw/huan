@@ -1,4 +1,4 @@
-import { CreateBucketCommand, DeleteObjectsCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CreateBucketCommand, DeleteObjectsCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, PutBucketCorsCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { publicStorageEndpoint, type ServerEnv } from "@huan/config";
 
@@ -53,6 +53,31 @@ export function createStorage(env: ServerEnv): StorageService {
 			} catch {
 				await internal.send(new CreateBucketCommand({ Bucket: env.S3_BUCKET }));
 			}
+
+			/**
+			 * 讓瀏覽器能直接把檔案 PUT 到儲存桶。
+			 *
+			 * 上傳走的是簽章網址：Admin 直接對 RustFS 發 PUT，不經過 Server。那是跨來源
+			 * 請求，帶 Content-Type 會先送一個 CORS preflight，儲存桶沒有 CORS 規則就答不
+			 * 出來，瀏覽器直接擋掉。允許的來源沿用 API 那份白名單（`CORS_ORIGINS`），
+			 * 不另外放寬。ETag 要 expose 出來，上傳完的完整性檢查才讀得到。
+			 */
+			await internal.send(
+				new PutBucketCorsCommand({
+					Bucket: env.S3_BUCKET,
+					CORSConfiguration: {
+						CORSRules: [
+							{
+								AllowedOrigins: [...env.CORS_ORIGINS],
+								AllowedMethods: ["PUT", "GET", "HEAD"],
+								AllowedHeaders: ["*"],
+								ExposeHeaders: ["ETag"],
+								MaxAgeSeconds: 3600
+							}
+						]
+					}
+				})
+			);
 		},
 
 		async presignPut(objectKey, contentType, expiresInSeconds) {
