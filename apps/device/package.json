@@ -3,6 +3,11 @@
 	"version": "0.1.0",
 	"private": true,
 	"description": "HUAN Device：Electron 播放器，負責配對、離線播放、排程執行與素材同步",
+	"homepage": "https://huan.linyao.tw",
+	"author": {
+		"name": "麟曜數位工作室",
+		"email": "contact@linyao.tw"
+	},
 	"type": "module",
 	"main": "./out/main/index.js",
 	"scripts": {
