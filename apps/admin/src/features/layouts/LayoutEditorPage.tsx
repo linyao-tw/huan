@@ -1,7 +1,6 @@
-import { contentForAsset, createTextContent, createTickerContent, createUrlContent } from "@/features/layouts/editor/content";
+import { contentForAsset } from "@/features/layouts/editor/content";
 import { Inspector } from "@/features/layouts/editor/Inspector";
 import { LayoutCanvas } from "@/features/layouts/editor/LayoutCanvas";
-import { MediaPalette } from "@/features/layouts/editor/MediaPalette";
 import { useDocumentHistory } from "@/features/layouts/editor/useDocumentHistory";
 import { useLayoutDetailQuery, usePublishLayoutMutation, useUpdateLayoutMutation } from "@/features/layouts/hooks";
 import "@/features/layouts/layouts.css";
@@ -239,17 +238,6 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 					</ul>
 				</div>
 
-				<MediaPalette
-					selectedSlotId={activeSlotId}
-					onAssign={assetId => {
-						const asset = assetMap.get(assetId);
-						if (asset) setSelectedContent(contentForAsset(asset));
-					}}
-					onInsertText={() => setSelectedContent(createTextContent())}
-					onInsertTicker={() => setSelectedContent(createTickerContent())}
-					onInsertUrl={() => setSelectedContent(createUrlContent())}
-				/>
-
 				<Inspector
 					document={history.document}
 					assets={assets}
@@ -258,10 +246,6 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 					onSplit={splitSelected}
 					onRemoveSlot={removeSelected}
 					onClearSlot={() => setSelectedContent(null)}
-					onSwapWith={targetId => {
-						if (!activeSlotId) return;
-						applyDocument(current => swapSlotContent(current, activeSlotId, targetId));
-					}}
 					onContentChange={setSelectedContent}
 					onRatioChange={(splitId, ratio) => applyDocument(current => setSplitRatio(current, splitId, ratio), `ratio-field:${splitId}`)}
 					onDirectionChange={(splitId, direction) => applyDocument(current => setSplitDirection(current, splitId, direction))}

@@ -171,6 +171,20 @@ describe("collectAssetIds", () => {
 		const withUrl = setSlotContent(empty, empty.root.id, { type: "url", url: "https://example.com" });
 		expect(collectAssetIds(withUrl)).toEqual([]);
 	});
+
+	it("輪播裡的每一則素材都要收集到，否則發布時漏派", () => {
+		const empty = createEmptyDocument();
+		const withPlaylist = setSlotContent(empty, empty.root.id, {
+			type: "playlist",
+			items: [
+				{ assetId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", kind: "image", durationMs: 5000 },
+				{ assetId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", kind: "video", durationMs: 8000 }
+			],
+			fit: "contain",
+			backgroundColor: "#000000"
+		});
+		expect(collectAssetIds(withPlaylist).sort()).toEqual(["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]);
+	});
 });
 
 describe("序列化", () => {

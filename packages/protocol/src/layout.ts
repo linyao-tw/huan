@@ -78,6 +78,33 @@ export const VideoContentSchema = z.object({
 });
 export type VideoContent = z.infer<typeof VideoContentSchema>;
 
+/**
+ * 輪播清單裡的一則素材。
+ *
+ * `kind` 決定怎麼播：圖片停留 `durationMs` 後換下一則；影片播完整段就換，
+ * 忽略 `durationMs`。清單可以圖片影片交錯，順序就是播放順序。
+ */
+export const PlaylistItemSchema = z.object({
+	assetId: IdSchema,
+	kind: z.enum(["image", "video"]),
+	durationMs: z
+		.number()
+		.int()
+		.min(1000)
+		.max(10 * 60 * 1000)
+		.default(8000)
+});
+export type PlaylistItem = z.infer<typeof PlaylistItemSchema>;
+
+export const PlaylistContentSchema = z.object({
+	type: z.literal("playlist"),
+	/** 依序輪播，播完最後一則回到第一則。 */
+	items: z.array(PlaylistItemSchema).min(1).max(50),
+	fit: ObjectFitSchema.default("contain"),
+	backgroundColor: ColorSchema.default("#000000")
+});
+export type PlaylistContent = z.infer<typeof PlaylistContentSchema>;
+
 export const UrlContentSchema = z.object({
 	type: z.literal("url"),
 	url: ExternalUrlSchema
@@ -90,10 +117,18 @@ export const HtmlContentSchema = z.object({
 });
 export type HtmlContent = z.infer<typeof HtmlContentSchema>;
 
-export const SlotContentSchema = z.discriminatedUnion("type", [TextContentSchema, TickerContentSchema, ImageContentSchema, VideoContentSchema, UrlContentSchema, HtmlContentSchema]);
+export const SlotContentSchema = z.discriminatedUnion("type", [
+	TextContentSchema,
+	TickerContentSchema,
+	ImageContentSchema,
+	VideoContentSchema,
+	PlaylistContentSchema,
+	UrlContentSchema,
+	HtmlContentSchema
+]);
 export type SlotContent = z.infer<typeof SlotContentSchema>;
 
-export const SlotContentTypeSchema = z.enum(["text", "ticker", "image", "video", "url", "html"]);
+export const SlotContentTypeSchema = z.enum(["text", "ticker", "image", "video", "playlist", "url", "html"]);
 export type SlotContentType = z.infer<typeof SlotContentTypeSchema>;
 
 export interface SlotNode {

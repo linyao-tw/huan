@@ -152,6 +152,34 @@ function VideoSlot({ content, assets }: { content: Extract<SlotContent, { type: 
 	);
 }
 
+function PlaylistSlot({ content, assets }: { content: Extract<SlotContent, { type: "playlist" }>; assets: AssetResolver }): React.JSX.Element {
+	const [index, setIndex] = useState(0);
+	const item = content.items[index % content.items.length];
+	const url = useMediaUrl(item ? assets.fileNameFor(item.assetId) : null);
+
+	const advance = (): void => setIndex(current => (current + 1) % content.items.length);
+
+	/**
+	 * 圖片停留固定時間後換下一則；影片的換片交給它自己的 `onEnded`（下面），這裡不設計時器。
+	 * 每次換 index 都重新排一次，所以清單長度變動也不會卡在舊的計時上。
+	 */
+	const total = content.items.length;
+	useEffect(() => {
+		if (!item || item.kind !== "image") return;
+		const timer = setTimeout(() => setIndex(current => (current + 1) % total), item.durationMs);
+		return () => clearTimeout(timer);
+	}, [index, item, total]);
+
+	if (!item || !url) return <div style={{ background: content.backgroundColor }} />;
+
+	const shared: React.CSSProperties = { objectFit: content.fit, background: content.backgroundColor, width: "100%", height: "100%" };
+	if (item.kind === "video") {
+		/** 影片播完整段就換：loop 關掉、onEnded 前進。key 綁網址，換片時重建 <video> 不留殘影。 */
+		return <video key={url} src={url} autoPlay muted playsInline onEnded={advance} style={shared} />;
+	}
+	return <img key={url} src={url} alt="" style={shared} />;
+}
+
 function UrlSlot({ content }: { content: Extract<SlotContent, { type: "url" }> }): React.JSX.Element {
 	/**
 	 * 外部網站可能設定 X-Frame-Options 或 frame-ancestors 而無法嵌入。
@@ -182,6 +210,8 @@ function SlotView({ slot, assets }: { slot: SlotRect; assets: AssetResolver }): 
 			return <ImageSlot content={content} assets={assets} />;
 		case "video":
 			return <VideoSlot content={content} assets={assets} />;
+		case "playlist":
+			return <PlaylistSlot content={content} assets={assets} />;
 		case "url":
 			return <UrlSlot content={content} />;
 		case "html":

@@ -47,7 +47,7 @@ describe("版面編輯器畫面", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("載入草稿後渲染三個面板與畫布上的區塊與分隔線", async () => {
+	it("載入草稿後渲染畫布上的區塊、分隔線與設定側欄", async () => {
 		renderWithProviders(
 			<Routes>
 				<Route path="/app/layouts/:layoutId" element={<LayoutEditorPage />} />
@@ -62,7 +62,6 @@ describe("版面編輯器畫面", () => {
 		expect(divider).toHaveAttribute("aria-valuenow", "70");
 		expect(divider).toHaveAttribute("aria-orientation", "vertical");
 
-		expect(screen.getByRole("heading", { name: "內容來源" })).toBeInTheDocument();
 		expect(screen.getByRole("tab", { name: "區塊" })).toBeInTheDocument();
 		expect(screen.getByRole("tab", { name: "版面" })).toBeInTheDocument();
 	});

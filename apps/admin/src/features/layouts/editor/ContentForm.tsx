@@ -1,7 +1,10 @@
-import { CONTENT_TYPE_LABELS } from "@/features/layouts/editor/content";
+import { CONTENT_TYPE_LABELS, playlistItemForAsset } from "@/features/layouts/editor/content";
 import { ColorControl } from "@/shared/components/ColorControl";
-import { ExternalUrlSchema, type MediaAsset, type ObjectFit, type SlotContent, type TextAlign, type TickerDirection, type VerticalAlign } from "@huan/protocol";
-import { Alert, AlertDescription, AlertTitle, EmptyState, NumberField, SegmentedControl, SegmentedControlItem, Select, Slider, Switch, TextField, TextView } from "@linyao.tw/ui";
+import { ExternalUrlSchema, type MediaAsset, type ObjectFit, type PlaylistContent, type SlotContent, type TextAlign, type TickerDirection, type VerticalAlign } from "@huan/protocol";
+import { Alert, AlertDescription, AlertTitle, Badge, EmptyState, IconButton, NumberField, SegmentedControl, SegmentedControlItem, Select, Slider, Switch, TextField, TextView } from "@linyao.tw/ui";
+import { ArrowDownIcon } from "@phosphor-icons/react/dist/csr/ArrowDown";
+import { ArrowUpIcon } from "@phosphor-icons/react/dist/csr/ArrowUp";
+import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import { useId, useState } from "react";
 
 const FIT_OPTIONS: { value: ObjectFit; label: string }[] = [
@@ -58,6 +61,94 @@ function TextStyleFields({ content, onChange }: { content: Extract<SlotContent, 
 			/>
 			<NumberField label="文字與邊界的距離（px）" min={0} max={400} step={4} value={content.padding} onValueChange={value => onChange({ ...content, padding: value ?? content.padding })} />
 		</>
+	);
+}
+
+/**
+ * 媒體輪播的編排。
+ *
+ * 只收圖片與影片，順序就是播放順序。圖片可以設停留秒數；影片播完整段就換，所以
+ * 不給它設時間。加素材、上下移、刪除都在這裡，實機依這份清單依序輪播。
+ */
+function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent; assets: MediaAsset[]; onChange: (next: SlotContent) => void }) {
+	const playable = assets.filter(asset => asset.kind === "image" || asset.kind === "video");
+	const nameOf = new Map(assets.map(asset => [asset.id, asset.name]));
+
+	const setItems = (items: PlaylistContent["items"]): void => onChange({ ...content, items });
+
+	const move = (index: number, delta: number): void => {
+		const next = [...content.items];
+		const target = index + delta;
+		if (target < 0 || target >= next.length) return;
+		[next[index], next[target]] = [next[target]!, next[index]!];
+		setItems(next);
+	};
+
+	const remove = (index: number): void => {
+		if (content.items.length <= 1) return; // 至少留一則，否則會變成不合法的空輪播
+		setItems(content.items.filter((_item, current) => current !== index));
+	};
+
+	const add = (assetId: string): void => {
+		const asset = playable.find(item => item.id === assetId);
+		const item = asset ? playlistItemForAsset(asset) : null;
+		if (item) setItems([...content.items, item]);
+	};
+
+	return (
+		<div className="huan-stack">
+			<ol className="huan-playlist">
+				{content.items.map((item, index) => (
+					<li key={`${item.assetId}-${index}`} className="huan-playlist__item">
+						<span className="huan-playlist__index huan-numeric">{index + 1}</span>
+						<span className="huan-playlist__body">
+							<span className="huan-row huan-row--tight">
+								<Badge variant="neutral" size="sm">
+									{item.kind === "video" ? "影片" : "圖片"}
+								</Badge>
+								<span className="huan-truncate">{nameOf.get(item.assetId) ?? "素材已不存在"}</span>
+							</span>
+							{item.kind === "image" ? (
+								<NumberField
+									label="停留秒數"
+									size="sm"
+									min={1}
+									max={600}
+									step={1}
+									value={Math.round(item.durationMs / 1000)}
+									onValueChange={value => {
+										if (value === null) return;
+										setItems(content.items.map((current, at) => (at === index ? { ...current, durationMs: value * 1000 } : current)));
+									}}
+								/>
+							) : (
+								<span className="huan-caption">影片播完整段才換</span>
+							)}
+						</span>
+						<span className="huan-playlist__actions">
+							<IconButton aria-label="往前移" variant="quiet" size="sm" disabled={index === 0} onClick={() => move(index, -1)}>
+								<ArrowUpIcon weight="bold" />
+							</IconButton>
+							<IconButton aria-label="往後移" variant="quiet" size="sm" disabled={index === content.items.length - 1} onClick={() => move(index, 1)}>
+								<ArrowDownIcon weight="bold" />
+							</IconButton>
+							<IconButton aria-label="移除" variant="quiet" size="sm" disabled={content.items.length <= 1} onClick={() => remove(index)}>
+								<TrashIcon weight="bold" />
+							</IconButton>
+						</span>
+					</li>
+				))}
+			</ol>
+
+			{playable.length === 0 ? (
+				<p className="huan-caption">素材庫裡還沒有處理完成的圖片或影片。</p>
+			) : (
+				<Select label="加入素材" placeholder="挑一個圖片或影片" value={null} onValueChange={value => value && add(value)} options={playable.map(asset => ({ value: asset.id, label: asset.name }))} />
+			)}
+
+			<Select label="縮放方式" value={content.fit} onValueChange={value => value && onChange({ ...content, fit: value })} options={FIT_OPTIONS} />
+			<ColorControl label="背景色" value={content.backgroundColor} onChange={value => onChange({ ...content, backgroundColor: value })} description="素材沒填滿這一塊時，露出來的顏色。" />
+		</div>
 	);
 }
 
@@ -144,6 +235,10 @@ export function ContentForm({ content, assets, onChange }: ContentFormProps) {
 				<ColorControl label="背景色" value={content.backgroundColor} onChange={value => onChange({ ...content, backgroundColor: value })} />
 			</div>
 		);
+	}
+
+	if (content.type === "playlist") {
+		return <PlaylistForm content={content} assets={assets} onChange={onChange} />;
 	}
 
 	if (content.type === "url") {

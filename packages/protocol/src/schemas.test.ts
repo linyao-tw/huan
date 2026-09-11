@@ -146,6 +146,36 @@ describe("LayoutDocumentSchema", () => {
 			})
 		).toThrow();
 	});
+
+	it("接受圖片影片混排的媒體輪播", () => {
+		const parsed = LayoutDocumentSchema.parse({
+			...base,
+			root: {
+				type: "slot",
+				id: "s1",
+				content: {
+					type: "playlist",
+					items: [
+						{ assetId: "11111111-1111-4111-8111-111111111111", kind: "image", durationMs: 5000 },
+						{ assetId: "22222222-2222-4222-8222-222222222222", kind: "video" }
+					]
+				}
+			}
+		});
+		const content = parsed.root.type === "slot" ? parsed.root.content : null;
+		expect(content?.type).toBe("playlist");
+		/** 沒給的停留秒數補上預設值，影片端雖然用不到也要有。 */
+		expect(content?.type === "playlist" && content.items[1]?.durationMs).toBe(8000);
+	});
+
+	it("拒絕沒有任何一則的空輪播", () => {
+		expect(() =>
+			LayoutDocumentSchema.parse({
+				...base,
+				root: { type: "slot", id: "s1", content: { type: "playlist", items: [] } }
+			})
+		).toThrow();
+	});
 });
 
 describe("CreateScheduleRequestSchema", () => {

@@ -105,6 +105,26 @@ export function SlotPreview({ content, assets, scale }: SlotPreviewProps) {
 		);
 	}
 
+	if (content.type === "playlist") {
+		/** 預覽只顯示第一則加上一個「共 N 則」的角標；實機才會依序輪播，編輯時不必真的跑計時器。 */
+		const first = content.items[0];
+		const asset = first ? assets.get(first.assetId) : undefined;
+		return (
+			<div className="huan-preview-playlist" style={{ background: content.backgroundColor }}>
+				{asset?.previewUrl ? (
+					first?.kind === "video" ? (
+						<video className="huan-preview-media" src={asset.previewUrl} style={{ objectFit: content.fit }} muted autoPlay playsInline loop preload="metadata" />
+					) : (
+						<img className="huan-preview-media" src={asset.previewUrl} alt="" style={{ objectFit: content.fit }} />
+					)
+				) : (
+					<div className="huan-preview-placeholder">{first ? "預覽尚未產生" : "尚未加入素材"}</div>
+				)}
+				<span className="huan-preview-playlist__count">輪播 · {content.items.length} 則</span>
+			</div>
+		);
+	}
+
 	if (content.type === "url") {
 		return <iframe className="huan-preview-frame" src={content.url} title="網頁內容預覽" sandbox="allow-scripts allow-same-origin" referrerPolicy="no-referrer" loading="lazy" />;
 	}

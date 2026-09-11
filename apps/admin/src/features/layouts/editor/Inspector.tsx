@@ -3,6 +3,7 @@ import {
 	CONTENT_TYPES,
 	CONTENT_TYPE_LABELS,
 	createAssetContent,
+	createPlaylistContent,
 	createTextContent,
 	createTickerContent,
 	createUrlContent,
@@ -46,7 +47,6 @@ import {
 import { ArrowsHorizontalIcon } from "@phosphor-icons/react/dist/csr/ArrowsHorizontal";
 import { ArrowsVerticalIcon } from "@phosphor-icons/react/dist/csr/ArrowsVertical";
 import { EraserIcon } from "@phosphor-icons/react/dist/csr/Eraser";
-import { SwapIcon } from "@phosphor-icons/react/dist/csr/Swap";
 import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import { useMemo, useState } from "react";
 
@@ -74,7 +74,6 @@ export interface InspectorProps {
 	onSplit: (direction: SplitDirection) => void;
 	onRemoveSlot: () => void;
 	onClearSlot: () => void;
-	onSwapWith: (targetSlotId: string) => void;
 	onContentChange: (content: SlotContent | null) => void;
 	onRatioChange: (splitId: string, ratio: number) => void;
 	onDirectionChange: (splitId: string, direction: SplitDirection) => void;
@@ -89,7 +88,6 @@ export function Inspector({
 	onSplit,
 	onRemoveSlot,
 	onClearSlot,
-	onSwapWith,
 	onContentChange,
 	onRatioChange,
 	onDirectionChange,
@@ -97,17 +95,14 @@ export function Inspector({
 }: InspectorProps) {
 	/** 已選型別但還沒挑素材時的暫存。綁在節點上，換區塊時就自然失效。 */
 	const [pending, setPending] = useState<{ nodeId: string; type: SlotContentType } | null>(null);
-	const [swapTarget, setSwapTarget] = useState<string | null>(null);
 
 	const geometry = useMemo(() => computeLayoutGeometry(layoutDocument), [layoutDocument]);
 	const assetNames = useMemo(() => new Map(assets.map(asset => [asset.id, asset.name])), [assets]);
 	const imageAssets = useMemo(() => assets.filter(asset => asset.kind === "image"), [assets]);
+	const playableAssets = useMemo(() => assets.filter(asset => asset.kind === "image" || asset.kind === "video"), [assets]);
 
 	const selectedSlot = geometry.slots.find(slot => slot.nodeId === selectedNodeId) ?? null;
 	const parent = selectedNodeId ? findParentSplit(layoutDocument.root, selectedNodeId) : null;
-	const otherSlots = geometry.slots.filter(slot => slot.nodeId !== selectedNodeId);
-	// 換了選取區塊之後，上一次挑的交換目標可能已經不存在，也不該沿用。
-	const validSwapTarget = otherSlots.some(slot => slot.nodeId === swapTarget) ? swapTarget : null;
 
 	const activeType: SlotContentType | null = selectedSlot?.content?.type ?? (pending?.nodeId === selectedNodeId ? pending.type : null);
 	const requiredKind = activeType ? ASSET_CONTENT_KIND[activeType] : undefined;
@@ -130,7 +125,7 @@ export function Inspector({
 			onContentChange(createUrlContent());
 			return;
 		}
-		// 需要素材的型別在挑到素材之前不寫進文件，避免產生沒有 assetId 的不合法內容。
+		// 需要素材的型別（含輪播）在挑到素材之前不寫進文件，避免產生不合法的內容。
 		setPending({ nodeId: selectedNodeId, type });
 		onContentChange(null);
 	};
@@ -201,34 +196,6 @@ export function Inspector({
 									</>
 								) : null}
 
-								{otherSlots.length > 0 ? (
-									<>
-										<Separator spacing="sm" />
-										<div className="huan-stack huan-stack--sm">
-											<span className="huan-muted">交換內容</span>
-											<Select
-												label="跟哪一塊交換"
-												placeholder="選擇另一塊"
-												value={validSwapTarget}
-												onValueChange={value => setSwapTarget(value)}
-												options={otherSlots.map(slot => ({ value: slot.nodeId, label: describeContent(slot.content, assetNames) }))}
-											/>
-											<Button
-												size="sm"
-												variant="secondary"
-												startIcon={<SwapIcon weight="bold" />}
-												disabled={validSwapTarget === null}
-												onClick={() => {
-													if (validSwapTarget) onSwapWith(validSwapTarget);
-												}}
-											>
-												交換這兩塊的內容
-											</Button>
-											<p className="huan-caption">在畫布上把一塊拖到另一塊也會交換。</p>
-										</div>
-									</>
-								) : null}
-
 								<Separator spacing="sm" />
 
 								<Select
@@ -241,6 +208,27 @@ export function Inspector({
 
 								{selectedSlot.content ? (
 									<ContentForm key={selectedSlot.nodeId} content={selectedSlot.content} assets={kindAssets} onChange={onContentChange} />
+								) : activeType === "playlist" ? (
+									playableAssets.length === 0 ? (
+										<Alert status="info">
+											<AlertTitle>沒有可用的素材</AlertTitle>
+											<AlertDescription>素材庫裡還沒有處理完成的圖片或影片。請先去素材庫上傳。</AlertDescription>
+										</Alert>
+									) : (
+										<Select
+											label="加入第一則"
+											placeholder="挑一個圖片或影片"
+											value={null}
+											onValueChange={value => {
+												const asset = playableAssets.find(item => item.id === value);
+												const content = asset ? createPlaylistContent(asset) : null;
+												if (!content) return;
+												onContentChange(content);
+												setPending(null);
+											}}
+											options={playableAssets.map(asset => ({ value: asset.id, label: asset.name }))}
+										/>
+									)
 								) : activeType && requiredKind ? (
 									kindAssets.length === 0 ? (
 										<Alert status="info">

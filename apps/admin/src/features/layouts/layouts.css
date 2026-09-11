@@ -12,15 +12,14 @@
 }
 
 /*
- * 畫布優先的兩欄工作區。
+ * 兩欄工作區：畫布預覽 + 設定側欄。
  *
- * 原本是「素材 | 畫布 | 檢視器」三欄，兩側固定吃掉 512px：1280 的筆電上畫布
- * 只剩 390×288，比它自己的工具列還窄。三欄在這個寬度不可能同時成立，所以把
- * 兩個側邊面板疊進同一條側欄，畫布拿走剩下的全部 —— 視窗變寬時畫布只會變大，
- * 不會因為多長出一欄而突然縮小。
+ * 預覽不用吃掉整個寬度——編輯時大部分時間在調設定，所以側欄給得寬一點，
+ * 預覽夠看清版面就好。內容選擇、素材、輪播編排都收在側欄的「區塊」裡，不再
+ * 另外開一個素材面板。
  */
 .huan-shell .huan-editor {
-	--huan-editor-rail: 19rem;
+	--huan-editor-rail: 26rem;
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
 	gap: var(--space-4);
@@ -37,28 +36,13 @@
 @media (min-width: 68rem) {
 	.huan-shell .huan-editor {
 		grid-template-columns: minmax(0, 1fr) var(--huan-editor-rail);
-		grid-template-rows: auto minmax(0, 1fr);
-		grid-template-areas:
-			"canvas source"
-			"canvas inspect";
-		/*
-		 * 固定高度是三個面板等高的唯一可靠做法。
-		 *
-		 * 原本只有側邊面板有 max-height、又用 align-items: start，結果三個面板
-		 * 底部參差 281px，畫布面板還超出側欄 41px。改成整個工作區一個高度、
-		 * 各自捲動之後，參差必然是 0。
-		 */
+		grid-template-areas: "canvas inspect";
+		/* 畫布與側欄等高、各自捲動；固定一個高度是等高最可靠的做法。 */
 		block-size: clamp(34rem, calc(100dvh - var(--space-24) - var(--space-10)), 96rem);
 	}
 
 	.huan-shell .huan-editor__canvas-pane {
 		grid-area: canvas;
-	}
-
-	.huan-shell .huan-editor__pane--source {
-		grid-area: source;
-		/* 素材再多也不能把檢視器擠掉。 */
-		max-block-size: 40vh;
 	}
 
 	.huan-shell .huan-editor__pane--inspect {
@@ -68,7 +52,7 @@
 
 @media (min-width: 100rem) {
 	.huan-shell .huan-editor {
-		--huan-editor-rail: 21rem;
+		--huan-editor-rail: 30rem;
 	}
 }
 
@@ -497,4 +481,66 @@
 .huan-color-swatch::-moz-color-swatch {
 	border: none;
 	border-radius: var(--radius-xs);
+}
+
+/* ── 媒體輪播編排 ─────────────────────────────────────────────────────── */
+
+.huan-playlist {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.huan-playlist__item {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-2);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-sm);
+	background: var(--background-main);
+}
+
+.huan-playlist__index {
+	inline-size: 1.5rem;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: var(--font-size-sm);
+}
+
+.huan-playlist__body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-inline-size: 0;
+}
+
+.huan-playlist__actions {
+	display: flex;
+	align-items: center;
+	gap: var(--space-05);
+}
+
+/* ── 輪播預覽 ─────────────────────────────────────────────────────────── */
+
+.huan-preview-playlist {
+	position: relative;
+	inline-size: 100%;
+	block-size: 100%;
+}
+
+.huan-preview-playlist__count {
+	position: absolute;
+	inset-block-end: var(--space-1);
+	inset-inline-end: var(--space-1);
+	padding: var(--space-05) var(--space-2);
+	border-radius: var(--radius-xs);
+	background: var(--background-elevated);
+	color: var(--text-secondary);
+	font-size: var(--font-size-xs);
+	pointer-events: none;
 }

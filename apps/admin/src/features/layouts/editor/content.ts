@@ -1,12 +1,14 @@
 import {
 	HtmlContentSchema,
 	ImageContentSchema,
+	PlaylistContentSchema,
 	TextContentSchema,
 	TickerContentSchema,
 	UrlContentSchema,
 	VideoContentSchema,
 	type MediaAsset,
 	type MediaKind,
+	type PlaylistItem,
 	type SlotContent,
 	type SlotContentType
 } from "@huan/protocol";
@@ -16,11 +18,12 @@ export const CONTENT_TYPE_LABELS: Record<SlotContentType, string> = {
 	ticker: "跑馬燈",
 	image: "圖片",
 	video: "影片",
+	playlist: "媒體輪播",
 	url: "網頁（URL）",
 	html: "HTML 素材"
 };
 
-export const CONTENT_TYPES: SlotContentType[] = ["text", "ticker", "image", "video", "url", "html"];
+export const CONTENT_TYPES: SlotContentType[] = ["text", "ticker", "image", "video", "playlist", "url", "html"];
 
 /** 需要素材的內容類型；選這些之前必須先指定素材，否則文件會處於不合法狀態。 */
 export const ASSET_CONTENT_KIND: Partial<Record<SlotContentType, MediaKind>> = { image: "image", video: "video", html: "html" };
@@ -46,6 +49,21 @@ export function createAssetContent(type: "image" | "video" | "html", assetId: st
 	return HtmlContentSchema.parse({ type: "html", assetId });
 }
 
+export const PLAYLIST_DEFAULT_DURATION_MS = 8000;
+
+/** 只有圖片與影片能放進輪播，用素材種類決定該建哪一種項目。 */
+export function playlistItemForAsset(asset: Pick<MediaAsset, "id" | "kind">): PlaylistItem | null {
+	if (asset.kind !== "image" && asset.kind !== "video") return null;
+	return { assetId: asset.id, kind: asset.kind, durationMs: PLAYLIST_DEFAULT_DURATION_MS };
+}
+
+/** 用一則素材開一個新的輪播；後續增刪在內容表單裡進行。 */
+export function createPlaylistContent(asset: Pick<MediaAsset, "id" | "kind">): SlotContent | null {
+	const item = playlistItemForAsset(asset);
+	if (!item) return null;
+	return PlaylistContentSchema.parse({ type: "playlist", items: [item] });
+}
+
 /** 從素材庫拖進區塊時，用素材本身的種類決定內容型別。 */
 export function contentForAsset(asset: Pick<MediaAsset, "id" | "kind">): SlotContent {
 	if (asset.kind === "image") return createAssetContent("image", asset.id);
@@ -62,6 +80,8 @@ export function describeContent(content: SlotContent | null, assetNames: Map<str
 			return content.text.trim().length > 0 ? `跑馬燈：${content.text.slice(0, 24)}` : "跑馬燈（尚未輸入）";
 		case "url":
 			return `網頁：${content.url}`;
+		case "playlist":
+			return `媒體輪播：${content.items.length} 則`;
 		default:
 			return `${CONTENT_TYPE_LABELS[content.type]}：${assetNames.get(content.assetId) ?? "素材已不存在"}`;
 	}

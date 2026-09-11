@@ -52,6 +52,7 @@ export function collectAssetIds(document: LayoutDocument): string[] {
 		const content = slot.content;
 		if (!content) continue;
 		if (content.type === "image" || content.type === "video" || content.type === "html") ids.add(content.assetId);
+		if (content.type === "playlist") for (const item of content.items) ids.add(item.assetId);
 	}
 	return [...ids];
 }
