@@ -7,7 +7,15 @@ export interface RateLimitTuning {
 	global: number;
 	/** `/auth/*` 的上限。密碼與 2FA 的猜測成本必須明顯高於一般 API。 */
 	auth: number;
-	/** 未驗證的配對端點。任何人都打得到，因此壓得比 auth 更低。 */
+	/**
+	 * 配對相關端點的上限。
+	 *
+	 * 這裡的下限不是猜測成本，而是「一台正在等待配對的裝置自己就會打多少」：它每
+	 * 3 秒輪詢一次 `/device/pairing/status`（見 device-core agent），也就是 20 次／分。
+	 * 上限必須明顯高過這個數字，否則裝置光是等使用者輸入配對碼就會把自己鎖成 429，
+	 * 卡在「連線中」。配對碼空間是 32^8、10 分鐘失效、只能用一次，放寬到 60 對猜測
+	 * 防護毫無影響。
+	 */
 	pairing: number;
 	timeWindow: string;
 }
@@ -15,7 +23,7 @@ export interface RateLimitTuning {
 export const DEFAULT_RATE_LIMITS: RateLimitTuning = {
 	global: 600,
 	auth: 30,
-	pairing: 20,
+	pairing: 60,
 	timeWindow: "1 minute"
 };
 
