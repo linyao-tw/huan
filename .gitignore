@@ -25,3 +25,8 @@ data/
 tmp/
 apps/e2e/test-results
 apps/e2e/playwright-report
+
+# apps/device/build 是 electron-builder 的 buildResources 來源目錄；
+# 應用程式圖示屬於需要版控的素材（不是建置產物），因此排除在上面的 build 忽略規則之外。
+# electron-builder 的實際輸出仍然是 release/，不受影響。
+!apps/device/build/
