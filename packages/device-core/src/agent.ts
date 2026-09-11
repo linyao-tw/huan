@@ -94,6 +94,7 @@ export class DeviceAgent {
 	private identity: DeviceIdentity | null = null;
 	private loaded = false;
 	private started = false;
+	private operating = false;
 	private lastSyncAt: string | null = null;
 	private serverDesiredVersion: number | null = null;
 	private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
@@ -213,6 +214,7 @@ export class DeviceAgent {
 
 	async stop(): Promise<void> {
 		this.started = false;
+		this.operating = false;
 		this.socket.stop();
 		this.scheduler.stop();
 		this.stopTimers();
@@ -258,6 +260,11 @@ export class DeviceAgent {
 				// 重新配對代表這是一組全新的身分，之前的解除綁定紀錄不該再擋住它。
 				await this.unbindManager.reset();
 				this.events.emit("paired", { deviceId: identity.deviceId, deviceName: identity.deviceName });
+				// 配對成功後必須自己接上運作迴圈。autoPair=false 的 Electron 播放器是由 UI
+				// 直接呼叫 pair()，start() 早已因為未配對而提前返回，若這裡不啟動，裝置就會
+				// 停在「已配對卻不同步」的狀態，得重開才會動。beginOperation 具冪等保護，
+				// 因此 autoPair 流程在 start() 再呼叫一次也不會重複啟動。
+				await this.beginOperation();
 				return { deviceId: identity.deviceId, deviceName: identity.deviceName };
 			} catch (error) {
 				const reason = describeError(error);
@@ -295,6 +302,7 @@ export class DeviceAgent {
 	async unbind(): Promise<void> {
 		await this.ensureLoaded();
 		const token = await this.resolveToken();
+		this.operating = false;
 		this.socket.stop();
 		this.scheduler.stop();
 		this.stopTimers();
@@ -363,6 +371,10 @@ export class DeviceAgent {
 	}
 
 	private async beginOperation(): Promise<void> {
+		// 冪等：start() 的 autoPair 流程與 pair() 都可能呼叫到這裡，重複啟動會讓
+		// scheduler／socket／計時器各起兩份。
+		if (this.operating) return;
+		this.operating = true;
 		this.setStatus("running");
 		this.scheduler.start();
 		this.socket.start();
@@ -466,6 +478,7 @@ export class DeviceAgent {
 	private async handleCredentialRevoked(): Promise<void> {
 		if (this.unbindManager.revoked) return;
 		this.logger.warn("憑證已被撤銷，進入解除綁定狀態");
+		this.operating = false;
 		this.socket.stop();
 		this.scheduler.stop();
 		this.stopTimers();

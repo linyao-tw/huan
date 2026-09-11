@@ -1,6 +1,6 @@
 {
 	"name": "@huan/device",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"private": true,
 	"description": "HUAN Device：Electron 播放器，負責配對、離線播放、排程執行與素材同步",
 	"homepage": "https://huan.linyao.tw",
