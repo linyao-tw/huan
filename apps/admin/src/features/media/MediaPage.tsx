@@ -89,12 +89,12 @@ export function MediaPage() {
 				actions={
 					<SegmentedControl aria-label="檢視方式" size="sm" value={view} onValueChange={next => next && setView(next as ViewMode)}>
 						<SegmentedControlItem value="grid">
-							<span className="huan-row huan-row--tight">
+							<span className="huan-row huan-row--tight huan-row--nowrap">
 								<SquaresFourIcon weight="bold" aria-hidden="true" /> 格狀
 							</span>
 						</SegmentedControlItem>
 						<SegmentedControlItem value="list">
-							<span className="huan-row huan-row--tight">
+							<span className="huan-row huan-row--tight huan-row--nowrap">
 								<ListIcon weight="bold" aria-hidden="true" /> 清單
 							</span>
 						</SegmentedControlItem>
