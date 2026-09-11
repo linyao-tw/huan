@@ -62,29 +62,75 @@ export type Color = z.infer<typeof ColorSchema>;
  * IP 字面值與明顯的內部主機名。真正解析到內網的網域（DNS rebinding）需要另一層
  * 伺服器端的解析後檢查，不在 schema 能做的範圍內。
  */
+/** 四個八位元組是否落在 loopback / 私有 / link-local / 未指定 / CGNAT 範圍。 */
+function ipv4IsInternal(a: number, b: number): boolean {
+	if (a === 127 || a === 10 || a === 0) return true;
+	if (a === 169 && b === 254) return true; // link-local，含雲端 metadata 169.254.169.254
+	if (a === 192 && b === 168) return true;
+	if (a === 172 && b >= 16 && b <= 31) return true;
+	if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+	return false;
+}
+
+/**
+ * 把 IPv6 字面值展開成 8 組 16-bit，處理 `::` 壓縮；不是合法 IPv6 就回 null。
+ *
+ * 展開之後才能可靠地判斷內嵌 IPv4（`::x.x.x.x`、NAT64）落在哪個範圍——單靠字串
+ * 前綴比對會漏掉 `[::127.0.0.1]`（正規化成 `::7f00:1`）這類寫法。
+ */
+function expandIpv6(host: string): number[] | null {
+	const bare = host.split("%")[0] ?? host; // 去掉 zone id
+	if (!bare.includes(":")) return null;
+	const halves = bare.split("::");
+	if (halves.length > 2) return null;
+
+	const parse = (part: string): number[] | null => {
+		if (part === "") return [];
+		const out: number[] = [];
+		for (const group of part.split(":")) {
+			if (!/^[0-9a-f]{1,4}$/.test(group)) return null;
+			out.push(parseInt(group, 16));
+		}
+		return out;
+	};
+
+	const head = parse(halves[0] ?? "");
+	const tail = halves.length === 2 ? parse(halves[1] ?? "") : [];
+	if (head === null || tail === null) return null;
+
+	const groups = halves.length === 2 ? [...head, ...Array(Math.max(0, 8 - head.length - tail.length)).fill(0), ...tail] : head;
+	return groups.length === 8 ? groups : null;
+}
+
 function hostLooksInternal(hostname: string): boolean {
 	const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
 
 	if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal") || host.endsWith(".local")) return true;
 	if (host === "metadata.google.internal") return true;
 
-	// IPv4 字面值：loopback / 私有 / link-local(含雲端 metadata 169.254.169.254) / 未指定 / CGNAT
+	// IPv4 字面值
 	const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-	if (v4) {
-		const [a, b] = [Number(v4[1]), Number(v4[2])];
-		if (a === 127 || a === 10 || a === 0) return true;
-		if (a === 169 && b === 254) return true;
-		if (a === 192 && b === 168) return true;
-		if (a === 172 && b >= 16 && b <= 31) return true;
-		if (a === 100 && b >= 64 && b <= 127) return true;
-		return false;
-	}
+	if (v4) return ipv4IsInternal(Number(v4[1]), Number(v4[2]));
 
-	// IPv6 字面值：loopback、未指定、唯一本地 fc00::/7、link-local fe80::/10、IPv4-mapped
-	if (host === "::1" || host === "::") return true;
-	if (/^f[cd][0-9a-f]{2}:/.test(host)) return true;
-	if (/^fe[89ab][0-9a-f]:/.test(host)) return true;
-	if (host.startsWith("::ffff:")) return true;
+	const g = expandIpv6(host);
+	if (g) {
+		if (g.every(part => part === 0)) return true; // ::（未指定）
+		if (g.slice(0, 7).every(part => part === 0) && g[7] === 1) return true; // ::1（loopback）
+		if ((g[0]! & 0xfe00) === 0xfc00) return true; // 唯一本地 fc00::/7
+		if ((g[0]! & 0xffc0) === 0xfe80) return true; // link-local fe80::/10
+
+		/*
+		 * 內嵌 IPv4：IPv4-mapped ::ffff:0:0/96、IPv4-compatible ::/96、NAT64 64:ff9b::/96。
+		 * 這三種都把 IPv4 放在低 32 bit，取出來套同一組內網判斷。
+		 */
+		const mapped = g[4] === 0 && g[5] === 0xffff && g.slice(0, 4).every(part => part === 0);
+		const compatible = g.slice(0, 6).every(part => part === 0);
+		const nat64 = g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every(part => part === 0);
+		if (mapped || compatible || nat64) {
+			// 低 32 bit 是內嵌的 IPv4：a.b 在第 7 組，c.d 在第 8 組；內網判斷只看前兩個八位元組。
+			return ipv4IsInternal(g[6]! >> 8, g[6]! & 0xff);
+		}
+	}
 
 	return false;
 }

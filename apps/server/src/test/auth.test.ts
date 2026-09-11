@@ -88,6 +88,25 @@ suite("認證", () => {
 		expect(withCorrectPassword.statusCode).toBe(429);
 	});
 
+	it("同一個帳號用 Email 或帳號登入共用同一個節流計數", async () => {
+		const user = await createUser(harness);
+		const max = harness.ctx.env.LOGIN_RATE_LIMIT_MAX;
+
+		/**
+		 * 每一次都換一個來源 IP，把 per-IP 節流排除掉，單獨驗 per-identifier 這一桶。
+		 * 交替 Email 與帳號各打一半：若各自計數，兩桶都到不了門檻；併回同一桶才會在第
+		 * max 次被擋。少了換 IP 的話，per-IP 會先湊到門檻，把這個行為蓋掉。
+		 */
+		for (let attempt = 0; attempt < max; attempt += 1) {
+			const identifier = attempt % 2 === 0 ? user.email : user.username;
+			const response = await harness.app.inject({ method: "POST", url: harness.url("/auth/login"), remoteAddress: `10.1.0.${attempt}`, payload: { identifier, password: "definitely-wrong" } });
+			expect(response.statusCode).toBe(401);
+		}
+
+		const blocked = await harness.app.inject({ method: "POST", url: harness.url("/auth/login"), remoteAddress: "10.1.0.250", payload: { identifier: user.username, password: "definitely-wrong" } });
+		expect(blocked.statusCode).toBe(429);
+	});
+
 	it("登出之後 session cookie 失效", async () => {
 		const user = await createUser(harness);
 		const loginResponse = await harness.app.inject({ method: "POST", url: harness.url("/auth/login"), payload: { identifier: user.email, password: user.password } });

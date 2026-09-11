@@ -48,13 +48,21 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
 		},
 		async (request, reply) => {
 			const { identifier, password } = request.body;
-			const attempt = { identifier, ipAddress: clientIp(request) };
+
+			/**
+			 * 先解析帳號，節流以「解析後的帳號」為鍵。
+			 *
+			 * 同一個帳號可以用 Email 或帳號兩種寫法登入，若各自計數，攻擊者交替兩種寫法
+			 * 就能拿到雙倍的猜測額度。解析得到帳號時一律用 username 當節流鍵，兩種寫法
+			 * 併回同一個桶；解析不到才退回原字串。
+			 */
+			const user = await findUserByIdentifier(db, identifier);
+			const attempt = { identifier: user ? user.username : identifier, ipAddress: clientIp(request) };
 
 			if (await isLoginThrottled(db, env, attempt)) {
 				throw rateLimited("登入嘗試次數過多，請稍後再試");
 			}
 
-			const user = await findUserByIdentifier(db, identifier);
 			/** 帳號不存在時仍算一次假雜湊，兩條路徑耗時一致，避免用回應時間列舉帳號。 */
 			const passwordMatches = user ? await verifyPassword(user.passwordHash, password) : await verifyPasswordDummy(password);
 

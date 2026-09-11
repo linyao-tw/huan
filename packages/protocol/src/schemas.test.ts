@@ -59,8 +59,22 @@ describe("ExternalUrlSchema", () => {
 		}
 	});
 
-	it("仍然接受一般的公開網址", () => {
-		for (const value of ["https://example.com/", "https://172.15.0.1/", "https://8.8.8.8/"]) {
+	it("拒絕把 IPv4 藏在 IPv6 裡的寫法（compatible / mapped / NAT64）", () => {
+		for (const value of [
+			"http://[::127.0.0.1]/", // IPv4-compatible，正規化成 ::7f00:1
+			"http://[::ffff:127.0.0.1]/", // IPv4-mapped
+			"http://[::ffff:169.254.169.254]/", // mapped 的 metadata
+			"http://[64:ff9b::127.0.0.1]/", // NAT64 包 loopback
+			"http://[64:ff9b::10.0.0.1]/", // NAT64 包私有網段
+			"http://[fc00::1]/", // 唯一本地
+			"http://[fe80::1]/" // link-local
+		]) {
+			expect(() => ExternalUrlSchema.parse(value)).toThrow();
+		}
+	});
+
+	it("仍然接受一般的公開網址（含公開 IPv6）", () => {
+		for (const value of ["https://example.com/", "https://172.15.0.1/", "https://8.8.8.8/", "https://[2001:4860:4860::8888]/"]) {
 			expect(ExternalUrlSchema.parse(value)).toBe(value);
 		}
 	});
