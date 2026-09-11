@@ -9,7 +9,7 @@ export interface DeviceActor {
 	credentialId: string;
 }
 
-/** `Authorization: Bearer <deviceId>.<secret>`；WebSocket 帶不了 header 時走 `?token=`。 */
+/** `Authorization: Bearer <deviceId>.<secret>`。只走 header，不接受查詢字串，避免憑證進日誌。 */
 export function parseDeviceToken(token: string): { deviceId: string; secret: string } | null {
 	const separator = token.indexOf(".");
 	if (separator <= 0) return null;

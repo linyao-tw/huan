@@ -34,10 +34,9 @@ export async function registerDocs(app: FastifyInstance, ctx: AppContext): Promi
 		transform: jsonSchemaTransform
 	});
 
-	app.get(OPENAPI_PATH, { schema: { hide: true } }, async () => app.swagger());
-
-	/** 互動式文件會把整份 API 攤開來，production 沒有提供的理由。 */
+	/** 互動式文件與 openapi.json 都會把整份 API 形狀攤開來，production 沒有提供的理由。 */
 	if (ctx.env.NODE_ENV !== "production") {
+		app.get(OPENAPI_PATH, { schema: { hide: true } }, async () => app.swagger());
 		await app.register(scalarApiReference, {
 			routePrefix: DOCS_PATH,
 			configuration: { url: OPENAPI_PATH, title: "HUAN 讙 API" }

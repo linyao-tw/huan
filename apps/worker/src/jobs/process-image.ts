@@ -13,6 +13,14 @@ export const IMAGE_PREVIEW_MAX_EDGE = 1280;
 export const IMAGE_THUMBNAIL_MAX_EDGE = 640;
 
 /**
+ * 解碼前的來源像素上限（100 MP，約 10000×10000）。
+ *
+ * 縮放濾鏡只約束「輸出」尺寸，FFmpeg 仍得先把整張來源解碼進記憶體。一張體積很小
+ * 但畫布極大的圖（解壓炸彈）足以讓 worker OOM。probe 拿到尺寸後先擋，不進解碼。
+ */
+export const IMAGE_MAX_SOURCE_PIXELS = 100_000_000;
+
+/**
  * 輸出格式只有兩種：來源有 alpha 就輸出 PNG，其餘一律 JPEG。
  *
  * 不輸出 WebP 是刻意的取捨——JPEG 與 PNG 在所有播放平台與瀏覽器都能解碼，
@@ -67,6 +75,9 @@ export async function processImage(context: JobContext): Promise<void> {
 	const probe = await runStep(context, "分析原始圖片", USER_MESSAGES.imageProcess, () => ffprobe(binaries, sourcePath));
 	if (probe.width === null || probe.height === null) {
 		throw new JobError("來源沒有可讀取的影像尺寸", USER_MESSAGES.imageProcess);
+	}
+	if (probe.width * probe.height > IMAGE_MAX_SOURCE_PIXELS) {
+		throw new JobError(`來源影像過大（${probe.width}×${probe.height}），超過 ${IMAGE_MAX_SOURCE_PIXELS} 像素上限`, USER_MESSAGES.imageProcess);
 	}
 	/** 圖片沒有播放長度，probe 的 duration 對它沒有意義，寫入前歸零避免 UI 顯示「0.04 秒」。 */
 	await saveAssetProbe(db, assetId, { ...probe, durationMs: null, frameRate: null });

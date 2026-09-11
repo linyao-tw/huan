@@ -4,6 +4,7 @@ import { bumpDeviceDesiredState } from "@/lib/desired-state";
 import { loadDeviceWithLayout, serializeDevice } from "@/lib/devices";
 import { conflict, notFound } from "@/lib/errors";
 import { toCount } from "@/lib/pagination";
+import { routeRateLimit, type RateLimitTuning } from "@/plugins/rate-limit";
 import { deviceCredentials, devicePairingCodes, devices, layouts, mediaDeviceSync } from "@huan/db";
 import {
 	ConfirmPairingRequestSchema,
@@ -23,7 +24,11 @@ import { z } from "zod";
 
 const DeviceListResponseSchema = paginatedSchema(DeviceSchema);
 
-export const deviceAdminRoutes: FastifyPluginAsyncZod = async app => {
+export interface DeviceAdminRouteOptions {
+	rateLimits: RateLimitTuning;
+}
+
+export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> = async (app, options) => {
 	const ctx = app.ctx;
 	const { db, hub } = ctx;
 
@@ -193,6 +198,8 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod = async app => {
 	app.get(
 		"/pairing/:code",
 		{
+			/** 配對碼即祕密，套用和裝置端配對端點一樣緊的限流，壓低猜碼速率。 */
+			config: routeRateLimit(options.rateLimits.pairing, options.rateLimits.timeWindow),
 			preHandler: requireResourceOwner,
 			schema: { tags: ["pairing"], summary: "以配對碼查詢待綁定的裝置", params: z.object({ code: PairingCodeSchema }), response: { 200: PairingLookupResponseSchema } }
 		},
@@ -217,7 +224,11 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod = async app => {
 
 	app.post(
 		"/pairing/confirm",
-		{ preHandler: requireResourceOwner, schema: { tags: ["pairing"], summary: "確認配對並建立裝置", body: ConfirmPairingRequestSchema, response: { 201: DeviceSchema } } },
+		{
+			config: routeRateLimit(options.rateLimits.pairing, options.rateLimits.timeWindow),
+			preHandler: requireResourceOwner,
+			schema: { tags: ["pairing"], summary: "確認配對並建立裝置", body: ConfirmPairingRequestSchema, response: { 201: DeviceSchema } }
+		},
 		async (request, reply) => {
 			const actor = sessionOf(request);
 			/**

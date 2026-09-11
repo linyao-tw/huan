@@ -10,6 +10,7 @@ import {
 	CreateUploadResponseSchema,
 	IdSchema,
 	MEDIA_ACCEPTED_CONTENT_TYPES,
+	MEDIA_MAX_UPLOAD_BYTES,
 	MediaAssetSchema,
 	MediaListQuerySchema,
 	MediaUsageSchema,
@@ -32,6 +33,11 @@ const JOB_KIND_BY_MEDIA_KIND: Record<MediaKind, WorkerJobKind> = {
 	image: "process_image",
 	html: "process_html"
 };
+
+/** 把 LIKE 的特殊字元轉義成字面值，配合預設的 `\` escape 字元。 */
+function escapeLike(value: string): string {
+	return value.replace(/[\\%_]/g, char => `\\${char}`);
+}
 
 export const mediaRoutes: FastifyPluginAsyncZod = async app => {
 	const { db, env, storage, hub } = app.ctx;
@@ -61,7 +67,8 @@ export const mediaRoutes: FastifyPluginAsyncZod = async app => {
 			const filters: SQL[] = [eq(mediaAssets.ownerId, ownerOf(request))];
 			if (kind) filters.push(eq(mediaAssets.kind, kind));
 			if (status) filters.push(eq(mediaAssets.status, status));
-			if (search) filters.push(ilike(mediaAssets.name, `%${search}%`));
+			/** 跳脫 LIKE 的 % _ \，否則使用者可用萬用字元擴大掃描範圍（LIKE 層級的效能濫用）。 */
+			if (search) filters.push(ilike(mediaAssets.name, `%${escapeLike(search)}%`));
 			const where = and(...filters);
 
 			const rows = await db.select().from(mediaAssets).where(where).orderBy(desc(mediaAssets.createdAt)).limit(limit).offset(offset);
@@ -164,6 +171,16 @@ export const mediaRoutes: FastifyPluginAsyncZod = async app => {
 			 */
 			const head = await storage.head(original.objectKey);
 			if (!head) throw conflict("找不到已上傳的檔案，請重新上傳", { assetId: asset.id }, "upload_missing");
+
+			/**
+			 * 直傳用的是預簽 PUT，簽章裡沒有綁大小，所以真正上傳的檔案可能比建立時宣告的
+			 * 還大。這裡以物件的實際大小為準再擋一次，避免有人繞過宣告值塞超大檔進轉檔佇列。
+			 */
+			if (head.sizeBytes > MEDIA_MAX_UPLOAD_BYTES) {
+				await storage.remove([original.objectKey]).catch(() => {});
+				await db.delete(mediaAssets).where(eq(mediaAssets.id, asset.id));
+				throw validationFailed(`檔案超過上限 ${MEDIA_MAX_UPLOAD_BYTES} bytes`);
+			}
 
 			const now = new Date();
 			await db.update(mediaVariants).set({ sizeBytes: head.sizeBytes }).where(eq(mediaVariants.id, original.id));

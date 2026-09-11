@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 
@@ -58,6 +58,30 @@ export function timingSafeEqualHex(a: string, b: string): boolean {
 
 export function sha256Hex(data: Buffer | string): string {
 	return createHash("sha256").update(data).digest("hex");
+}
+
+/**
+ * 用 AES-256-GCM 加密一段短字串（例如 TOTP 密鑰），輸出 base64 的 iv‖tag‖ciphertext。
+ *
+ * 每次都用新的隨機 12-byte IV，GCM 的 16-byte tag 一併驗證完整性，被竄改的密文
+ * 解密時會直接丟例外而不是回傳錯誤的明文。金鑰必須是 32 bytes。
+ */
+export function encryptWithKey(key: Buffer, plaintext: string): string {
+	const iv = randomBytes(12);
+	const cipher = createCipheriv("aes-256-gcm", key, iv);
+	const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+	return Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString("base64");
+}
+
+/** `encryptWithKey` 的反向操作。密文被動過或金鑰不對時丟例外，絕不回傳半對的明文。 */
+export function decryptWithKey(key: Buffer, payload: string): string {
+	const raw = Buffer.from(payload, "base64");
+	const iv = raw.subarray(0, 12);
+	const tag = raw.subarray(12, 28);
+	const ciphertext = raw.subarray(28);
+	const decipher = createDecipheriv("aes-256-gcm", key, iv);
+	decipher.setAuthTag(tag);
+	return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
 /** 串流計算檔案的 SHA-256，避免把幾百 MB 的影片整個讀進記憶體。 */

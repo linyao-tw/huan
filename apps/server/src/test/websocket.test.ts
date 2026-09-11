@@ -63,9 +63,9 @@ suite("WebSocket 控制通道", () => {
 		cookie = await login(harness, owner.email, owner.password);
 	});
 
-	it("裝置以查詢字串的 token 連線、收到 hello 並能 ping/pong", async () => {
+	it("裝置以 Authorization header 連線、收到 hello 並能 ping/pong", async () => {
 		const device = await pairDevice(harness, cookie, "WS 裝置");
-		const socket = (await harness.app.injectWS(`/api/v1/devices/socket?token=${encodeURIComponent(device.credential)}`)) as unknown as TestSocket;
+		const socket = (await harness.app.injectWS("/api/v1/devices/socket", { headers: { authorization: device.authorization } })) as unknown as TestSocket;
 
 		const hello = await nextMessage(socket);
 		expect(hello).toMatchObject({ type: "hello", protocolVersion: 1 });
@@ -82,11 +82,11 @@ suite("WebSocket 控制通道", () => {
 		socket.close();
 	});
 
-	it("裝置以 Authorization header 連線也能通過驗證", async () => {
-		const device = await pairDevice(harness, cookie, "WS Header 裝置");
-		const socket = (await harness.app.injectWS("/api/v1/devices/socket", { headers: { authorization: device.authorization } })) as unknown as TestSocket;
-		expect(await nextMessage(socket)).toMatchObject({ type: "hello" });
-		socket.close();
+	it("查詢字串裡的 token 不再被接受，連線以 4401 關閉", async () => {
+		/** 憑證只能走 header，不能放在會被記進日誌的網址查詢字串裡。 */
+		const device = await pairDevice(harness, cookie, "WS 查詢字串裝置");
+		const socket = (await harness.app.injectWS(`/api/v1/devices/socket?token=${encodeURIComponent(device.credential)}`)) as unknown as TestSocket;
+		expect(await nextClose(socket)).toBe(4401);
 	});
 
 	it("沒有憑證的連線會被以 4401 關閉", async () => {
@@ -106,7 +106,7 @@ suite("WebSocket 控制通道", () => {
 		await harness.app.inject({ method: "PATCH", url: harness.url(`/layouts/${layoutId}`), headers: { cookie }, payload: { draft: singleAssetDocument(asset.assetId) } });
 
 		const device = await pairDevice(harness, cookie, "推播裝置", layoutId);
-		const socket = (await harness.app.injectWS(`/api/v1/devices/socket?token=${encodeURIComponent(device.credential)}`)) as unknown as TestSocket;
+		const socket = (await harness.app.injectWS("/api/v1/devices/socket", { headers: { authorization: device.authorization } })) as unknown as TestSocket;
 		await nextMessage(socket);
 
 		const notified = nextMessage(socket);
@@ -122,7 +122,7 @@ suite("WebSocket 控制通道", () => {
 
 	it("重新啟動播放器的指令會透過 WebSocket 送到裝置", async () => {
 		const device = await pairDevice(harness, cookie, "指令裝置");
-		const socket = (await harness.app.injectWS(`/api/v1/devices/socket?token=${encodeURIComponent(device.credential)}`)) as unknown as TestSocket;
+		const socket = (await harness.app.injectWS("/api/v1/devices/socket", { headers: { authorization: device.authorization } })) as unknown as TestSocket;
 		await nextMessage(socket);
 
 		const commandPromise = nextMessage(socket);

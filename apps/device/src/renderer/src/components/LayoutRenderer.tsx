@@ -157,7 +157,7 @@ function UrlSlot({ content }: { content: Extract<SlotContent, { type: "url" }> }
 	 * 外部網站可能設定 X-Frame-Options 或 frame-ancestors 而無法嵌入。
 	 * 那是對方的安全設定，播放器不會嘗試繞過，只會顯示空白區塊。
 	 */
-	return <iframe src={content.url} title="外部內容" sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />;
+	return <iframe src={content.url} title="外部內容" sandbox="allow-scripts allow-same-origin" referrerPolicy="no-referrer" />;
 }
 
 function HtmlSlot({ content, assets }: { content: Extract<SlotContent, { type: "html" }>; assets: AssetResolver }): React.JSX.Element {

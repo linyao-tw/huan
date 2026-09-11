@@ -41,6 +41,29 @@ describe("ExternalUrlSchema", () => {
 			expect(() => ExternalUrlSchema.parse(value)).toThrow();
 		}
 	});
+
+	it("拒絕指向內網、loopback 與雲端 metadata 的位址", () => {
+		for (const value of [
+			"http://localhost:9000/",
+			"http://127.0.0.1:4010/api/v1/devices",
+			"https://foo.localhost/",
+			"http://169.254.169.254/latest/meta-data/",
+			"http://metadata.google.internal/",
+			"http://10.0.0.5/",
+			"http://192.168.1.1/",
+			"http://172.16.0.1/",
+			"http://[::1]:9000/",
+			"http://service.internal/"
+		]) {
+			expect(() => ExternalUrlSchema.parse(value)).toThrow();
+		}
+	});
+
+	it("仍然接受一般的公開網址", () => {
+		for (const value of ["https://example.com/", "https://172.15.0.1/", "https://8.8.8.8/"]) {
+			expect(ExternalUrlSchema.parse(value)).toBe(value);
+		}
+	});
 });
 
 describe("PairingCodeSchema", () => {

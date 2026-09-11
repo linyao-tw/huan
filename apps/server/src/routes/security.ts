@@ -25,7 +25,7 @@ export interface SecurityRouteOptions {
 }
 
 export const securityRoutes: FastifyPluginAsyncZod<SecurityRouteOptions> = async (app, options) => {
-	const { db, env } = app.ctx;
+	const { db, env, totpKey } = app.ctx;
 	const authLimit = routeRateLimit(options.rateLimits.auth, options.rateLimits.timeWindow);
 
 	app.get("/security", { preHandler: requireSession, schema: { tags: ["security"], summary: "安全設定總覽", response: { 200: SecurityOverviewSchema } } }, async request => {
@@ -53,7 +53,7 @@ export const securityRoutes: FastifyPluginAsyncZod<SecurityRouteOptions> = async
 			const existing = await findTotpCredential(db, user.id);
 			if (existing?.confirmedAt) throw conflict("這個帳號已經啟用兩階段驗證，請先停用再重新綁定");
 
-			return startTotpSetup(db, { userId: user.id, accountName: user.email, issuer: env.TOTP_ISSUER });
+			return startTotpSetup(db, totpKey, { userId: user.id, accountName: user.email, issuer: env.TOTP_ISSUER });
 		}
 	);
 
@@ -70,7 +70,7 @@ export const securityRoutes: FastifyPluginAsyncZod<SecurityRouteOptions> = async
 			if (!credential) throw notFound("請先開始綁定流程");
 			if (credential.confirmedAt) throw conflict("這個帳號已經啟用兩階段驗證");
 
-			if (!(await verifyTotpCode(db, credential, request.body.code))) throw invalidCredentials("驗證碼不正確");
+			if (!(await verifyTotpCode(db, totpKey, credential, request.body.code))) throw invalidCredentials("驗證碼不正確");
 
 			await confirmTotpCredential(db, user.id);
 			const recoveryCodes = await issueRecoveryCodes(db, user.id);
@@ -103,7 +103,7 @@ export const securityRoutes: FastifyPluginAsyncZod<SecurityRouteOptions> = async
 
 			const credential = await findTotpCredential(db, user.id);
 			if (!credential?.confirmedAt) throw conflict("這個帳號沒有啟用兩階段驗證");
-			if (!(await verifyTotpCode(db, credential, request.body.code))) throw invalidCredentials("驗證碼不正確");
+			if (!(await verifyTotpCode(db, totpKey, credential, request.body.code))) throw invalidCredentials("驗證碼不正確");
 
 			await disableTotp(db, user.id);
 			await recordAudit(db, {
@@ -132,7 +132,7 @@ export const securityRoutes: FastifyPluginAsyncZod<SecurityRouteOptions> = async
 
 			const credential = await findTotpCredential(db, user.id);
 			if (!credential?.confirmedAt) throw conflict("這個帳號沒有啟用兩階段驗證");
-			if (!(await verifyTotpCode(db, credential, request.body.code))) throw invalidCredentials("驗證碼不正確");
+			if (!(await verifyTotpCode(db, totpKey, credential, request.body.code))) throw invalidCredentials("驗證碼不正確");
 
 			return { recoveryCodes: await issueRecoveryCodes(db, user.id) };
 		}

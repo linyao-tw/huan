@@ -1,4 +1,5 @@
 import { createStorage, type StorageService } from "@/lib/storage";
+import { resolveTotpKey } from "@/lib/totp-key";
 import { SocketHub } from "@/ws/hub";
 import type { ServerEnv } from "@huan/config";
 import { createDatabase, type Database } from "@huan/db";
@@ -12,6 +13,8 @@ export interface AppContext {
 	readonly sql: DatabaseHandle["sql"];
 	readonly storage: StorageService;
 	readonly hub: SocketHub;
+	/** 加密 TOTP 密鑰用的 32-byte 金鑰，啟動時從環境變數解析一次。 */
+	readonly totpKey: Buffer;
 	close(): Promise<void>;
 }
 
@@ -34,6 +37,7 @@ export function createContext({ env, database, storage }: CreateContextOptions):
 		sql: handle.sql,
 		storage: storageService,
 		hub: new SocketHub(),
+		totpKey: resolveTotpKey(env, message => console.warn(`[huan] ${message}`)),
 		async close() {
 			if (ownsStorage) storageService.destroy();
 			if (ownsDatabase) await handle.close();

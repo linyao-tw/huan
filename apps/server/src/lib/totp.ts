@@ -1,6 +1,6 @@
 import { totpCredentials, totpRecoveryCodes, type Database } from "@huan/db";
 import { base32Encode, buildOtpauthUri, verifyTotp } from "@huan/shared";
-import { generateRecoveryCode, generateTotpSecretBytes, hashToken, normalizeRecoveryCode } from "@huan/shared/node";
+import { decryptWithKey, encryptWithKey, generateRecoveryCode, generateTotpSecretBytes, hashToken, normalizeRecoveryCode } from "@huan/shared/node";
 import { and, count, eq, isNull } from "drizzle-orm";
 import QRCode from "qrcode";
 
@@ -26,14 +26,16 @@ export interface TotpSetupMaterial {
  * 密鑰只在這個回應裡出現一次，之後任何端點與日誌都不會再輸出；
  * 使用者在確認前重新開始設定時直接覆蓋舊的未確認密鑰，避免留下孤兒資料列。
  */
-export async function startTotpSetup(db: Database, params: { userId: string; accountName: string; issuer: string }): Promise<TotpSetupMaterial> {
+export async function startTotpSetup(db: Database, key: Buffer, params: { userId: string; accountName: string; issuer: string }): Promise<TotpSetupMaterial> {
 	const secret = base32Encode(generateTotpSecretBytes(20));
+	/** 資料庫只存密文；明文只在這個回應裡出現一次，給使用者掃 QR。 */
+	const encryptedSecret = encryptWithKey(key, secret);
 	await db
 		.insert(totpCredentials)
-		.values({ userId: params.userId, secret, confirmedAt: null, lastUsedStep: null })
+		.values({ userId: params.userId, secret: encryptedSecret, confirmedAt: null, lastUsedStep: null })
 		.onConflictDoUpdate({
 			target: totpCredentials.userId,
-			set: { secret, confirmedAt: null, lastUsedStep: null, updatedAt: new Date() }
+			set: { secret: encryptedSecret, confirmedAt: null, lastUsedStep: null, updatedAt: new Date() }
 		});
 
 	const otpauthUri = buildOtpauthUri({ issuer: params.issuer, accountName: params.accountName, secretBase32: secret });
@@ -47,8 +49,9 @@ export async function startTotpSetup(db: Database, params: { userId: string; acc
  * 只接受比 `lastUsedStep` 更新的步長：同一組驗證碼在有效視窗內可以被重播，
  * 攔截到畫面上的六位數就能再登入一次，所以用過的步長必須直接作廢。
  */
-export async function verifyTotpCode(db: Database, credential: TotpCredentialRow, code: string, now: Date = new Date()): Promise<boolean> {
-	const offset = await verifyTotp(credential.secret, code, now.getTime(), { window: 1 });
+export async function verifyTotpCode(db: Database, key: Buffer, credential: TotpCredentialRow, code: string, now: Date = new Date()): Promise<boolean> {
+	const secret = decryptWithKey(key, credential.secret);
+	const offset = await verifyTotp(secret, code, now.getTime(), { window: 1 });
 	if (offset === null) return false;
 
 	const step = Math.floor(now.getTime() / 1000 / TOTP_STEP_SECONDS) + offset;

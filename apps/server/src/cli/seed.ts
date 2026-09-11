@@ -292,6 +292,19 @@ banner();
 
 loadEnvFile();
 const env = loadEnv();
+
+/**
+ * 絕不對正式資料庫下 seed。
+ *
+ * 這支腳本會塞入密碼公開已知的帳號與裝置憑證。誤指向 production 就等於在正式環境
+ * 放了一組後門，因此在 `NODE_ENV=production` 直接中止。示範資料本來就只給本機開發。
+ */
+if (env.NODE_ENV === "production") {
+	console.error("✗ 拒絕在 NODE_ENV=production 執行 seed：這會建立密碼公開已知的帳號與裝置憑證。");
+	console.error("  seed 只給本機開發環境。");
+	process.exit(1);
+}
+
 const ctx = createContext({ env });
 const { db, storage } = ctx;
 

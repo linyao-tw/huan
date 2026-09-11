@@ -45,6 +45,36 @@ export interface BuildServerOptions {
  */
 const REDACT_PATHS = ["req.headers.cookie", "req.headers.authorization", 'req.headers["x-huan-pairing-token"]', 'res.headers["set-cookie"]'];
 
+/**
+ * 請求 URL 進日誌前先洗掉祕密。
+ *
+ * 查詢字串裡可能帶著裝置 token 或簽章網址的簽名，路徑上的配對碼本身就是祕密。
+ * 路由層的日誌只需要知道打了哪個端點，不需要那些值，因此整段查詢字串直接丟掉，
+ * 再把 `/pairing/<code>` 的配對碼遮成 `***`（只遮後台那條，裝置端的 pairing 路徑
+ * 沒有把碼放在網址上）。
+ */
+function sanitizeLoggedUrl(url: string): string {
+	const path = url.split("?")[0] ?? url;
+	return path.replace(/(\/api\/v1\/pairing\/)[^/]+/, "$1***");
+}
+
+/**
+ * 把 `TRUST_PROXY` 字串轉成 Fastify 認得的形態。
+ *
+ * `"true"`/`"false"` → 布林，純數字 → 跳數，其餘（CIDR、逗號清單、`"loopback"`
+ * 這種預設名）原樣傳給底層的 proxy-addr。
+ */
+function parseTrustProxy(value: string): NonNullable<FastifyServerOptions["trustProxy"]> {
+	if (value === "true") return true;
+	if (value === "false") return false;
+	/** 純數字是「信任最靠近的 N 跳」；Fastify 的型別不收 number，用等價的跳數函式表達。 */
+	if (/^\d+$/.test(value)) {
+		const hops = Number(value);
+		return (_address, hop) => hop < hops;
+	}
+	return value;
+}
+
 function buildLoggerOptions(env: ServerEnv): FastifyServerOptions["logger"] {
 	return {
 		level: env.LOG_LEVEL,
@@ -55,7 +85,7 @@ function buildLoggerOptions(env: ServerEnv): FastifyServerOptions["logger"] {
 		 */
 		serializers: {
 			req(request: FastifyRequest) {
-				return { id: request.id, method: request.method, url: request.url, ip: clientIp(request) };
+				return { id: request.id, method: request.method, url: sanitizeLoggedUrl(request.url), ip: clientIp(request) };
 			}
 		},
 		...(env.NODE_ENV === "development" ? { transport: { target: "pino-pretty", options: { translateTime: "SYS:HH:MM:ss", ignore: "pid,hostname" } } } : {})
@@ -70,8 +100,11 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Hua
 
 	const app = Fastify({
 		logger: options.logger ?? buildLoggerOptions(env),
-		/** 部署上一定隔著反向代理，否則所有請求的來源 IP 都會是代理本身。 */
-		trustProxy: true,
+		/**
+		 * 只信任明確指定的代理，預設誰都不信（見 config 的 TRUST_PROXY）。
+		 * 無條件信任的話，任何人偽造 X-Forwarded-For 就能繞過以來源 IP 為鍵的節流。
+		 */
+		trustProxy: parseTrustProxy(env.TRUST_PROXY),
 		bodyLimit: 2 * 1024 * 1024,
 		ajv: { customOptions: { coerceTypes: false } }
 	}).withTypeProvider<ZodTypeProvider>();
@@ -98,7 +131,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Hua
 	await app.register(mediaRoutes, { prefix: API_PREFIX });
 	await app.register(layoutRoutes, { prefix: API_PREFIX });
 	await app.register(scheduleRoutes, { prefix: API_PREFIX });
-	await app.register(deviceAdminRoutes, { prefix: API_PREFIX });
+	await app.register(deviceAdminRoutes, { prefix: API_PREFIX, rateLimits });
 	await app.register(deviceApiRoutes, { prefix: API_PREFIX, rateLimits });
 	await app.register(auditRoutes, { prefix: API_PREFIX });
 

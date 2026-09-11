@@ -39,6 +39,22 @@ export const ServerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
 				.map(origin => origin.trim())
 				.filter(Boolean)
 		),
+	/**
+	 * 要信任的反向代理，決定 `request.ip` 從哪裡取。
+	 *
+	 * 預設 `false`：只採信實際 socket 來源，不看 `X-Forwarded-For`。速率限制與登入
+	 * 節流都以這個 IP 為鍵，若無條件信任 XFF，攻擊者每次換一個假 XFF 就能重置計數。
+	 * 部署在反向代理後面時，設成代理的跳數（例如 `1`）或它的 IP/CIDR，只信任那一層。
+	 */
+	TRUST_PROXY: z.string().default("false"),
+	/**
+	 * 加密 TOTP 密鑰用的金鑰，base64 編碼的 32 bytes。
+	 *
+	 * 其餘長期祕密都經過雜湊，但 TOTP 密鑰驗證時需要原值，只能加密而不能雜湊。金鑰
+	 * 存在伺服器（環境變數 / KMS），不入庫；資料庫外洩時光有密文換不出一次性碼。
+	 * production 一定要設；開發環境沒設就用一把固定的測試金鑰，並在啟動時警告。
+	 */
+	TOTP_SECRET_KEY: z.string().optional(),
 	SESSION_COOKIE_NAME: z.string().default("huan_session"),
 	SESSION_TTL_HOURS: z.coerce
 		.number()

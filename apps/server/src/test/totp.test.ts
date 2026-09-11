@@ -1,5 +1,7 @@
 import { checkEnvironment, createHarness, createUser, extractSessionCookie, login, type TestHarness } from "@/test/helpers";
+import { totpCredentials } from "@huan/db";
 import { generateTotp } from "@huan/shared";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const environment = await checkEnvironment();
@@ -42,6 +44,15 @@ suite("兩階段驗證", () => {
 		expect(secret).toMatch(/^[A-Z2-7]+$/);
 		expect(otpauthUri).toContain("otpauth://totp/");
 		expect(qrCodeDataUrl.startsWith("data:image/png;base64,")).toBe(true);
+
+		/**
+		 * 密鑰在資料庫裡是密文，不是回應裡那串 base32。
+		 * DB 單獨外洩時，光有密文換不出一次性碼。
+		 */
+		const [stored] = await harness.ctx.db.select().from(totpCredentials).where(eq(totpCredentials.userId, user.id));
+		expect(stored?.secret).toBeDefined();
+		expect(stored?.secret).not.toBe(secret);
+		expect(stored?.secret).not.toMatch(/^[A-Z2-7]+$/);
 
 		/** 啟用前 2FA 還沒生效，登入應該直接成功。 */
 		const beforeActivation = await harness.app.inject({ method: "POST", url: harness.url("/auth/login"), payload: { identifier: user.email, password: user.password } });

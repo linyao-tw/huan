@@ -50,7 +50,12 @@ export function registerErrorHandler(app: FastifyInstance): void {
 			return send(reply, statusCode, { code: "internal_error", message: "伺服器發生未預期的錯誤" });
 		}
 
-		return send(reply, statusCode, { code: "request_failed", message: error.message });
+		/**
+		 * 其餘 4xx 回固定訊息，原始 `error.message` 只進日誌。
+		 * 框架層錯誤的原文可能透露內部結構，不必回給呼叫端。
+		 */
+		request.log.warn({ err: error }, "未歸類的用戶端錯誤");
+		return send(reply, statusCode, { code: "request_failed", message: "請求無法處理，請確認內容後再試一次" });
 	});
 }
 

@@ -127,16 +127,16 @@ export async function loadOwned(
 	return row;
 }
 
-/** 從 header 或查詢字串取出裝置 token。Electron 的 WebSocket 帶不了自訂 header，因此保留查詢字串。 */
+/**
+ * 從 Authorization header 取出裝置 token。
+ *
+ * 只走 header，不接受 `?token=` 查詢字串：URL 會進伺服器日誌、反向代理的 access
+ * log 與瀏覽器歷史，把長期有效的裝置憑證放進去等於到處留副本。裝置端用的是
+ * Node 的 ws（`@huan/device-core`），握手時就能帶 header，不受瀏覽器 WebSocket
+ * 不能設 header 的限制。
+ */
 export function deviceTokenFromRequest(request: FastifyRequest): string | null {
-	const fromHeader = extractBearerToken(request.headers.authorization);
-	if (fromHeader) return fromHeader;
-	const query: unknown = request.query;
-	if (query && typeof query === "object" && "token" in query) {
-		const value = (query as { token?: unknown }).token;
-		if (typeof value === "string" && value.length > 0) return value;
-	}
-	return null;
+	return extractBearerToken(request.headers.authorization);
 }
 
 export const requireDevice: preHandlerAsyncHookHandler = async request => {

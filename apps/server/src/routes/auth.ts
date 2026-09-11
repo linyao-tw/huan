@@ -3,7 +3,7 @@ import { clientIp, requireSession, sessionOf, userAgent } from "@/lib/auth";
 import { consumeChallenge, createAuthChallenge, findUsableChallenge } from "@/lib/challenge";
 import { forbidden, invalidCredentials, rateLimited, unauthorized } from "@/lib/errors";
 import { clearFailedAttempts, isLoginThrottled, recordLoginAttempt } from "@/lib/login-throttle";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { hashPassword, verifyPassword, verifyPasswordDummy } from "@/lib/password";
 import { clearSessionCookie, createSession, resolveSession, revokeAllUserSessions, revokeSession, setSessionCookie } from "@/lib/session";
 import { consumeRecoveryCode, findTotpCredential, verifyTotpCode } from "@/lib/totp";
 import { findUserByIdentifier, isTotpEnabled, serializeUser, type UserRow } from "@/lib/users";
@@ -19,7 +19,7 @@ export interface AuthRouteOptions {
 }
 
 export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
-	const { db, env } = app.ctx;
+	const { db, env, totpKey } = app.ctx;
 	const authLimit = routeRateLimit(options.rateLimits.auth, options.rateLimits.timeWindow);
 
 	async function completeLogin(user: UserRow, request: FastifyRequest, reply: FastifyReply, method: "password" | "totp" | "recovery_code"): Promise<UserRow> {
@@ -55,7 +55,8 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
 			}
 
 			const user = await findUserByIdentifier(db, identifier);
-			const passwordMatches = user ? await verifyPassword(user.passwordHash, password) : false;
+			/** 帳號不存在時仍算一次假雜湊，兩條路徑耗時一致，避免用回應時間列舉帳號。 */
+			const passwordMatches = user ? await verifyPassword(user.passwordHash, password) : await verifyPasswordDummy(password);
 
 			if (!user || !passwordMatches) {
 				await recordLoginAttempt(db, attempt, false);
@@ -117,7 +118,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
 			if (!credential?.confirmedAt) throw unauthorized("這個帳號沒有啟用兩階段驗證");
 
 			const method = code ? ("totp" as const) : ("recovery_code" as const);
-			const verified = code ? await verifyTotpCode(db, credential, code) : recoveryCode ? await consumeRecoveryCode(db, user.id, recoveryCode) : false;
+			const verified = code ? await verifyTotpCode(db, totpKey, credential, code) : recoveryCode ? await consumeRecoveryCode(db, user.id, recoveryCode) : false;
 
 			if (!verified) {
 				await recordLoginAttempt(db, attempt, false);
