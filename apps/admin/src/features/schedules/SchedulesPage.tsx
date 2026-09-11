@@ -12,7 +12,7 @@ import { ListSkeleton, QueryErrorAlert } from "@/shared/components/QueryState";
 import { formatDate, formatWeekdays } from "@/shared/utils/format";
 import { browserTimeZone } from "@/shared/utils/timezones";
 import type { Schedule } from "@huan/protocol";
-import { Badge, Button, Card, CardBody, EmptyState, SectionHeading, Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow, useToastManager } from "@linyao.tw/ui";
+import { Badge, Button, EmptyState, SectionHeading, Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow, useToastManager } from "@linyao.tw/ui";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
@@ -20,37 +20,6 @@ import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import { useState } from "react";
 
 /** 判定順序寫死在 @huan/shared，這裡只是把它翻成人話；改一邊就要改另一邊。 */
-const PRECEDENCE_RULES: readonly string[] = [
-	"優先度數字大的先播。",
-	"數字一樣時，每天播的時間比較短的先播 —— 短時段用來蓋掉長時段。",
-	"還一樣時，指定的星期比較少的先播。",
-	"還一樣時，有指定日期範圍的，贏過沒有指定的。",
-	"還一樣時，最近改過的先播。",
-	"全部都一樣時，系統會固定選同一個，不會今天播這個、明天播那個。"
-];
-
-function PrecedenceRules() {
-	return (
-		<section className="huan-stack" aria-label="同一時間有多個排程時播哪一個">
-			<SectionHeading level={2} size="md" description="從第一條開始比，先分出勝負的那一條就決定播誰。">
-				同一時間有多個排程，播哪一個
-			</SectionHeading>
-			<Card variant="inset">
-				<CardBody>
-					<div className="huan-stack huan-stack--sm">
-						<ol className="huan-rules">
-							{PRECEDENCE_RULES.map(rule => (
-								<li key={rule}>{rule}</li>
-							))}
-						</ol>
-						<p className="huan-caption">一個排程都沒對上的時間，裝置播自己的預設版面；連預設版面都沒有的話，顯示待機畫面。</p>
-					</div>
-				</CardBody>
-			</Card>
-		</section>
-	);
-}
-
 export function SchedulesPage() {
 	const schedules = useScheduleListQuery();
 	const layouts = useLayoutListQuery();
@@ -185,15 +154,13 @@ export function SchedulesPage() {
 					</TableFrame>
 
 					<section className="huan-stack" aria-label="一週預覽">
-						<SectionHeading level={2} size="md" description="只畫啟用中的排程。方塊重疊代表同一時間有多個排程對上，實際播哪一個看下面的規則。">
+						<SectionHeading level={2} size="md" description="只畫啟用中的排程。方塊重疊代表同一時間有多個排程對上。">
 							一週預覽
 						</SectionHeading>
 						<WeeklyTimeline schedules={items} />
 					</section>
 				</>
 			)}
-
-			<PrecedenceRules />
 
 			{createOpen ? (
 				<ScheduleDialog

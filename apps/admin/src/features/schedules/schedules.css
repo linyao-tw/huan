@@ -74,34 +74,6 @@
  * 清單只有 328px，每一條規則都折成兩行，而且一個編號都沒有 —— 偏偏這段話的
  * 全部意思就是「由上往下比，第一個分出勝負的贏」。
  */
-.huan-rules {
-	counter-reset: huan-rule;
-	display: grid;
-	gap: var(--space-2);
-	margin: 0;
-	padding-inline-start: 0;
-	list-style: none;
-}
-
-.huan-rules > li {
-	counter-increment: huan-rule;
-	display: grid;
-	grid-template-columns: var(--space-5) minmax(0, 1fr);
-	gap: var(--space-3);
-	align-items: baseline;
-	font-size: var(--font-size-sm);
-	line-height: var(--line-height-body);
-	color: var(--text-main);
-}
-
-.huan-rules > li::before {
-	content: counter(huan-rule);
-	text-align: end;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	font-variant-numeric: tabular-nums lining-nums;
-	color: var(--text-accent);
-}
 
 /* ── 排程表格 ─────────────────────────────────────────────── */
 
