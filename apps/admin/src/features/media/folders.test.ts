@@ -1,4 +1,4 @@
-import { childFolders, descendantFolderIds, folderOptions, folderPath } from "@/features/media/folders";
+import { childFolders, descendantFolderIds, folderOptions, folderPath, folderSummary } from "@/features/media/folders";
 import type { MediaFolder } from "@huan/protocol";
 import { describe, expect, it } from "vitest";
 
@@ -52,5 +52,15 @@ describe("folderOptions", () => {
 			["Charlie", 3],
 			["Zulu", 1]
 		]);
+	});
+});
+
+describe("folderSummary", () => {
+	it("沒有子資料夾時只講素材數", () => {
+		expect(folderSummary({ assetCount: 3, childCount: 0 })).toBe("3 個素材");
+	});
+
+	it("有子資料夾時一起講", () => {
+		expect(folderSummary({ assetCount: 0, childCount: 2 })).toBe("0 個素材・2 個資料夾");
 	});
 });

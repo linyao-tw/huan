@@ -244,16 +244,22 @@
 	background: var(--background-main);
 }
 
+/* 推到最右邊。整列換行時它會自己落到下一行的右側，不會擠在「取消選取」旁邊。 */
+.huan-media-selection__end {
+	margin-inline-start: auto;
+}
+
 /* ── 素材選擇器 ───────────────────────────────────────────── */
 
 .huan-picker__popup {
-	inline-size: min(64rem, 100%);
-	max-inline-size: min(64rem, 100%);
+	inline-size: min(76rem, 100%);
+	max-inline-size: min(76rem, 100%);
 }
 
+/* 格狀要的是寬度：縮圖一放大，清單那一欄就得分到大部分的空間，預覽窗格退到三分之一。 */
 .huan-picker {
 	display: grid;
-	grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 	gap: var(--space-4);
 	min-block-size: 24rem;
 }
@@ -312,14 +318,108 @@
 	gap: var(--space-2);
 }
 
-.huan-picker__list {
+/*
+ * 資料夾與素材一起捲，對話框的頁首、工具列與頁尾要一直看得到。
+ * 內距是給卡片的焦點框留位置：overflow 會把貼著邊緣的外框切掉。
+ */
+.huan-picker__scroll {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	max-block-size: min(32rem, 60vh);
+	overflow-y: auto;
+	padding: var(--space-05);
+}
+
+/* 資料夾是導覽，不是內容，所以維持精簡的一排，不跟素材搶大縮圖的位置。 */
+.huan-picker__folders {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+	gap: var(--space-2);
+	list-style: none;
+}
+
+.huan-picker__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+	gap: var(--space-3);
+	list-style: none;
+}
+
+.huan-picker__card {
+	position: relative;
+	min-inline-size: 0;
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-md);
+	background: var(--background-main);
+}
+
+.huan-picker__card:hover {
+	background: var(--background-sunken);
+}
+
+/* 選取用粗框而不是只換底色：一整片縮圖裡，底色的差異幾乎看不出來。 */
+.huan-picker__card[data-selected] {
+	border-color: var(--control-primary);
+	box-shadow: 0 0 0 var(--border-width-strong) var(--control-primary);
+}
+
+.huan-picker__card-main {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: var(--space-2);
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-1);
-	list-style: none;
-	/* 清單自己捲，對話框的頁首、工具列與頁尾要一直看得到。 */
-	max-block-size: 26rem;
-	overflow-y: auto;
+	inline-size: 100%;
+	min-inline-size: 0;
+	text-align: start;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	border-radius: inherit;
+}
+
+.huan-picker__card-main:focus-visible {
+	outline: var(--border-width-strong) solid var(--focus-ring);
+	outline-offset: var(--space-05);
+}
+
+.huan-picker__card-thumb {
+	aspect-ratio: 16 / 9;
+	border-radius: var(--radius-sm);
+	background: var(--background-sunken);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--icon-secondary);
+	font-size: var(--icon-size-lg);
+}
+
+.huan-picker__card-thumb img {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.huan-picker__card-name {
+	color: var(--text-title);
+	font-weight: var(--font-weight-medium);
+}
+
+/* 勾選框疊在縮圖左上角，和素材庫的卡片同一個位置。 */
+.huan-picker__card-check {
+	position: absolute;
+	inset-block-start: var(--space-3);
+	inset-inline-start: var(--space-3);
+	z-index: 1;
+	display: flex;
+	background: var(--background-main);
+	border-radius: var(--radius-sm);
+	padding: var(--space-05);
 }
 
 .huan-picker__row {
@@ -333,11 +433,6 @@
 }
 
 .huan-picker__row:hover {
-	background: var(--background-sunken);
-}
-
-.huan-picker__row[data-selected] {
-	border-color: var(--control-primary);
 	background: var(--background-sunken);
 }
 
@@ -377,7 +472,10 @@
 	display: block;
 }
 
+/* 資料夾不需要縮圖大小的位置，一個方形圖示就夠，省下來的寬度給名稱。 */
 .huan-picker__thumb--folder {
+	inline-size: 2.5rem;
+	block-size: 2.5rem;
 	color: var(--icon-accent, var(--icon-secondary));
 	font-size: var(--icon-size-md);
 }

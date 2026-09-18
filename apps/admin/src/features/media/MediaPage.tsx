@@ -1,5 +1,5 @@
 import { CreateFolderDialog, MoveAssetsDialog, RenameFolderDialog } from "@/features/media/FolderDialogs";
-import { childFolders, folderPath } from "@/features/media/folders";
+import { childFolders, folderPath, folderSummary } from "@/features/media/folders";
 import { useDeleteMediaFolderMutation, useMediaFoldersQuery, useMediaListQuery, type MediaListFilters } from "@/features/media/hooks";
 import "@/features/media/media.css";
 import { MediaDetailDialog } from "@/features/media/MediaDetailDialog";
@@ -152,23 +152,18 @@ export function MediaPage() {
 					) : null
 				}
 				actions={
-					<div className="huan-row huan-row--tight">
-						<Button size="sm" variant="secondary" startIcon={<FolderPlusIcon weight="bold" />} onClick={() => setCreateFolderOpen(true)}>
-							新增資料夾
-						</Button>
-						<SegmentedControl aria-label="檢視方式" size="sm" value={view} onValueChange={next => next && setView(next as ViewMode)}>
-							<SegmentedControlItem value="grid">
-								<span className="huan-row huan-row--tight huan-row--nowrap">
-									<SquaresFourIcon weight="bold" aria-hidden="true" /> 格狀
-								</span>
-							</SegmentedControlItem>
-							<SegmentedControlItem value="list">
-								<span className="huan-row huan-row--tight huan-row--nowrap">
-									<ListIcon weight="bold" aria-hidden="true" /> 清單
-								</span>
-							</SegmentedControlItem>
-						</SegmentedControl>
-					</div>
+					<SegmentedControl aria-label="檢視方式" size="sm" value={view} onValueChange={next => next && setView(next as ViewMode)}>
+						<SegmentedControlItem value="grid">
+							<span className="huan-row huan-row--tight huan-row--nowrap">
+								<SquaresFourIcon weight="bold" aria-hidden="true" /> 格狀
+							</span>
+						</SegmentedControlItem>
+						<SegmentedControlItem value="list">
+							<span className="huan-row huan-row--tight huan-row--nowrap">
+								<ListIcon weight="bold" aria-hidden="true" /> 清單
+							</span>
+						</SegmentedControlItem>
+					</SegmentedControl>
 				}
 			/>
 
@@ -212,9 +207,7 @@ export function MediaPage() {
 										</span>
 										<span className="huan-media-folder__text">
 											<span className="huan-truncate">{folder.name}</span>
-											<span className="huan-caption">
-												{folder.assetCount} 個素材・{folder.childCount} 個子資料夾
-											</span>
+											<span className="huan-caption">{folderSummary(folder)}</span>
 										</span>
 									</button>
 									<IconButton aria-label={`編輯資料夾 ${folder.name}`} variant="quiet" size="sm" onClick={() => setEditingFolder(folder)}>
@@ -230,24 +223,30 @@ export function MediaPage() {
 				</ul>
 			) : null}
 
-			{items.length > 0 ? (
-				<div className="huan-media-selection">
-					<Checkbox
-						aria-label="選取目前列出的全部素材"
-						checked={allSelected}
-						indeterminate={!allSelected && selectedIds.length > 0}
-						onCheckedChange={checked => setSelectedIds(checked ? items.map(asset => asset.id) : [])}
-					/>
-					<span className="huan-caption">{selectedIds.length > 0 ? `已選 ${selectedIds.length} 個` : `全選這一層的 ${items.length} 個素材`}</span>
-					<Separator orientation="vertical" />
-					<Button size="sm" variant="secondary" disabled={selectedIds.length === 0} onClick={() => setMoveOpen(true)}>
-						搬移到…
-					</Button>
-					<Button size="sm" variant="quiet" disabled={selectedIds.length === 0} onClick={() => setSelectedIds([])}>
-						取消選取
-					</Button>
-				</div>
-			) : null}
+			{/* 列表操作與「新增資料夾」放在同一條：兩者都是對「這一層」做的事。沒有素材時只剩按鈕，資料夾還是建得出來。 */}
+			<div className="huan-media-selection">
+				{items.length > 0 ? (
+					<>
+						<Checkbox
+							aria-label="選取目前列出的全部素材"
+							checked={allSelected}
+							indeterminate={!allSelected && selectedIds.length > 0}
+							onCheckedChange={checked => setSelectedIds(checked ? items.map(asset => asset.id) : [])}
+						/>
+						<span className="huan-caption">{selectedIds.length > 0 ? `已選 ${selectedIds.length} 個` : `全選這一層的 ${items.length} 個素材`}</span>
+						<Separator orientation="vertical" />
+						<Button size="sm" variant="secondary" disabled={selectedIds.length === 0} onClick={() => setMoveOpen(true)}>
+							搬移到…
+						</Button>
+						<Button size="sm" variant="quiet" disabled={selectedIds.length === 0} onClick={() => setSelectedIds([])}>
+							取消選取
+						</Button>
+					</>
+				) : null}
+				<Button className="huan-media-selection__end" size="sm" variant="secondary" startIcon={<FolderPlusIcon weight="bold" />} onClick={() => setCreateFolderOpen(true)}>
+					新增資料夾
+				</Button>
+			</div>
 
 			{media.isPending ? (
 				<CardsSkeleton cards={8} label="正在載入素材" />

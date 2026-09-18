@@ -1,4 +1,4 @@
-import { childFolders, descendantFolderIds, folderPath } from "@/features/media/folders";
+import { childFolders, descendantFolderIds, folderPath, folderSummary } from "@/features/media/folders";
 import { mediaListQueryOptions, useMediaFoldersQuery, useMediaListQuery, type MediaListFilters } from "@/features/media/hooks";
 import "@/features/media/media.css";
 import { MediaStatusBadge } from "@/features/media/MediaStatus";
@@ -179,24 +179,41 @@ export function AssetPicker({ open, onOpenChange, title, description, kinds, mul
 		}
 	};
 
-	const rows = assets.map(asset => (
-		<li key={asset.id} className="huan-picker__row" data-selected={selected.has(asset.id) ? "" : undefined}>
-			{multiple ? (
-				<Checkbox aria-label={`選取 ${asset.name}`} checked={selected.has(asset.id)} onCheckedChange={checked => toggle(asset, checked)} />
-			) : (
-				<Radio value={asset.id} aria-label={`選取 ${asset.name}`} />
-			)}
-			<button type="button" className="huan-picker__row-main" onClick={() => setFocused(asset)} aria-label={`預覽 ${asset.name}`}>
-				<span className="huan-picker__thumb">{asset.thumbnailUrl ? <img src={asset.thumbnailUrl} alt="" loading="lazy" /> : <KindIcon kind={asset.kind} />}</span>
-				<span className="huan-picker__row-text">
-					<span className="huan-truncate">{asset.name}</span>
+	/**
+	 * 素材卡片。
+	 *
+	 * 點整張卡片就會選取並顯示預覽：縮圖放大之後，使用者自然會直接點圖，而不是去找角落的
+	 * 勾選框。勾選框仍然保留，鍵盤與螢幕報讀器用的是它。多選時再點一次就是取消。
+	 */
+	const cards = assets.map(asset => {
+		const isSelected = selected.has(asset.id);
+		return (
+			<li key={asset.id} className="huan-picker__card" data-selected={isSelected ? "" : undefined}>
+				<span className="huan-picker__card-check">
+					{multiple ? (
+						<Checkbox aria-label={`選取 ${asset.name}`} checked={isSelected} onCheckedChange={checked => toggle(asset, checked)} />
+					) : (
+						<Radio value={asset.id} aria-label={`選取 ${asset.name}`} />
+					)}
+				</span>
+				<button
+					type="button"
+					className="huan-picker__card-main"
+					aria-pressed={isSelected}
+					onClick={() => {
+						toggle(asset, multiple ? !isSelected : true);
+						setFocused(asset);
+					}}
+				>
+					<span className="huan-picker__card-thumb">{asset.thumbnailUrl ? <img src={asset.thumbnailUrl} alt="" loading="lazy" /> : <KindIcon kind={asset.kind} />}</span>
+					<span className="huan-picker__card-name huan-truncate">{asset.name}</span>
 					<span className="huan-caption huan-truncate">
 						{KIND_LABELS[asset.kind]}・{formatResolution(asset.probe?.width, asset.probe?.height)}
 					</span>
-				</span>
-			</button>
-		</li>
-	));
+				</button>
+			</li>
+		);
+	});
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -258,30 +275,37 @@ export function AssetPicker({ open, onOpenChange, title, description, kinds, mul
 												setFocused(asset);
 											}}
 										>
-											<ul className="huan-picker__list">
-												{subFolders.map(folder => (
-													<li key={folder.id} className="huan-picker__row huan-picker__row--folder">
-														{multiple ? (
-															<Button size="sm" variant="quiet" loading={expanding === folder.id} onClick={() => void selectFolder(folder.id)}>
-																全選
-															</Button>
-														) : null}
-														<button type="button" className="huan-picker__row-main" onClick={() => setFolderId(folder.id)}>
-															<span className="huan-picker__thumb huan-picker__thumb--folder">
-																<FolderIcon weight="fill" />
-															</span>
-															<span className="huan-picker__row-text">
-																<span className="huan-truncate">{folder.name}</span>
-																<span className="huan-caption">
-																	{folder.assetCount} 個素材・{folder.childCount} 個子資料夾
-																</span>
-															</span>
-															<CaretRightIcon weight="bold" aria-hidden="true" />
-														</button>
-													</li>
-												))}
-												{rows}
-											</ul>
+											<div className="huan-picker__scroll">
+												{subFolders.length > 0 ? (
+													<ul className="huan-picker__folders" aria-label="資料夾">
+														{subFolders.map(folder => (
+															<li key={folder.id} className="huan-picker__row huan-picker__row--folder">
+																<button type="button" className="huan-picker__row-main" onClick={() => setFolderId(folder.id)}>
+																	<span className="huan-picker__thumb huan-picker__thumb--folder">
+																		<FolderIcon weight="fill" />
+																	</span>
+																	<span className="huan-picker__row-text">
+																		<span className="huan-truncate">{folder.name}</span>
+																		<span className="huan-caption huan-truncate">{folderSummary(folder)}</span>
+																	</span>
+																	<CaretRightIcon weight="bold" aria-hidden="true" />
+																</button>
+																{/* 放在尾端：排在前面時它會先吃掉寬度，資料夾名稱就只剩兩個字。 */}
+																{multiple ? (
+																	<Button size="sm" variant="quiet" loading={expanding === folder.id} onClick={() => void selectFolder(folder.id)} aria-label={`全選資料夾 ${folder.name}`}>
+																		全選
+																	</Button>
+																) : null}
+															</li>
+														))}
+													</ul>
+												) : null}
+												{cards.length > 0 ? (
+													<ul className="huan-picker__grid" aria-label="素材">
+														{cards}
+													</ul>
+												) : null}
+											</div>
 										</RadioGroupWrapper>
 									)}
 								</div>

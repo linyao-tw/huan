@@ -63,3 +63,8 @@ export function folderOptions(folders: readonly MediaFolder[], rootLabel = "素�
 	walk(null, 1);
 	return options;
 }
+
+/** 資料夾卡片上的一行摘要。沒有子資料夾就不提：卡片很窄，少一段字就少折一行。 */
+export function folderSummary(folder: Pick<MediaFolder, "assetCount" | "childCount">): string {
+	return folder.childCount > 0 ? `${folder.assetCount} 個素材・${folder.childCount} 個資料夾` : `${folder.assetCount} 個素材`;
+}
