@@ -74,6 +74,7 @@ export async function serializeMediaAsset(asset: MediaAssetRow, variants: readon
 		id: asset.id,
 		kind: asset.kind,
 		name: asset.name,
+		folderId: asset.folderId,
 		originalFilename: asset.originalFilename,
 		status: asset.status,
 		errorMessage: asset.errorMessage,
@@ -107,6 +108,8 @@ export async function loadVariants(db: Database, assetIds: readonly string[]): P
  *
  * 影片與圖片送 `playback`（轉檔後的正式播放版本）。HTML 沒有轉檔的概念，
  * Worker 產出的是整理過的 `preview`，所以 HTML 在沒有 `playback` 時退回 `preview`。
+ *
+ * 這些產物長期留在 RustFS，不會在裝置 ACK 之後被回收；指派給新裝置時一定拿得到檔案。
  */
 export function distributionVariant(kind: MediaKind, variants: readonly MediaVariantRow[]): MediaVariantRow | null {
 	const playback = variants.find(variant => variant.role === "playback");
@@ -171,6 +174,13 @@ export async function computeMediaUsage(db: Database, assetId: string, ownerId: 
 		.innerJoin(devices, eq(devices.id, mediaDeviceSync.deviceId))
 		.where(and(eq(mediaDeviceSync.assetId, assetId), eq(devices.ownerId, ownerId)));
 	for (const device of bySync) deviceMap.set(device.id, device);
+
+	/** 待命圖片不在任何版面裡，`collectAssetIds` 看不到它，只能自己查一次。 */
+	const byIdleImage = await db
+		.select({ id: devices.id, name: devices.name })
+		.from(devices)
+		.where(and(eq(devices.idleImageAssetId, assetId), eq(devices.ownerId, ownerId)));
+	for (const device of byIdleImage) deviceMap.set(device.id, device);
 
 	return { layouts: usedLayouts, schedules: usedSchedules, devices: [...deviceMap.values()] };
 }

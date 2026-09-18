@@ -1,9 +1,10 @@
+import { folderPath } from "@/features/media/folders";
 import { useDeleteMediaMutation, useMediaUsageQuery, useRenameMediaMutation } from "@/features/media/hooks";
 import "@/features/media/media.css";
 import { MediaStatusBadge, mediaStatusDetail } from "@/features/media/MediaStatus";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { formatDateTime, formatResolution } from "@/shared/utils/format";
-import type { MediaAsset, MediaUsage } from "@huan/protocol";
+import type { MediaAsset, MediaFolder, MediaUsage } from "@huan/protocol";
 import { formatBytes, formatDurationMs } from "@huan/shared";
 import { Alert, AlertDescription, AlertTitle, Badge, Button, Dialog, Link, Loader, TextField, useToastManager } from "@linyao.tw/ui";
 import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
@@ -66,7 +67,7 @@ function UsageList({ usage }: { usage: MediaUsage }) {
 	);
 }
 
-export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaAsset | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function MediaDetailDialog({ asset, open, onOpenChange, folders = [] }: { asset: MediaAsset | null; open: boolean; onOpenChange: (open: boolean) => void; folders?: readonly MediaFolder[] }) {
 	const toast = useToastManager();
 	const usage = useMediaUsageQuery(open && asset ? asset.id : null);
 	const rename = useRenameMediaMutation();
@@ -79,6 +80,13 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 
 	const inUse = usageTotal(usage.data) > 0;
 	const playbackAvailable = asset.variants.some(variant => variant.role === "playback" && variant.available);
+	/** 整條路徑而不是只有最後一層：兩個不同上層底下常常會有同名的「影片」資料夾。 */
+	const location =
+		asset.folderId === null
+			? "素材庫（最上層）"
+			: folderPath(folders, asset.folderId)
+					.map(folder => folder.name)
+					.join(" / ") || "素材庫（最上層）";
 
 	return (
 		<>
@@ -103,7 +111,7 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 									{asset.status === "needs_reupload" ? (
 										<Alert status="warning">
 											<AlertTitle>這份素材需要重新上傳</AlertTitle>
-											<AlertDescription>伺服器上已經沒有這個檔案了。重新上傳同一個檔案，下面列出的版面與排程就會恢復正常。</AlertDescription>
+											<AlertDescription>這是舊的回收機制留下的狀態，伺服器上已經沒有這個檔案。重新上傳同一個檔案，下面列出的版面與排程就會恢復正常；新上傳的素材不會再變成這樣。</AlertDescription>
 										</Alert>
 									) : null}
 
@@ -118,6 +126,8 @@ export function MediaDetailDialog({ asset, open, onOpenChange }: { asset: MediaA
 									{asset.previewUrl && asset.kind === "video" ? <video className="huan-media-preview" src={asset.previewUrl} muted controls playsInline preload="metadata" /> : null}
 
 									<dl className="huan-definition">
+										<dt>所在資料夾</dt>
+										<dd className="huan-truncate">{location}</dd>
 										<dt>原始檔名</dt>
 										<dd className="huan-truncate">{asset.originalFilename}</dd>
 										<dt>解析度</dt>

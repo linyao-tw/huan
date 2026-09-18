@@ -2,7 +2,7 @@ import { createContext } from "@/context";
 import { loadEnv, loadEnvFile } from "@/env";
 import { bumpDeviceDesiredState } from "@/lib/desired-state";
 import { hashPassword } from "@/lib/password";
-import { deviceCredentials, devices, layoutRevisions, layouts, mediaAssets, mediaVariants, scheduleDevices, schedules, users, workerJobs } from "@huan/db";
+import { deviceCredentials, devices, layoutRevisions, layouts, mediaAssets, mediaFolders, mediaVariants, scheduleDevices, schedules, users, workerJobs } from "@huan/db";
 import { LayoutDocumentSchema, type LayoutDocument, type MediaProbe, type ReportedState } from "@huan/protocol";
 import { hashToken, sha256Hex } from "@huan/shared/node";
 import { eq, sql, type SQL } from "drizzle-orm";
@@ -38,6 +38,11 @@ const ID = {
 	adminUser: "00000000-0000-4000-8000-000000000001",
 	editorUser: "00000000-0000-4000-8000-000000000002",
 	partnerUser: "00000000-0000-4000-8000-000000000003",
+
+	folderBrand: "00000000-0000-4000-8000-0000000000f1",
+	folderCampaign: "00000000-0000-4000-8000-0000000000f2",
+	folderCampaignSpring: "00000000-0000-4000-8000-0000000000f3",
+	folderPartner: "00000000-0000-4000-8000-0000000000f4",
 
 	assetVideoReady: "00000000-0000-4000-8000-000000000101",
 	assetImageReady: "00000000-0000-4000-8000-000000000102",
@@ -348,6 +353,22 @@ try {
 			}
 		});
 
+	/* ── 素材資料夾 ───────────────────────────────────────────────────── */
+
+	/** 兩層就夠示範麵包屑與「全選整個資料夾」，再深只會讓示範資料本身難讀。 */
+	await db
+		.insert(mediaFolders)
+		.values([
+			{ id: ID.folderBrand, name: "品牌素材", parentId: null, ownerId: ID.editorUser, createdBy: ID.editorUser },
+			{ id: ID.folderCampaign, name: "檔期活動", parentId: null, ownerId: ID.editorUser, createdBy: ID.editorUser },
+			{ id: ID.folderCampaignSpring, name: "2026 春季", parentId: ID.folderCampaign, ownerId: ID.editorUser, createdBy: ID.editorUser },
+			{ id: ID.folderPartner, name: "夥伴門市", parentId: null, ownerId: ID.partnerUser, createdBy: ID.partnerUser }
+		])
+		.onConflictDoUpdate({
+			target: mediaFolders.id,
+			set: { name: excluded("name"), parentId: excluded("parent_id"), ownerId: excluded("owner_id"), updatedAt: new Date() }
+		});
+
 	/* ── 素材 ─────────────────────────────────────────────────────────── */
 
 	interface SeedVariant {
@@ -426,6 +447,7 @@ try {
 		.values([
 			{
 				id: ID.assetVideoReady,
+				folderId: ID.folderBrand,
 				kind: "video",
 				name: "店內形象影片",
 				originalFilename: "brand-loop.mp4",
@@ -438,6 +460,7 @@ try {
 			},
 			{
 				id: ID.assetImageReady,
+				folderId: ID.folderCampaignSpring,
 				kind: "image",
 				name: "季節餐點主視覺",
 				originalFilename: "seasonal.png",
@@ -450,6 +473,7 @@ try {
 			},
 			{
 				id: ID.assetVideoProcessing,
+				folderId: ID.folderCampaignSpring,
 				kind: "video",
 				name: "新品上市預告",
 				originalFilename: "teaser.mp4",
@@ -479,12 +503,13 @@ try {
 				contentType: "video/mp4",
 				sizeBytes: 1024,
 				status: "needs_reupload",
-				errorMessage: "播放版本已回收，需要重新上傳原始檔",
+				errorMessage: "播放版本在舊的回收機制下被清掉了，需要重新上傳原始檔",
 				ownerId: ID.editorUser,
 				createdBy: ID.editorUser
 			},
 			{
 				id: ID.assetPartnerPoster,
+				folderId: ID.folderPartner,
 				kind: "image",
 				name: "夥伴門市海報",
 				originalFilename: "partner-poster.png",
@@ -506,6 +531,7 @@ try {
 				sizeBytes: excluded("size_bytes"),
 				status: excluded("status"),
 				errorMessage: excluded("error_message"),
+				folderId: excluded("folder_id"),
 				probe: excluded("probe"),
 				ownerId: excluded("owner_id"),
 				updatedAt: new Date()
@@ -648,6 +674,8 @@ try {
 				name: "門市 B ・ 櫃檯螢幕",
 				status: "active",
 				defaultLayoutId: ID.layoutMain,
+				/** 示範另一種待命行為：沒有內容時整片黑，現場不會看到品牌畫面。 */
+				idleMode: "black",
 				lastSeenAt: twoDaysAgo,
 				pairedAt: new Date(now.getTime() - 20 * 86_400_000),
 				ownerId: ID.editorUser,
@@ -670,6 +698,7 @@ try {
 				name: excluded("name"),
 				status: excluded("status"),
 				defaultLayoutId: excluded("default_layout_id"),
+				idleMode: excluded("idle_mode"),
 				lastSeenAt: excluded("last_seen_at"),
 				pairedAt: excluded("paired_at"),
 				ownerId: excluded("owner_id"),

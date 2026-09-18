@@ -8,14 +8,14 @@ import { XCircleIcon } from "@phosphor-icons/react/dist/csr/XCircle";
 
 export type MediaUploader = ReturnType<typeof useMediaUploader>;
 
-export function MediaUploadPanel({ uploader }: { uploader: MediaUploader }) {
+export function MediaUploadPanel({ uploader, folderName }: { uploader: MediaUploader; folderName?: string }) {
 	const active = uploader.tasks.filter(task => task.phase !== "done" && task.phase !== "error" && task.phase !== "cancelled").length;
 
 	return (
 		<div className="huan-stack">
 			<DropZone
-				label="上傳素材"
-				description="支援 MP4、MOV、MKV、WebM、JPEG、PNG、WebP、AVIF、GIF 與 HTML，單檔上限 4 GB。請自己留一份原始檔，伺服器不會長期保存。"
+				label={folderName ? `上傳素材到「${folderName}」` : "上傳素材"}
+				description="支援 MP4、MOV、MKV、WebM、JPEG、PNG、WebP、AVIF、GIF 與 HTML，單檔上限 4 GB。上傳的原始檔轉檔完就會刪除，請自己留一份。"
 				primaryLabel="把檔案拖到這裡"
 				secondaryLabel="或"
 				browseLabel="選擇檔案"

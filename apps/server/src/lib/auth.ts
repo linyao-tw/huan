@@ -2,7 +2,7 @@ import { authenticateDeviceToken, extractBearerToken } from "@/lib/device-auth";
 import { forbidden, notFound, unauthorized } from "@/lib/errors";
 import { clientIp } from "@/lib/request-ip";
 import { resolveSession, type SessionActor } from "@/lib/session";
-import { devices, layouts, mediaAssets, schedules, type Database } from "@huan/db";
+import { devices, layouts, mediaAssets, mediaFolders, schedules, type Database } from "@huan/db";
 import type { UserRole } from "@huan/protocol";
 import { and, eq, type SQL } from "drizzle-orm";
 import type { FastifyRequest, preHandlerAsyncHookHandler } from "fastify";
@@ -82,7 +82,7 @@ export function ownerOf(request: FastifyRequest): string {
  * 資料表型別對欄位是不變的（invariant），結構型別過不了；而且租戶邊界上有哪幾張表
  * 本來就該是一份看得到的清單。
  */
-type OwnedTable = typeof devices | typeof layouts | typeof mediaAssets | typeof schedules;
+type OwnedTable = typeof devices | typeof layouts | typeof mediaAssets | typeof mediaFolders | typeof schedules;
 
 /**
  * 擁有者條件。
@@ -103,13 +103,14 @@ export function ownedBy(table: OwnedTable, id: string, ownerId: string): SQL {
  * 「不存在」與「不是你的」刻意回同一個 404：403 等於承認這個 id 真的存在，
  * 只是不屬於呼叫者，id 就變成可以列舉的。
  *
- * 這裡列出四張資料表而不是寫成泛型，是因為 drizzle 的 `from()` 對泛型資料表推不出
+ * 這裡逐一列出資料表而不是寫成泛型，是因為 drizzle 的 `from()` 對泛型資料表推不出
  * 資料列型別，回傳值會塌成 `Record<string, unknown>`；寧可多四行多載，也不要讓
  * 每個呼叫端各自把型別收斂回來。
  */
 export async function loadOwned(db: Database, table: typeof devices, id: string, ownerId: string, message: string): Promise<typeof devices.$inferSelect>;
 export async function loadOwned(db: Database, table: typeof layouts, id: string, ownerId: string, message: string): Promise<typeof layouts.$inferSelect>;
 export async function loadOwned(db: Database, table: typeof mediaAssets, id: string, ownerId: string, message: string): Promise<typeof mediaAssets.$inferSelect>;
+export async function loadOwned(db: Database, table: typeof mediaFolders, id: string, ownerId: string, message: string): Promise<typeof mediaFolders.$inferSelect>;
 export async function loadOwned(db: Database, table: typeof schedules, id: string, ownerId: string, message: string): Promise<typeof schedules.$inferSelect>;
 export async function loadOwned(
 	db: Database,
@@ -117,7 +118,7 @@ export async function loadOwned(
 	id: string,
 	ownerId: string,
 	message: string
-): Promise<typeof devices.$inferSelect | typeof layouts.$inferSelect | typeof mediaAssets.$inferSelect | typeof schedules.$inferSelect> {
+): Promise<typeof devices.$inferSelect | typeof layouts.$inferSelect | typeof mediaAssets.$inferSelect | typeof mediaFolders.$inferSelect | typeof schedules.$inferSelect> {
 	const [row] = await db
 		.select()
 		.from(table)

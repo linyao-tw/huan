@@ -23,6 +23,7 @@ const TABLES = [
 	"login_attempts",
 	"media_device_sync",
 	"media_variants",
+	"media_folders",
 	"schedule_devices",
 	"sessions",
 	"totp_credentials",

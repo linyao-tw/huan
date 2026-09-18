@@ -35,8 +35,11 @@ interface UploaderApi {
  *
  * 每個檔案各自持有一個 AbortController，因為取消一個上傳不應該打斷其他檔案；
  * 進度只更新對應的 task，避免大量檔案同時上傳時整份清單重新算繪。
+ *
+ * 目標資料夾在「檔案被丟進來的那一刻」就決定好。大檔案傳到一半換去看別的資料夾是
+ * 常見的事，那時候再讀一次目前位置，檔案就會落在使用者沒預期的地方。
  */
-export function useMediaUploader(): UploaderApi {
+export function useMediaUploader(folderId: string | null = null): UploaderApi {
 	const queryClient = useQueryClient();
 	const [tasks, setTasks] = useState<UploadTask[]>([]);
 	const controllers = useRef(new Map<string, AbortController>());
@@ -45,8 +48,12 @@ export function useMediaUploader(): UploaderApi {
 		setTasks(current => current.map(task => (task.id === id ? { ...task, ...patch } : task)));
 	}, []);
 
+	/** 用 ref 讀，`enqueue` 就不必把資料夾放進相依而在每次切換時重建。 */
+	const folderRef = useRef(folderId);
+	folderRef.current = folderId;
+
 	const runTask = useCallback(
-		async (id: string, file: File, kind: MediaKind) => {
+		async (id: string, file: File, kind: MediaKind, targetFolderId: string | null) => {
 			const controller = new AbortController();
 			controllers.current.set(id, controller);
 
@@ -54,7 +61,14 @@ export function useMediaUploader(): UploaderApi {
 				patchTask(id, { phase: "requesting" });
 				const authorization = await apiRequest<CreateUploadResponse>("/media/uploads", {
 					method: "POST",
-					body: { kind, name: stripExtension(file.name).slice(0, 120) || file.name.slice(0, 120), filename: file.name, contentType: file.type || "application/octet-stream", sizeBytes: file.size },
+					body: {
+						kind,
+						name: stripExtension(file.name).slice(0, 120) || file.name.slice(0, 120),
+						filename: file.name,
+						contentType: file.type || "application/octet-stream",
+						sizeBytes: file.size,
+						folderId: targetFolderId
+					},
 					signal: controller.signal
 				});
 
@@ -101,7 +115,7 @@ export function useMediaUploader(): UploaderApi {
 				}
 
 				setTasks(current => [...current, { id, name: file.name, sizeBytes: file.size, phase: "queued", loaded: 0, assetId: null, errorMessage: null }]);
-				void runTask(id, file, kind);
+				void runTask(id, file, kind, folderRef.current);
 			}
 		},
 		[runTask]

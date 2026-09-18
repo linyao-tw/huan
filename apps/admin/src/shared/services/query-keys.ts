@@ -12,6 +12,7 @@ export const queryKeys = {
 
 	media: {
 		all: ["media"] as const,
+		folders: () => ["media", "folders"] as const,
 		list: (filters: Partial<MediaListQuery>) => ["media", "list", filters] as const,
 		detail: (id: string) => ["media", "detail", id] as const,
 		usage: (id: string) => ["media", "usage", id] as const

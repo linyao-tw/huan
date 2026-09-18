@@ -36,6 +36,8 @@
 .huan-media-grid > li {
 	display: flex;
 	min-inline-size: 0;
+	/* 勾選框是絕對定位疊在縮圖上的，定位基準必須是格子本身。 */
+	position: relative;
 }
 
 .huan-media-select {
@@ -142,4 +144,312 @@
 	border-radius: var(--radius-sm);
 	background: var(--background-sunken);
 	display: block;
+}
+
+/* ── 資料夾 ───────────────────────────────────────────────── */
+
+.huan-media-crumbs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1);
+	min-inline-size: 0;
+}
+
+.huan-media-crumbs button {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: var(--space-1) var(--space-2);
+	border-radius: var(--radius-sm);
+	color: var(--text-secondary);
+	font: inherit;
+	cursor: pointer;
+}
+
+.huan-media-crumbs button:hover:not(:disabled) {
+	background: var(--background-sunken);
+	color: var(--text-title);
+}
+
+/* 目前所在的那一層不是連結，停用它同時關掉游標與淡化，讓它讀起來像位置而不是壞掉的按鈕。 */
+.huan-media-crumbs button:disabled {
+	color: var(--text-title);
+	cursor: default;
+	opacity: 1;
+}
+
+.huan-media-folders {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+	gap: var(--space-3);
+	list-style: none;
+}
+
+.huan-media-folder {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	min-inline-size: 0;
+}
+
+.huan-media-folder__open {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	flex: 1;
+	min-inline-size: 0;
+	text-align: start;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+
+.huan-media-folder__icon {
+	color: var(--icon-accent, var(--icon-secondary));
+	font-size: var(--icon-size-lg);
+	flex: none;
+}
+
+.huan-media-folder__text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-05);
+	min-inline-size: 0;
+}
+
+/* 勾選框疊在縮圖左上角：卡片本身已經是「點一下看細節」，選取不能再搶走那一下。 */
+.huan-media-card__check {
+	position: absolute;
+	inset-block-start: var(--space-2);
+	inset-inline-start: var(--space-2);
+	z-index: 1;
+	background: var(--background-main);
+	border-radius: var(--radius-sm);
+	padding: var(--space-05);
+}
+
+.huan-media-selection {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	flex-wrap: wrap;
+	padding: var(--space-3);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-sm);
+	background: var(--background-main);
+}
+
+/* ── 素材選擇器 ───────────────────────────────────────────── */
+
+.huan-picker__popup {
+	inline-size: min(64rem, 100%);
+	max-inline-size: min(64rem, 100%);
+}
+
+.huan-picker {
+	display: grid;
+	grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+	gap: var(--space-4);
+	min-block-size: 24rem;
+}
+
+@media (max-width: 52rem) {
+	.huan-picker {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	/* 窄螢幕上預覽排在清單後面，先看得到選項比先看得到預覽重要。 */
+	.huan-picker__preview {
+		order: 2;
+	}
+}
+
+.huan-picker__main {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	min-inline-size: 0;
+}
+
+.huan-picker__toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.huan-picker__crumbs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1);
+}
+
+.huan-picker__crumbs button {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: var(--space-05) var(--space-1);
+	border-radius: var(--radius-sm);
+	color: var(--text-secondary);
+	font: inherit;
+	cursor: pointer;
+}
+
+.huan-picker__crumbs button:disabled {
+	color: var(--text-title);
+	cursor: default;
+	opacity: 1;
+}
+
+.huan-picker__bulk {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.huan-picker__list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	list-style: none;
+	/* 清單自己捲，對話框的頁首、工具列與頁尾要一直看得到。 */
+	max-block-size: 26rem;
+	overflow-y: auto;
+}
+
+.huan-picker__row {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: var(--space-1) var(--space-2);
+	border-radius: var(--radius-sm);
+	border: var(--border-width-hairline) solid transparent;
+	min-inline-size: 0;
+}
+
+.huan-picker__row:hover {
+	background: var(--background-sunken);
+}
+
+.huan-picker__row[data-selected] {
+	border-color: var(--control-primary);
+	background: var(--background-sunken);
+}
+
+.huan-picker__row-main {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	flex: 1;
+	min-inline-size: 0;
+	text-align: start;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+
+.huan-picker__thumb {
+	inline-size: 4rem;
+	block-size: 2.5rem;
+	flex: none;
+	border-radius: var(--radius-sm);
+	background: var(--background-sunken);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--icon-secondary);
+}
+
+.huan-picker__thumb img {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.huan-picker__thumb--folder {
+	color: var(--icon-accent, var(--icon-secondary));
+	font-size: var(--icon-size-md);
+}
+
+.huan-picker__row-text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-05);
+	min-inline-size: 0;
+	flex: 1;
+}
+
+.huan-picker__loading {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding-block: var(--space-6);
+	justify-content: center;
+}
+
+.huan-picker__preview {
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-sm);
+	padding: var(--space-3);
+	background: var(--background-main);
+	min-inline-size: 0;
+}
+
+.huan-picker__preview-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	block-size: 100%;
+	min-block-size: 12rem;
+	text-align: center;
+}
+
+.huan-picker__preview-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	min-inline-size: 0;
+}
+
+.huan-picker__preview-stage {
+	aspect-ratio: 16 / 9;
+	border-radius: var(--radius-sm);
+	background: var(--background-sunken);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-secondary);
+}
+
+.huan-picker__preview-stage img,
+.huan-picker__preview-stage video,
+.huan-picker__preview-stage iframe {
+	inline-size: 100%;
+	block-size: 100%;
+	border: 0;
+	object-fit: contain;
+	display: block;
+}
+
+.huan-picker__preview-name {
+	color: var(--text-title);
+	font-weight: var(--font-weight-medium);
+	overflow-wrap: anywhere;
+}
+
+/* 已選數量推到左邊，取消與確定留在原本的右下角。 */
+.huan-picker__count {
+	margin-inline-end: auto;
 }
