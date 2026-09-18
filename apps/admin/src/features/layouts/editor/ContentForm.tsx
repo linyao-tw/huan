@@ -1,9 +1,25 @@
 import { CONTENT_TYPE_LABELS, playlistItemForAsset } from "@/features/layouts/editor/content";
+import { AssetPicker } from "@/features/media/AssetPicker";
 import { ColorControl } from "@/shared/components/ColorControl";
-import { ExternalUrlSchema, type MediaAsset, type ObjectFit, type PlaylistContent, type SlotContent, type TextAlign, type TickerDirection, type VerticalAlign } from "@huan/protocol";
-import { Alert, AlertDescription, AlertTitle, Badge, EmptyState, IconButton, NumberField, SegmentedControl, SegmentedControlItem, Select, Slider, Switch, TextField, TextView } from "@linyao.tw/ui";
+import {
+	ExternalUrlSchema,
+	PLAYLIST_MAX_IMAGE_DURATION_MS,
+	PLAYLIST_MIN_IMAGE_DURATION_MS,
+	type MediaAsset,
+	type MediaKind,
+	type ObjectFit,
+	type PlaylistContent,
+	type PlaylistItem,
+	type SlotContent,
+	type TextAlign,
+	type TickerDirection,
+	type VerticalAlign
+} from "@huan/protocol";
+import { Alert, AlertDescription, AlertTitle, Badge, Button, IconButton, NumberField, SegmentedControl, SegmentedControlItem, Select, Slider, Switch, TextField, TextView } from "@linyao.tw/ui";
 import { ArrowDownIcon } from "@phosphor-icons/react/dist/csr/ArrowDown";
 import { ArrowUpIcon } from "@phosphor-icons/react/dist/csr/ArrowUp";
+import { ImagesSquareIcon } from "@phosphor-icons/react/dist/csr/ImagesSquare";
+import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import { useId, useState } from "react";
 
@@ -42,9 +58,44 @@ function SwitchRow({ label, description, checked, onCheckedChange }: { label: st
 	);
 }
 
-function AssetSelect({ label, assets, value, onChange, emptyHint }: { label: string; assets: MediaAsset[]; value: string; onChange: (assetId: string) => void; emptyHint: string }) {
-	if (assets.length === 0) return <EmptyState title="沒有可用的素材" description={emptyHint} />;
-	return <Select label={label} value={value} onValueChange={next => next && onChange(next)} options={assets.map(asset => ({ value: asset.id, label: asset.name }))} />;
+/**
+ * 目前選到的素材，加上一顆「換一個」。
+ *
+ * 從下拉換成對話框是刻意的：下拉只看得到名稱，而「哪一支影片」這件事光靠
+ * 「宣傳片_final_v3」是分不出來的。選擇器裡看得到縮圖、預覽與資料夾。
+ */
+function AssetField({
+	label,
+	kind,
+	assets,
+	value,
+	onChange,
+	emptyHint
+}: {
+	label: string;
+	kind: MediaKind;
+	assets: MediaAsset[];
+	value: string;
+	onChange: (assetId: string) => void;
+	emptyHint: string;
+}) {
+	const [open, setOpen] = useState(false);
+	const current = assets.find(asset => asset.id === value) ?? null;
+
+	return (
+		<div className="huan-stack huan-stack--sm">
+			<span className="huan-muted">{label}</span>
+			<div className="huan-asset-field">
+				<span className="huan-asset-field__thumb">{current?.thumbnailUrl ? <img src={current.thumbnailUrl} alt="" loading="lazy" /> : <ImagesSquareIcon weight="bold" aria-hidden="true" />}</span>
+				<span className="huan-asset-field__text huan-truncate">{current ? current.name : "素材已不存在"}</span>
+				<Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+					換一個
+				</Button>
+			</div>
+			<span className="huan-caption">{emptyHint}</span>
+			<AssetPicker open={open} onOpenChange={setOpen} title={label} kinds={[kind]} initialSelectedIds={value ? [value] : []} onConfirm={picked => picked[0] && onChange(picked[0].id)} />
+		</div>
+	);
 }
 
 function TextStyleFields({ content, onChange }: { content: Extract<SlotContent, { type: "text" | "ticker" }>; onChange: (next: SlotContent) => void }) {
@@ -67,12 +118,14 @@ function TextStyleFields({ content, onChange }: { content: Extract<SlotContent, 
 /**
  * 媒體輪播的編排。
  *
- * 只收圖片與影片，順序就是播放順序。圖片可以設停留秒數；影片播完整段就換，所以
- * 不給它設時間。加素材、上下移、刪除都在這裡，實機依這份清單依序輪播。
+ * 只收圖片與影片，順序就是播放順序。停留秒數是整份清單共用的一個數字：實際在排播的
+ * 人幾乎都讓每一則停一樣久，逐則設定只是把「改成 10 秒」變成要點很多次。影片不受它
+ * 影響，一律播完整段才換。
  */
 function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent; assets: MediaAsset[]; onChange: (next: SlotContent) => void }) {
-	const playable = assets.filter(asset => asset.kind === "image" || asset.kind === "video");
+	const [pickerOpen, setPickerOpen] = useState(false);
 	const nameOf = new Map(assets.map(asset => [asset.id, asset.name]));
+	const thumbOf = new Map(assets.map(asset => [asset.id, asset.thumbnailUrl]));
 
 	const setItems = (items: PlaylistContent["items"]): void => onChange({ ...content, items });
 
@@ -89,10 +142,14 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 		setItems(content.items.filter((_item, current) => current !== index));
 	};
 
-	const add = (assetId: string): void => {
-		const asset = playable.find(item => item.id === assetId);
-		const item = asset ? playlistItemForAsset(asset) : null;
-		if (item) setItems([...content.items, item]);
+	/** 已經在清單裡的素材不重複加入：同一則連播兩次是輸入錯誤，不是需求。 */
+	const addMany = (picked: readonly MediaAsset[]): void => {
+		const existing = new Set(content.items.map(item => item.assetId));
+		const additions = picked
+			.filter(asset => !existing.has(asset.id))
+			.map(playlistItemForAsset)
+			.filter((item): item is PlaylistItem => item !== null);
+		if (additions.length > 0) setItems([...content.items, ...additions]);
 	};
 
 	return (
@@ -101,6 +158,9 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 				{content.items.map((item, index) => (
 					<li key={`${item.assetId}-${index}`} className="huan-playlist__item">
 						<span className="huan-playlist__index huan-numeric">{index + 1}</span>
+						<span className="huan-playlist__thumb">
+							{thumbOf.get(item.assetId) ? <img src={thumbOf.get(item.assetId) ?? ""} alt="" loading="lazy" /> : <ImagesSquareIcon weight="bold" aria-hidden="true" />}
+						</span>
 						<span className="huan-playlist__body">
 							<span className="huan-row huan-row--tight">
 								<Badge variant="neutral" size="sm">
@@ -108,22 +168,7 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 								</Badge>
 								<span className="huan-truncate">{nameOf.get(item.assetId) ?? "素材已不存在"}</span>
 							</span>
-							{item.kind === "image" ? (
-								<NumberField
-									label="停留秒數"
-									size="sm"
-									min={1}
-									max={600}
-									step={1}
-									value={Math.round(item.durationMs / 1000)}
-									onValueChange={value => {
-										if (value === null) return;
-										setItems(content.items.map((current, at) => (at === index ? { ...current, durationMs: value * 1000 } : current)));
-									}}
-								/>
-							) : (
-								<span className="huan-caption">影片播完整段才換</span>
-							)}
+							<span className="huan-caption">{item.kind === "video" ? "播完整段才換" : `停留 ${Math.round(content.imageDurationMs / 1000)} 秒`}</span>
 						</span>
 						<span className="huan-playlist__actions">
 							<IconButton aria-label="往前移" variant="quiet" size="sm" disabled={index === 0} onClick={() => move(index, -1)}>
@@ -140,14 +185,36 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 				))}
 			</ol>
 
-			{playable.length === 0 ? (
-				<p className="huan-caption">素材庫裡還沒有處理完成的圖片或影片。</p>
-			) : (
-				<Select label="加入素材" placeholder="挑一個圖片或影片" value={null} onValueChange={value => value && add(value)} options={playable.map(asset => ({ value: asset.id, label: asset.name }))} />
-			)}
+			<Button size="sm" variant="secondary" startIcon={<PlusIcon weight="bold" />} onClick={() => setPickerOpen(true)}>
+				加入素材
+			</Button>
+
+			<NumberField
+				label="每張圖片停留秒數"
+				min={Math.round(PLAYLIST_MIN_IMAGE_DURATION_MS / 1000)}
+				max={Math.round(PLAYLIST_MAX_IMAGE_DURATION_MS / 1000)}
+				step={1}
+				value={Math.round(content.imageDurationMs / 1000)}
+				onValueChange={value => {
+					if (value === null) return;
+					onChange({ ...content, imageDurationMs: value * 1000 });
+				}}
+				description="整份清單共用這個秒數。影片不受影響，一律播完整段才換下一則。"
+			/>
 
 			<Select label="縮放方式" value={content.fit} onValueChange={value => value && onChange({ ...content, fit: value })} options={FIT_OPTIONS} />
 			<ColorControl label="背景色" value={content.backgroundColor} onChange={value => onChange({ ...content, backgroundColor: value })} description="素材沒填滿這一塊時，露出來的顏色。" />
+
+			<AssetPicker
+				open={pickerOpen}
+				onOpenChange={setPickerOpen}
+				title="加入輪播素材"
+				description="可以一次勾很多個，也可以把整個資料夾一次加進來。順序照勾選的清單排，加完再上下調整。"
+				kinds={["image", "video"]}
+				multiple
+				confirmLabel="加入清單"
+				onConfirm={addMany}
+			/>
 		</div>
 	);
 }
@@ -202,7 +269,7 @@ export function ContentForm({ content, assets, onChange }: ContentFormProps) {
 	if (content.type === "image") {
 		return (
 			<div className="huan-stack">
-				<AssetSelect label="圖片素材" assets={assets} value={content.assetId} onChange={assetId => onChange({ ...content, assetId })} emptyHint="請先到素材庫上傳圖片，等處理完成才會出現在這裡。" />
+				<AssetField label="圖片素材" kind="image" assets={assets} value={content.assetId} onChange={assetId => onChange({ ...content, assetId })} emptyHint="只會列出處理完成的圖片。" />
 				<Select label="縮放方式" value={content.fit} onValueChange={value => value && onChange({ ...content, fit: value })} options={FIT_OPTIONS} />
 				<ColorControl label="背景色" value={content.backgroundColor} onChange={value => onChange({ ...content, backgroundColor: value })} description="圖片沒有填滿這一塊時，露出來的顏色。" />
 			</div>
@@ -212,7 +279,7 @@ export function ContentForm({ content, assets, onChange }: ContentFormProps) {
 	if (content.type === "video") {
 		return (
 			<div className="huan-stack">
-				<AssetSelect label="影片素材" assets={assets} value={content.assetId} onChange={assetId => onChange({ ...content, assetId })} emptyHint="請先到素材庫上傳影片，等處理完成才會出現在這裡。" />
+				<AssetField label="影片素材" kind="video" assets={assets} value={content.assetId} onChange={assetId => onChange({ ...content, assetId })} emptyHint="只會列出處理完成的影片。" />
 				<Select label="縮放方式" value={content.fit} onValueChange={value => value && onChange({ ...content, fit: value })} options={FIT_OPTIONS} />
 				<SwitchRow label="重複播放" checked={content.loop} onCheckedChange={checked => onChange({ ...content, loop: checked })} />
 				<SwitchRow label="靜音" description="看板現場多半不需要聲音。關掉靜音，下面的音量才有作用。" checked={content.muted} onCheckedChange={checked => onChange({ ...content, muted: checked })} />
@@ -270,7 +337,7 @@ export function ContentForm({ content, assets, onChange }: ContentFormProps) {
 
 	return (
 		<div className="huan-stack">
-			<AssetSelect label="HTML 素材" assets={assets} value={content.assetId} onChange={assetId => onChange({ ...content, assetId })} emptyHint="請先到素材庫上傳 .html 檔案。" />
+			<AssetField label="HTML 素材" kind="html" assets={assets} value={content.assetId} onChange={assetId => onChange({ ...content, assetId })} emptyHint="只會列出處理完成的 HTML 檔案。" />
 			<Alert status="info">
 				<AlertTitle>HTML 是隔離執行的</AlertTitle>
 				<AlertDescription>上傳的 HTML 讀不到播放裝置上的檔案，也不能操作裝置。需要外部資料時，讓網頁自己上網去取。</AlertDescription>

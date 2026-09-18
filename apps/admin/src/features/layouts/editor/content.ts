@@ -49,19 +49,17 @@ export function createAssetContent(type: "image" | "video" | "html", assetId: st
 	return HtmlContentSchema.parse({ type: "html", assetId });
 }
 
-export const PLAYLIST_DEFAULT_DURATION_MS = 8000;
-
 /** 只有圖片與影片能放進輪播，用素材種類決定該建哪一種項目。 */
 export function playlistItemForAsset(asset: Pick<MediaAsset, "id" | "kind">): PlaylistItem | null {
 	if (asset.kind !== "image" && asset.kind !== "video") return null;
-	return { assetId: asset.id, kind: asset.kind, durationMs: PLAYLIST_DEFAULT_DURATION_MS };
+	return { assetId: asset.id, kind: asset.kind };
 }
 
-/** 用一則素材開一個新的輪播；後續增刪在內容表單裡進行。 */
-export function createPlaylistContent(asset: Pick<MediaAsset, "id" | "kind">): SlotContent | null {
-	const item = playlistItemForAsset(asset);
-	if (!item) return null;
-	return PlaylistContentSchema.parse({ type: "playlist", items: [item] });
+/** 用一批素材開一個新的輪播；停留秒數整份共用，後續增刪在內容表單裡進行。 */
+export function createPlaylistContent(assets: readonly Pick<MediaAsset, "id" | "kind">[]): SlotContent | null {
+	const items = assets.map(playlistItemForAsset).filter((item): item is PlaylistItem => item !== null);
+	if (items.length === 0) return null;
+	return PlaylistContentSchema.parse({ type: "playlist", items });
 }
 
 /** 從素材庫拖進區塊時，用素材本身的種類決定內容型別。 */

@@ -11,6 +11,7 @@ import {
 } from "@/features/layouts/editor/content";
 import { ContentForm } from "@/features/layouts/editor/ContentForm";
 import "@/features/layouts/layouts.css";
+import { AssetPicker } from "@/features/media/AssetPicker";
 import { ColorControl } from "@/shared/components/ColorControl";
 import { formatDateTime } from "@/shared/utils/format";
 import { computeLayoutGeometry, findParentSplit } from "@huan/layout-engine";
@@ -47,6 +48,7 @@ import {
 import { ArrowsHorizontalIcon } from "@phosphor-icons/react/dist/csr/ArrowsHorizontal";
 import { ArrowsVerticalIcon } from "@phosphor-icons/react/dist/csr/ArrowsVertical";
 import { EraserIcon } from "@phosphor-icons/react/dist/csr/Eraser";
+import { ImagesSquareIcon } from "@phosphor-icons/react/dist/csr/ImagesSquare";
 import { TrashIcon } from "@phosphor-icons/react/dist/csr/Trash";
 import { useMemo, useState } from "react";
 
@@ -95,11 +97,14 @@ export function Inspector({
 }: InspectorProps) {
 	/** 已選型別但還沒挑素材時的暫存。綁在節點上，換區塊時就自然失效。 */
 	const [pending, setPending] = useState<{ nodeId: string; type: SlotContentType } | null>(null);
+	/** 同時間只會開一個素材選擇器，用一個欄位表示比三個布林值好讀。 */
+	const [picker, setPicker] = useState<"content" | "playlist" | "background" | null>(null);
 
 	const geometry = useMemo(() => computeLayoutGeometry(layoutDocument), [layoutDocument]);
 	const assetNames = useMemo(() => new Map(assets.map(asset => [asset.id, asset.name])), [assets]);
 	const imageAssets = useMemo(() => assets.filter(asset => asset.kind === "image"), [assets]);
 	const playableAssets = useMemo(() => assets.filter(asset => asset.kind === "image" || asset.kind === "video"), [assets]);
+	const backgroundAsset = useMemo(() => assets.find(asset => asset.id === layoutDocument.background.imageAssetId) ?? null, [assets, layoutDocument.background.imageAssetId]);
 
 	const selectedSlot = geometry.slots.find(slot => slot.nodeId === selectedNodeId) ?? null;
 	const parent = selectedNodeId ? findParentSplit(layoutDocument.root, selectedNodeId) : null;
@@ -215,19 +220,9 @@ export function Inspector({
 											<AlertDescription>素材庫裡還沒有處理完成的圖片或影片。請先去素材庫上傳。</AlertDescription>
 										</Alert>
 									) : (
-										<Select
-											label="加入第一則"
-											placeholder="挑一個圖片或影片"
-											value={null}
-											onValueChange={value => {
-												const asset = playableAssets.find(item => item.id === value);
-												const content = asset ? createPlaylistContent(asset) : null;
-												if (!content) return;
-												onContentChange(content);
-												setPending(null);
-											}}
-											options={playableAssets.map(asset => ({ value: asset.id, label: asset.name }))}
-										/>
+										<Button variant="secondary" startIcon={<ImagesSquareIcon weight="bold" />} onClick={() => setPicker("playlist")}>
+											挑素材開始編排
+										</Button>
 									)
 								) : activeType && requiredKind ? (
 									kindAssets.length === 0 ? (
@@ -236,17 +231,9 @@ export function Inspector({
 											<AlertDescription>素材庫裡還沒有處理完成的{CONTENT_TYPE_LABELS[activeType]}。請先去素材庫上傳。</AlertDescription>
 										</Alert>
 									) : (
-										<Select
-											label={`選擇${CONTENT_TYPE_LABELS[activeType]}`}
-											placeholder="挑一個素材"
-											value={null}
-											onValueChange={value => {
-												if (!value) return;
-												onContentChange(createAssetContent(activeType as "image" | "video" | "html", value));
-												setPending(null);
-											}}
-											options={kindAssets.map(asset => ({ value: asset.id, label: asset.name }))}
-										/>
+										<Button variant="secondary" startIcon={<ImagesSquareIcon weight="bold" />} onClick={() => setPicker("content")}>
+											選擇{CONTENT_TYPE_LABELS[activeType]}
+										</Button>
 									)
 								) : null}
 							</>
@@ -310,14 +297,19 @@ export function Inspector({
 							description="畫布長寬比跟螢幕不一樣時，四周補上的就是這個顏色。"
 						/>
 
-						<Select
-							label="背景圖片"
-							placeholder="不使用背景圖片"
-							value={layoutDocument.background.imageAssetId}
-							onValueChange={value => onDocumentChange(current => ({ ...current, background: { ...current.background, imageAssetId: value } }))}
-							options={imageAssets.map(asset => ({ value: asset.id, label: asset.name }))}
-							description={imageAssets.length === 0 ? "素材庫裡還沒有處理完成的圖片。" : undefined}
-						/>
+						<div className="huan-stack huan-stack--sm">
+							<span className="huan-muted">背景圖片</span>
+							<div className="huan-asset-field">
+								<span className="huan-asset-field__thumb">
+									{backgroundAsset?.thumbnailUrl ? <img src={backgroundAsset.thumbnailUrl} alt="" loading="lazy" /> : <ImagesSquareIcon weight="bold" aria-hidden="true" />}
+								</span>
+								<span className="huan-asset-field__text huan-truncate">{layoutDocument.background.imageAssetId === null ? "不使用背景圖片" : (backgroundAsset?.name ?? "素材已不存在")}</span>
+								<Button size="sm" variant="secondary" disabled={imageAssets.length === 0} onClick={() => setPicker("background")}>
+									{layoutDocument.background.imageAssetId === null ? "選一張" : "換一張"}
+								</Button>
+							</div>
+							{imageAssets.length === 0 ? <span className="huan-caption">素材庫裡還沒有處理完成的圖片。</span> : null}
+						</div>
 
 						{layoutDocument.background.imageAssetId ? (
 							<>
@@ -361,6 +353,48 @@ export function Inspector({
 					</div>
 				</Tabs.Panel>
 			</Tabs.Root>
+
+			<AssetPicker
+				open={picker === "content"}
+				onOpenChange={open => setPicker(open ? "content" : null)}
+				title={activeType ? `選擇${CONTENT_TYPE_LABELS[activeType]}` : "選擇素材"}
+				kinds={requiredKind ? [requiredKind] : ["image", "video", "html"]}
+				onConfirm={picked => {
+					const asset = picked[0];
+					if (!asset || !activeType) return;
+					onContentChange(createAssetContent(activeType as "image" | "video" | "html", asset.id));
+					setPending(null);
+				}}
+			/>
+
+			<AssetPicker
+				open={picker === "playlist"}
+				onOpenChange={open => setPicker(open ? "playlist" : null)}
+				title="挑輪播要播的素材"
+				description="可以一次勾很多個，也可以把整個資料夾一次加進來。順序之後還能調整。"
+				kinds={["image", "video"]}
+				multiple
+				confirmLabel="建立輪播"
+				onConfirm={picked => {
+					const content = createPlaylistContent(picked);
+					if (!content) return;
+					onContentChange(content);
+					setPending(null);
+				}}
+			/>
+
+			<AssetPicker
+				open={picker === "background"}
+				onOpenChange={open => setPicker(open ? "background" : null)}
+				title="版面背景圖片"
+				kinds={["image"]}
+				initialSelectedIds={layoutDocument.background.imageAssetId ? [layoutDocument.background.imageAssetId] : []}
+				onConfirm={picked => {
+					const asset = picked[0];
+					if (!asset) return;
+					onDocumentChange(current => ({ ...current, background: { ...current.background, imageAssetId: asset.id } }));
+				}}
+			/>
 		</div>
 	);
 }

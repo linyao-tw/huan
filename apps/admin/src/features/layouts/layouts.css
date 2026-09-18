@@ -496,7 +496,8 @@
 
 .huan-playlist__item {
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr) auto;
+	/* 序號、縮圖、內容、操作。縮圖那一軌是 auto，沒有縮圖的舊資料也不會空出一塊。 */
+	grid-template-columns: auto auto minmax(0, 1fr) auto;
 	align-items: center;
 	gap: var(--space-2);
 	padding: var(--space-2);
@@ -543,4 +544,62 @@
 	color: var(--text-secondary);
 	font-size: var(--font-size-xs);
 	pointer-events: none;
+}
+
+/* ── 素材欄位 ─────────────────────────────────────────────── */
+
+.huan-asset-field {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2);
+	border: var(--border-width-hairline) solid var(--divider-subtle);
+	border-radius: var(--radius-sm);
+	background: var(--background-main);
+	min-inline-size: 0;
+}
+
+.huan-asset-field__thumb {
+	inline-size: 3.5rem;
+	block-size: 2.25rem;
+	flex: none;
+	border-radius: var(--radius-sm);
+	background: var(--background-sunken);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--icon-secondary);
+}
+
+.huan-asset-field__thumb img {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.huan-asset-field__text {
+	flex: 1;
+	min-inline-size: 0;
+}
+
+.huan-playlist__thumb {
+	inline-size: 3rem;
+	block-size: 2rem;
+	flex: none;
+	border-radius: var(--radius-sm);
+	background: var(--background-sunken);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--icon-secondary);
+}
+
+.huan-playlist__thumb img {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: cover;
+	display: block;
 }
