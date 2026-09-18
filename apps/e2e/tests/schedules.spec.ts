@@ -26,11 +26,12 @@ async function requirePublishedLayoutId(request: APIRequestContext): Promise<str
 }
 
 test.describe("排程", () => {
-	test("列表頁說明衝突判定規則", async ({ page }) => {
+	test("列表頁畫得出一週預覽，重疊看得出來", async ({ page }) => {
 		await page.goto("/app/schedules");
-		await expect(page.getByRole("heading", { name: "同一時間有多個排程，播哪一個" })).toBeVisible();
-		/** 規則必須寫在使用者看得到的地方，否則沒有人知道兩筆排程重疊時會播哪一個。 */
-		await expect(page.getByText(/優先度/).first()).toBeVisible();
+		await expect(page.getByRole("heading", { name: "排程" })).toBeVisible();
+		/** 兩筆排程什麼時候會撞在一起，要在圖上看得出來，不能只靠文字說明。 */
+		await expect(page.getByRole("heading", { name: "一週預覽" })).toBeVisible();
+		await expect(page.getByRole("img", { name: /方塊重疊代表同一時間有多個排程/ })).toBeVisible();
 	});
 
 	test("可以建立、修改與刪除排程", async ({ request }) => {

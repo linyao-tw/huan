@@ -51,10 +51,11 @@ test.describe("版面編輯器", () => {
 	test("放入文字內容並發布", async ({ page }) => {
 		await page.goto(`/app/layouts/${layoutId}`);
 
-		await page.getByRole("button", { name: "放入文字" }).click();
 		/** 上一個測試留下的分割必須還在，否則發布出去的就不是 70/30 了。 */
 		await expect(page.getByRole("separator", { name: /分隔線/ })).toHaveCount(1);
 
+		await page.getByRole("combobox", { name: "內容類型" }).click();
+		await page.getByRole("option", { name: "文字", exact: true }).click();
 		await page.getByLabel("文字內容").fill("E2E 驗收文字");
 		await expect(page.getByText("草稿已儲存")).toBeVisible({ timeout: 15_000 });
 
