@@ -1,6 +1,6 @@
 import { bridge } from "@/renderer/src/bridge";
 import { DevicePanel } from "@/renderer/src/components/DevicePanel";
-import { IdleScreen } from "@/renderer/src/components/IdleScreen";
+import { DeviceIdleScreen, IdleScreen } from "@/renderer/src/components/IdleScreen";
 import { LayoutRenderer, type AssetResolver } from "@/renderer/src/components/LayoutRenderer";
 import { PairingScreen } from "@/renderer/src/components/PairingScreen";
 import type { DeviceSnapshot, PairingSnapshot } from "@/shared/ipc";
@@ -77,7 +77,12 @@ export function App(): React.JSX.Element {
 			{target?.layout ? (
 				<LayoutRenderer document={target.layout.document} assets={assets} />
 			) : (
-				<IdleScreen message="目前沒有排定播放的內容" detail={snapshot.online ? "請在 HUAN 後台為這台裝置指定預設版面或排程。" : "目前離線，將在恢復連線後同步。"} />
+				<DeviceIdleScreen
+					idle={snapshot.idle}
+					assets={assets}
+					message="目前沒有排定播放的內容"
+					detail={snapshot.online ? "請在 HUAN 後台為這台裝置指定預設版面或排程。" : "目前離線，將在恢復連線後同步。"}
+				/>
 			)}
 
 			{panelOpen ? <DevicePanel snapshot={snapshot} onClose={() => setPanelOpen(false)} onSync={handleSync} onUnbind={handleUnbind} /> : null}

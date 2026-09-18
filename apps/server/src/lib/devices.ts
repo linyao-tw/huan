@@ -2,7 +2,7 @@ import type { AppContext } from "@/context";
 import { ownedBy } from "@/lib/auth";
 import type { DeviceRow } from "@/lib/device-auth";
 import type { SocketHub } from "@/ws/hub";
-import { devices, layouts, type Database } from "@huan/db";
+import { devices, layouts, mediaAssets, type Database } from "@huan/db";
 import type { Device } from "@huan/protocol";
 import { eq } from "drizzle-orm";
 
@@ -18,7 +18,7 @@ export function isDeviceOnline(hub: SocketHub, device: Pick<DeviceRow, "id" | "l
 	return Date.now() - device.lastSeenAt.getTime() <= heartbeatSeconds * 2 * 1000;
 }
 
-export function serializeDevice(ctx: AppContext, row: DeviceRow, defaultLayoutName: string | null): Device {
+export function serializeDevice(ctx: AppContext, row: DeviceRow, defaultLayoutName: string | null, idleImageName: string | null = null): Device {
 	return {
 		id: row.id,
 		name: row.name,
@@ -26,6 +26,8 @@ export function serializeDevice(ctx: AppContext, row: DeviceRow, defaultLayoutNa
 		online: isDeviceOnline(ctx.hub, row, ctx.env.DEVICE_HEARTBEAT_SECONDS),
 		defaultLayoutId: row.defaultLayoutId,
 		defaultLayoutName,
+		idle: { mode: row.idleMode, imageAssetId: row.idleImageAssetId },
+		idleImageName,
 		desiredVersion: row.desiredVersion,
 		reported: row.reportedState ?? null,
 		lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
@@ -37,13 +39,14 @@ export function serializeDevice(ctx: AppContext, row: DeviceRow, defaultLayoutNa
 }
 
 /** 一律連同擁有者一起查。少了 `ownerId`，`:id` 就等於「輸入任何一台裝置的 id 都拿得到」。 */
-export async function loadDeviceWithLayout(db: Database, deviceId: string, ownerId: string): Promise<{ device: DeviceRow; layoutName: string | null } | null> {
+export async function loadDeviceWithLayout(db: Database, deviceId: string, ownerId: string): Promise<{ device: DeviceRow; layoutName: string | null; idleImageName: string | null } | null> {
 	const [row] = await db
-		.select({ device: devices, layoutName: layouts.name })
+		.select({ device: devices, layoutName: layouts.name, idleImageName: mediaAssets.name })
 		.from(devices)
 		.leftJoin(layouts, eq(layouts.id, devices.defaultLayoutId))
+		.leftJoin(mediaAssets, eq(mediaAssets.id, devices.idleImageAssetId))
 		.where(ownedBy(devices, deviceId, ownerId))
 		.limit(1);
 	if (!row) return null;
-	return { device: row.device, layoutName: row.layoutName ?? null };
+	return { device: row.device, layoutName: row.layoutName ?? null, idleImageName: row.idleImageName ?? null };
 }

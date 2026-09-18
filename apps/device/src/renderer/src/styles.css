@@ -180,3 +180,25 @@ body,
 	color: var(--text-main);
 	overflow-wrap: anywhere;
 }
+
+/*
+ * 待命時的兩種畫面。
+ *
+ * 全黑刻意用一整塊而不是只把 body 塗黑：切回版面時，這一塊會整個被換掉，
+ * 不會留下某個階段的殘影。
+ */
+.huan-idle-black {
+	position: fixed;
+	inset: 0;
+	background: #000000;
+}
+
+.huan-idle-image {
+	position: fixed;
+	inset: 0;
+	inline-size: 100%;
+	block-size: 100%;
+	/* 待命底圖通常是整版設計稿，填滿裁切比留黑邊接近使用者的預期。 */
+	object-fit: cover;
+	background: #000000;
+}

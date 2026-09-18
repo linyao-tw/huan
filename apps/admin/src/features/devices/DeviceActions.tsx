@@ -1,9 +1,11 @@
 import { useForceSyncMutation, useRestartPlayerMutation, useUnbindDeviceMutation, useUpdateDeviceMutation } from "@/features/devices/hooks";
 import { useLayoutListQuery } from "@/features/layouts/hooks";
+import { AssetPicker } from "@/features/media/AssetPicker";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import type { Device } from "@huan/protocol";
-import { Alert, AlertDescription, AlertTitle, Button, Dialog, Select, TextField, useToastManager } from "@linyao.tw/ui";
+import type { Device, DeviceIdleMode } from "@huan/protocol";
+import { Alert, AlertDescription, AlertTitle, Button, Dialog, SegmentedControl, SegmentedControlItem, Select, TextField, useToastManager } from "@linyao.tw/ui";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
+import { ImagesSquareIcon } from "@phosphor-icons/react/dist/csr/ImagesSquare";
 import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
 import { PlugsIcon } from "@phosphor-icons/react/dist/csr/Plugs";
 import { PowerIcon } from "@phosphor-icons/react/dist/csr/Power";
@@ -11,6 +13,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 type PendingAction = "unbind" | "force-sync" | "restart" | null;
+
+const IDLE_HINTS: Record<DeviceIdleMode, string> = {
+	brand: "顯示 HUAN 的待命畫面。現場一眼就知道機器是好的，只是還沒有內容。",
+	black: "整片黑。看板通常要這個——待命畫面本身也是一種內容。",
+	image: "一直顯示指定的那張圖，例如 logo 牆。圖會先下載到裝置上，斷網也看得到。"
+};
 
 export function DeviceActions({ device, size = "sm" }: { device: Device; size?: "sm" | "md" }) {
 	const navigate = useNavigate();
@@ -24,6 +32,10 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 	const [renameOpen, setRenameOpen] = useState(false);
 	const [name, setName] = useState(device.name);
 	const [defaultLayoutId, setDefaultLayoutId] = useState<string | null>(device.defaultLayoutId);
+	const [idleMode, setIdleMode] = useState<DeviceIdleMode>(device.idle.mode);
+	const [idleImageAssetId, setIdleImageAssetId] = useState<string | null>(device.idle.imageAssetId);
+	const [idleImageName, setIdleImageName] = useState<string | null>(device.idleImageName);
+	const [idlePickerOpen, setIdlePickerOpen] = useState(false);
 	const [pending, setPending] = useState<PendingAction>(null);
 
 	const close = (): void => setPending(null);
@@ -60,7 +72,7 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 								onSubmit={event => {
 									event.preventDefault();
 									update.mutate(
-										{ id: device.id, body: { name: name.trim(), defaultLayoutId } },
+										{ id: device.id, body: { name: name.trim(), defaultLayoutId, idleMode, idleImageAssetId: idleMode === "image" ? idleImageAssetId : null } },
 										{
 											onSuccess: () => {
 												toast.add({ title: "已儲存", data: { status: "success" } });
@@ -92,6 +104,23 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 											options={(layouts.data?.items ?? []).map(layout => ({ value: layout.id, label: layout.name }))}
 											disabled={update.isPending}
 										/>
+										<div className="huan-stack huan-stack--sm">
+											<span className="huan-muted">沒有內容時的畫面</span>
+											<SegmentedControl aria-label="沒有內容時的畫面" size="sm" value={idleMode} onValueChange={value => value && setIdleMode(value as DeviceIdleMode)} disabled={update.isPending}>
+												<SegmentedControlItem value="brand">待命畫面</SegmentedControlItem>
+												<SegmentedControlItem value="black">黑螢幕</SegmentedControlItem>
+												<SegmentedControlItem value="image">指定圖片</SegmentedControlItem>
+											</SegmentedControl>
+											<span className="huan-caption">{IDLE_HINTS[idleMode]}</span>
+											{idleMode === "image" ? (
+												<div className="huan-row huan-row--tight">
+													<span className="huan-truncate huan-grow">{idleImageAssetId ? (idleImageName ?? "已選一張圖片") : "還沒選圖片"}</span>
+													<Button size="sm" variant="secondary" startIcon={<ImagesSquareIcon weight="bold" />} onClick={() => setIdlePickerOpen(true)} disabled={update.isPending}>
+														{idleImageAssetId ? "換一張" : "選一張"}
+													</Button>
+												</div>
+											) : null}
+										</div>
 										{update.isError ? (
 											<Alert status="danger" live="assertive">
 												<AlertTitle>更新失敗</AlertTitle>
@@ -102,7 +131,7 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 								</Dialog.Body>
 								<Dialog.Footer>
 									<Dialog.Close render={<Button variant="secondary">取消</Button>} />
-									<Button type="submit" loading={update.isPending} disabled={name.trim().length === 0}>
+									<Button type="submit" loading={update.isPending} disabled={name.trim().length === 0 || (idleMode === "image" && idleImageAssetId === null)}>
 										儲存
 									</Button>
 								</Dialog.Footer>
@@ -111,6 +140,22 @@ export function DeviceActions({ device, size = "sm" }: { device: Device; size?: 
 					</Dialog.Viewport>
 				</Dialog.Portal>
 			</Dialog.Root>
+
+			{/* 選擇器放在編輯對話框外面：兩層 portal 疊在一起時，焦點會在關閉內層後回不到外層。 */}
+			<AssetPicker
+				open={idlePickerOpen}
+				onOpenChange={setIdlePickerOpen}
+				title="待命時顯示的圖片"
+				description="這張圖會跟版面素材一起下載到裝置上，沒有網路也顯示得出來。"
+				kinds={["image"]}
+				initialSelectedIds={idleImageAssetId ? [idleImageAssetId] : []}
+				onConfirm={picked => {
+					const asset = picked[0];
+					if (!asset) return;
+					setIdleImageAssetId(asset.id);
+					setIdleImageName(asset.name);
+				}}
+			/>
 
 			<ConfirmDialog
 				open={pending === "force-sync"}

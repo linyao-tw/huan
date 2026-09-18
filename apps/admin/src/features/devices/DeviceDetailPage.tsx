@@ -53,6 +53,8 @@ export function DeviceDetailPage() {
 	const totalAssets = readyCount + pendingCount;
 	const versionBehind = reported !== null && reported.desiredVersion !== current.desiredVersion;
 	const content = deviceContentState(current);
+	/** 「待命畫面」三個字在這一頁已經出現過，這裡要說的是那三種模式實際看起來是什麼樣子。 */
+	const idleLabel = current.idle.mode === "black" ? "黑螢幕" : current.idle.mode === "image" ? `圖片：${current.idleImageName ?? "已被刪除"}` : "HUAN 待命畫面";
 
 	/*
 	 * 畫面上一律顯示名稱，不顯示 UUID。
@@ -127,6 +129,10 @@ export function DeviceDetailPage() {
 						<div>
 							<dt>沒有排程時播</dt>
 							<dd>{current.defaultLayoutName ?? "待命畫面"}</dd>
+						</div>
+						<div>
+							<dt>連版面都沒有時</dt>
+							<dd>{idleLabel}</dd>
 						</div>
 						<div>
 							<dt>內容</dt>

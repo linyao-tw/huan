@@ -93,6 +93,8 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
 	for (const bundle of bundles) {
 		for (const assetId of collectAssetIds(bundle.document)) requiredAssetIds.add(assetId);
 	}
+	/** 待命圖片不在任何版面裡，但它也得先下載下來，否則斷網時待命畫面就是一片黑。 */
+	if (device.idleMode === "image" && device.idleImageAssetId) requiredAssetIds.add(device.idleImageAssetId);
 
 	const assets = requiredAssetIds.size > 0 ? await buildAssetManifest(db, [...requiredAssetIds], ownerId) : [];
 
@@ -101,6 +103,7 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
 		protocolVersion: PROTOCOL_VERSION,
 		deviceName: device.name,
 		defaultLayout,
+		idle: { mode: device.idleMode, imageAssetId: device.idleMode === "image" ? device.idleImageAssetId : null },
 		layouts: bundles,
 		schedules: scheduleEntries.sort((a, b) => (a.id < b.id ? -1 : 1)),
 		assets,

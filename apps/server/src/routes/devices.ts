@@ -2,10 +2,10 @@ import { recordAudit } from "@/lib/audit";
 import { clientIp, loadOwned, ownerOf, requireResourceOwner, sessionOf } from "@/lib/auth";
 import { bumpDeviceDesiredState } from "@/lib/desired-state";
 import { loadDeviceWithLayout, serializeDevice } from "@/lib/devices";
-import { conflict, notFound } from "@/lib/errors";
+import { conflict, notFound, validationFailed } from "@/lib/errors";
 import { toCount } from "@/lib/pagination";
 import { routeRateLimit, type RateLimitTuning } from "@/plugins/rate-limit";
-import { deviceCredentials, devicePairingCodes, devices, layouts } from "@huan/db";
+import { deviceCredentials, devicePairingCodes, devices, layouts, mediaAssets } from "@huan/db";
 import {
 	ConfirmPairingRequestSchema,
 	DeviceSchema,
@@ -15,7 +15,8 @@ import {
 	PairingCodeSchema,
 	PairingLookupResponseSchema,
 	UpdateDeviceRequestSchema,
-	paginatedSchema
+	paginatedSchema,
+	type DeviceIdleMode
 } from "@huan/protocol";
 import { generateOpaqueToken, hashToken } from "@huan/shared/node";
 import { and, count, desc, eq, gt, isNull } from "drizzle-orm";
@@ -43,6 +44,22 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 		await loadOwned(db, layouts, layoutId, ownerId, "找不到指定的版面");
 	}
 
+	/**
+	 * 算出這次更新之後的待命圖片。
+	 *
+	 * 換成 `brand` 或 `black` 時主動清掉圖片：留著一個沒有人看得到的引用，只會讓
+	 * 素材庫在刪除時說「有裝置正在用」，而使用者在畫面上根本找不到那個設定。
+	 */
+	async function resolveIdleImage(ownerId: string, device: { idleImageAssetId: string | null }, mode: DeviceIdleMode, requested: string | null | undefined): Promise<string | null> {
+		if (mode !== "image") return null;
+		const next = requested === undefined ? device.idleImageAssetId : requested;
+		if (next === null) return null;
+		const asset = await loadOwned(db, mediaAssets, next, ownerId, "找不到指定的圖片素材");
+		if (asset.kind !== "image") throw validationFailed("待命畫面只能指定圖片素材");
+		if (asset.status !== "ready") throw conflict("這張圖片還沒處理完成，等狀態變成可使用再指定", { assetId: asset.id }, "asset_not_ready");
+		return asset.id;
+	}
+
 	app.get(
 		"/devices",
 		{ preHandler: requireResourceOwner, schema: { tags: ["devices"], summary: "列出裝置", querystring: PaginationQuerySchema, response: { 200: DeviceListResponseSchema } } },
@@ -50,16 +67,17 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 			const ownerId = ownerOf(request);
 			const { limit, offset } = request.query;
 			const rows = await db
-				.select({ device: devices, layoutName: layouts.name })
+				.select({ device: devices, layoutName: layouts.name, idleImageName: mediaAssets.name })
 				.from(devices)
 				.leftJoin(layouts, eq(layouts.id, devices.defaultLayoutId))
+				.leftJoin(mediaAssets, eq(mediaAssets.id, devices.idleImageAssetId))
 				.where(eq(devices.ownerId, ownerId))
 				.orderBy(desc(devices.createdAt))
 				.limit(limit)
 				.offset(offset);
 			const [total] = await db.select({ value: count() }).from(devices).where(eq(devices.ownerId, ownerId));
 			return {
-				items: rows.map(row => serializeDevice(ctx, row.device, row.layoutName ?? null)),
+				items: rows.map(row => serializeDevice(ctx, row.device, row.layoutName ?? null, row.idleImageName ?? null)),
 				total: toCount(total?.value),
 				limit,
 				offset
@@ -71,8 +89,8 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 		"/devices/:id",
 		{ preHandler: requireResourceOwner, schema: { tags: ["devices"], summary: "取得裝置", params: z.object({ id: IdSchema }), response: { 200: DeviceSchema } } },
 		async request => {
-			const { device, layoutName } = await loadOrThrow(request.params.id, ownerOf(request));
-			return serializeDevice(ctx, device, layoutName);
+			const { device, layoutName, idleImageName } = await loadOrThrow(request.params.id, ownerOf(request));
+			return serializeDevice(ctx, device, layoutName, idleImageName);
 		}
 	);
 
@@ -86,20 +104,29 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 			const actor = sessionOf(request);
 			const ownerId = actor.user.id;
 			const { device } = await loadOrThrow(request.params.id, ownerId);
-			const { name, defaultLayoutId } = request.body;
+			const { name, defaultLayoutId, idleMode, idleImageAssetId } = request.body;
 
 			if (defaultLayoutId) await assertLayoutOwned(defaultLayoutId, ownerId);
+
+			const nextIdleMode = idleMode ?? device.idleMode;
+			const nextIdleImageAssetId = await resolveIdleImage(ownerId, device, nextIdleMode, idleImageAssetId);
+			if (nextIdleMode === "image" && nextIdleImageAssetId === null) {
+				throw validationFailed("待命畫面選了圖片，就必須指定一張圖片素材");
+			}
+
+			const idleChanged = nextIdleMode !== device.idleMode || nextIdleImageAssetId !== device.idleImageAssetId;
 
 			await db
 				.update(devices)
 				.set({
 					...(name === undefined ? {} : { name }),
 					...(defaultLayoutId === undefined ? {} : { defaultLayoutId }),
+					...(idleChanged ? { idleMode: nextIdleMode, idleImageAssetId: nextIdleImageAssetId } : {}),
 					updatedAt: new Date()
 				})
 				.where(eq(devices.id, device.id));
 
-			if (defaultLayoutId !== undefined) await bumpDeviceDesiredState(ctx, device.id);
+			if (defaultLayoutId !== undefined || idleChanged) await bumpDeviceDesiredState(ctx, device.id);
 
 			await recordAudit(db, {
 				action: "device.updated",
@@ -109,11 +136,11 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 				targetId: device.id,
 				targetLabel: name ?? device.name,
 				ipAddress: clientIp(request),
-				metadata: { defaultLayoutId: defaultLayoutId ?? device.defaultLayoutId }
+				metadata: { defaultLayoutId: defaultLayoutId ?? device.defaultLayoutId, idleMode: nextIdleMode }
 			});
 
 			const refreshed = await loadOrThrow(device.id, ownerId);
-			return serializeDevice(ctx, refreshed.device, refreshed.layoutName);
+			return serializeDevice(ctx, refreshed.device, refreshed.layoutName, refreshed.idleImageName);
 		}
 	);
 
@@ -288,7 +315,7 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 			});
 
 			const refreshed = await loadOrThrow(device.id, ownerId);
-			return reply.status(201).send(serializeDevice(ctx, refreshed.device, refreshed.layoutName));
+			return reply.status(201).send(serializeDevice(ctx, refreshed.device, refreshed.layoutName, refreshed.idleImageName));
 		}
 	);
 };

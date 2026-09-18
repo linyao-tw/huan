@@ -161,14 +161,14 @@ function PlaylistSlot({ content, assets }: { content: Extract<SlotContent, { typ
 
 	/**
 	 * 圖片停留固定時間後換下一則；影片的換片交給它自己的 `onEnded`（下面），這裡不設計時器。
-	 * 每次換 index 都重新排一次，所以清單長度變動也不會卡在舊的計時上。
+	 * 停留秒數是整份清單共用的，每次換 index 都重新排一次，清單或秒數變動都不會卡在舊的計時上。
 	 */
 	const total = content.items.length;
 	useEffect(() => {
 		if (!item || item.kind !== "image") return;
-		const timer = setTimeout(() => setIndex(current => (current + 1) % total), item.durationMs);
+		const timer = setTimeout(() => setIndex(current => (current + 1) % total), content.imageDurationMs);
 		return () => clearTimeout(timer);
-	}, [index, item, total]);
+	}, [index, item, total, content.imageDurationMs]);
 
 	if (!item || !url) return <div style={{ background: content.backgroundColor }} />;
 

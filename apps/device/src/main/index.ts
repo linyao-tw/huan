@@ -44,6 +44,8 @@ async function buildSnapshot(): Promise<DeviceSnapshot> {
 	const disk = await platform.getDiskInfo(appDataDir());
 	const assets = agent ? await agent.assetSummary() : { readyAssetIds: [], pendingAssetIds: [], readyCount: 0, totalCount: 0 };
 	const settings = await readDeviceSettings(appDataDir());
+	/** 待命設定跟著已啟用的 manifest 走，斷線時沿用上一次拿到的那一份，不會突然跳回預設。 */
+	const manifest = agent ? await agent.storage.readActiveManifest() : null;
 	return {
 		status,
 		online: agent?.online ?? false,
@@ -67,7 +69,8 @@ async function buildSnapshot(): Promise<DeviceSnapshot> {
 		readyAssetCount: assets.readyCount,
 		totalAssetCount: assets.totalCount,
 		storageError,
-		revokePending: agent?.revokePending ?? false
+		revokePending: agent?.revokePending ?? false,
+		idle: manifest?.idle ?? { mode: "brand", imageAssetId: null }
 	};
 }
 
