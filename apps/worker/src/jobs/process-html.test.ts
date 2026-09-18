@@ -107,8 +107,7 @@ describe("process_html 端對端", () => {
 			storage: active.storage,
 			queue,
 			env: { ...active.env, WORKER_CONCURRENCY: 1 },
-			logger: active.logger,
-			runCleanup: false
+			logger: active.logger
 		});
 
 		for (let round = 0; round < 5; round += 1) {

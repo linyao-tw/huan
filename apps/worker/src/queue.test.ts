@@ -34,7 +34,7 @@ afterAll(async () => {
 async function insertJob(active: TestHarness, options: { runAfter: Date; maxAttempts?: number; attempt?: number }): Promise<string> {
 	const rows = await active.db
 		.insert(workerJobs)
-		.values({ kind: "cleanup_distribution", runAfter: options.runAfter, maxAttempts: options.maxAttempts ?? 3, attempt: options.attempt ?? 0 })
+		.values({ kind: "process_image", runAfter: options.runAfter, maxAttempts: options.maxAttempts ?? 3, attempt: options.attempt ?? 0 })
 		.returning({ id: workerJobs.id });
 	const id = rows[0].id;
 	createdJobs.push(id);

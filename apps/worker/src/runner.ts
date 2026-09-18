@@ -1,6 +1,6 @@
 import { JobError, USER_MESSAGES, describeError, toUserMessage } from "@/errors";
 import type { FfmpegBinaries } from "@/ffmpeg";
-import { cleanupDistribution, jobHandlers } from "@/jobs";
+import { jobHandlers } from "@/jobs";
 import type { JobHandler } from "@/jobs/types";
 import type { WorkerLogger } from "@/logger";
 import { markAssetFailed } from "@/media";
@@ -16,9 +16,6 @@ import { join } from "node:path";
 /** 卡住的工作要多久掃一次。比 stale 門檻密集得多，被砍掉的工作才不會等上半小時。 */
 const DEFAULT_STALE_SWEEP_INTERVAL_MS = 60_000;
 
-/** distribution 回收由 Worker 自己排程，而不是每個週期往 worker_jobs 塞一列垃圾。 */
-const DEFAULT_CLEANUP_INTERVAL_MS = 15 * 60_000;
-
 export interface WorkerRunnerOptions {
 	db: Database;
 	storage: ObjectStorage;
@@ -28,16 +25,12 @@ export interface WorkerRunnerOptions {
 	binaries?: FfmpegBinaries;
 	handlers?: Record<WorkerJobKind, JobHandler>;
 	staleSweepIntervalMs?: number;
-	cleanupIntervalMs?: number;
-	/** 設定成 0 可以停用內部排程的回收，測試會用到。 */
-	runCleanup?: boolean;
 }
 
 const DEFAULT_USER_MESSAGE: Record<WorkerJobKind, string> = {
 	transcode_video: USER_MESSAGES.videoTranscode,
 	process_image: USER_MESSAGES.imageProcess,
-	process_html: USER_MESSAGES.htmlProcess,
-	cleanup_distribution: USER_MESSAGES.unexpected
+	process_html: USER_MESSAGES.htmlProcess
 };
 
 export class WorkerRunner {
@@ -45,21 +38,18 @@ export class WorkerRunner {
 	private readonly binaries: FfmpegBinaries;
 	private readonly handlers: Record<WorkerJobKind, JobHandler>;
 	private readonly staleSweepIntervalMs: number;
-	private readonly cleanupIntervalMs: number;
 	private readonly inFlight = new Set<Promise<void>>();
 	private readonly tmpRoot: string;
 
 	private running = false;
 	private wake: (() => void) | null = null;
 	private nextStaleSweepAt = 0;
-	private nextCleanupAt = 0;
 
 	constructor(options: WorkerRunnerOptions) {
 		this.options = options;
 		this.binaries = options.binaries ?? { ffmpegPath: options.env.FFMPEG_PATH, ffprobePath: options.env.FFPROBE_PATH };
 		this.handlers = options.handlers ?? jobHandlers;
 		this.staleSweepIntervalMs = options.staleSweepIntervalMs ?? DEFAULT_STALE_SWEEP_INTERVAL_MS;
-		this.cleanupIntervalMs = options.cleanupIntervalMs ?? DEFAULT_CLEANUP_INTERVAL_MS;
 		this.tmpRoot = options.env.WORKER_TMP_DIR ?? tmpdir();
 	}
 
@@ -73,7 +63,6 @@ export class WorkerRunner {
 			let claimedAny = false;
 			try {
 				await this.sweepStaleJobs();
-				await this.maybeCleanup();
 				claimedAny = await this.fillSlots();
 			} catch (error) {
 				this.options.logger.error({ err: describeError(error) }, "輪詢失敗，稍後重試");
@@ -187,24 +176,6 @@ export class WorkerRunner {
 			if (job.outcome === "failed" && job.assetId) {
 				await markAssetFailed(this.options.db, job.assetId, DEFAULT_USER_MESSAGE[job.kind] ?? USER_MESSAGES.unexpected);
 			}
-		}
-	}
-
-	private async maybeCleanup(): Promise<void> {
-		if (this.options.runCleanup === false) return;
-		const now = Date.now();
-		if (now < this.nextCleanupAt) return;
-		this.nextCleanupAt = now + this.cleanupIntervalMs;
-
-		try {
-			await cleanupDistribution({
-				db: this.options.db,
-				storage: this.options.storage,
-				logger: this.options.logger,
-				retentionHours: this.options.env.DISTRIBUTION_RETENTION_HOURS
-			});
-		} catch (error) {
-			this.options.logger.error({ err: describeError(error) }, "distribution 回收失敗");
 		}
 	}
 

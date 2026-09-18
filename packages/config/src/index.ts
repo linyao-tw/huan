@@ -69,16 +69,6 @@ export const ServerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
 	LOGIN_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(10).default(300),
 	/** 簽章下載網址的有效時間。夠 Device 下載完一支影片，又短到撿到網址也用不了多久。 */
 	SIGNED_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
-	/**
-	 * 所有目標 Device 都完成 ACK 之後，播放產物還要在 RustFS 保留多久。
-	 * 這段保留期是為了吸收 ACK 與重試之間的競態，不要設成 0。
-	 */
-	DISTRIBUTION_RETENTION_HOURS: z.coerce
-		.number()
-		.int()
-		.min(1)
-		.max(24 * 30)
-		.default(24),
 	DEVICE_HEARTBEAT_SECONDS: z.coerce.number().int().min(10).max(600).default(60),
 	DEVICE_FALLBACK_SYNC_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
 	DEVICE_MAX_CONCURRENT_DOWNLOADS: z.coerce.number().int().min(1).max(8).default(3),
@@ -96,13 +86,7 @@ export const WorkerEnvSchema = CommonSchema.extend(StorageSchema.shape).extend({
 	FFMPEG_PATH: z.string().default("ffmpeg"),
 	FFPROBE_PATH: z.string().default("ffprobe"),
 	/** 轉檔的暫存目錄。留空時使用作業系統的暫存目錄。 */
-	WORKER_TMP_DIR: z.string().optional(),
-	DISTRIBUTION_RETENTION_HOURS: z.coerce
-		.number()
-		.int()
-		.min(1)
-		.max(24 * 30)
-		.default(24)
+	WORKER_TMP_DIR: z.string().optional()
 });
 export type WorkerEnv = z.infer<typeof WorkerEnvSchema>;
 
