@@ -1,4 +1,5 @@
 import type { AppContext } from "@/context";
+import { storedLayoutDocument } from "@/lib/layouts";
 import { distributionVariant, extensionForContentType, type MediaVariantRow } from "@/lib/media";
 import type { ServerEnv } from "@huan/config";
 import { devices, layoutRevisions, layouts, mediaAssets, mediaDeviceSync, mediaVariants, scheduleDevices, schedules, type Database } from "@huan/db";
@@ -53,7 +54,8 @@ export async function buildDesiredState(ctx: AppContext, deviceId: string): Prom
 			revisionId: row.revision.id,
 			revisionNumber: row.revision.revisionNumber,
 			name: row.layout.name,
-			document: row.revision.document
+			/** 舊修訂可能是協定改版前寫下的；派送出去的一律是現在的形狀，裝置與指紋比對才看得到同一份東西。 */
+			document: storedLayoutDocument(row.revision.document)
 		};
 		bundleByRevisionId.set(bundle.revisionId, bundle);
 		return bundle;

@@ -2,7 +2,16 @@ import { recordAudit } from "@/lib/audit";
 import { clientIp, loadOwned, ownerOf, requireResourceOwner, sessionOf } from "@/lib/auth";
 import { bumpDevices, deviceIdsAffectedByLayout } from "@/lib/desired-state";
 import { conflict, notFound } from "@/lib/errors";
-import { describeAssetProblems, findAssetProblems, loadLayoutDetail, nextRevisionNumber, publishedRevisionNumbers, serializeLayoutSummary, serializeRevision } from "@/lib/layouts";
+import {
+	describeAssetProblems,
+	findAssetProblems,
+	loadLayoutDetail,
+	nextRevisionNumber,
+	publishedRevisionNumbers,
+	serializeLayoutSummary,
+	serializeRevision,
+	storedLayoutDocument
+} from "@/lib/layouts";
 import { toCount } from "@/lib/pagination";
 import { devices, layoutRevisions, layouts, schedules } from "@huan/db";
 import { createEmptyDocument } from "@huan/layout-engine";
@@ -151,7 +160,10 @@ export const layoutRoutes: FastifyPluginAsyncZod = async app => {
 			}
 
 			const revisionNumber = await nextRevisionNumber(db, existing.id);
-			const [revision] = await db.insert(layoutRevisions).values({ layoutId: existing.id, revisionNumber, document: existing.draft, note: request.body.note, publishedBy: actor.user.id }).returning();
+			const [revision] = await db
+				.insert(layoutRevisions)
+				.values({ layoutId: existing.id, revisionNumber, document: storedLayoutDocument(existing.draft), note: request.body.note, publishedBy: actor.user.id })
+				.returning();
 			if (!revision) throw new Error("建立版面修訂失敗");
 
 			await db.update(layouts).set({ publishedRevisionId: revision.id, updatedAt: new Date() }).where(eq(layouts.id, existing.id));

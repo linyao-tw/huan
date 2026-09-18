@@ -1,18 +1,29 @@
 import { ownedBy } from "@/lib/auth";
 import { layoutRevisions, layouts, mediaAssets, type Database } from "@huan/db";
 import { collectAssetIds } from "@huan/layout-engine";
-import type { LayoutDetail, LayoutDocument, LayoutRevision, LayoutSummary } from "@huan/protocol";
+import { LayoutDocumentSchema, type LayoutDetail, type LayoutDocument, type LayoutRevision, type LayoutSummary } from "@huan/protocol";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 export type LayoutRow = typeof layouts.$inferSelect;
 export type LayoutRevisionRow = typeof layoutRevisions.$inferSelect;
+
+/**
+ * 從資料庫讀出來的版面文件，先用 schema 解析一次再往外送。
+ *
+ * JSONB 存的是寫入當下的格式，協定演進之後舊資料會缺欄位（例如輪播改成共用的
+ * `imageDurationMs`）。回應序列化走的是 zod 的 encode 方向，**不會補預設值**，
+ * 缺一個欄位就是整個請求 500；在讀出的邊界 parse 一次，舊資料才會被補成現在的形狀。
+ */
+export function storedLayoutDocument(value: LayoutDocument): LayoutDocument {
+	return LayoutDocumentSchema.parse(value);
+}
 
 export function serializeRevision(row: LayoutRevisionRow): LayoutRevision {
 	return {
 		id: row.id,
 		layoutId: row.layoutId,
 		revisionNumber: row.revisionNumber,
-		document: row.document,
+		document: storedLayoutDocument(row.document),
 		note: row.note,
 		publishedBy: row.publishedBy,
 		publishedAt: row.publishedAt.toISOString()
@@ -46,7 +57,7 @@ export async function loadLayoutDetail(db: Database, layoutId: string, ownerId: 
 
 	return {
 		...serializeLayoutSummary(row, published?.revisionNumber ?? null),
-		draft: row.draft,
+		draft: storedLayoutDocument(row.draft),
 		revisions: revisions.map(revision => {
 			const { document: _document, ...rest } = serializeRevision(revision);
 			return rest;

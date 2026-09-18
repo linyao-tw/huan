@@ -32,15 +32,22 @@ export interface DeviceApiRouteOptions {
 const PAIRING_TTL_SECONDS = 600;
 const PAIRING_TOKEN_HEADER = "x-huan-pairing-token";
 
+/**
+ * 讀出快取的目標狀態時先用 schema 解析一次。
+ *
+ * 這份 JSONB 是上一次重算時寫的，協定加了欄位之後（例如 `idle`）舊的那份就會缺欄位。
+ * 回應序列化走 zod 的 encode 方向，不補預設值；不先 parse 的話，裝置每次同步都會拿到
+ * 500，直到這台裝置剛好因為別的原因被重算為止。
+ */
 async function loadDesiredState(ctx: AppContext, deviceId: string): Promise<DesiredState> {
 	const [row] = await ctx.db.select({ desiredState: devices.desiredState }).from(devices).where(eq(devices.id, deviceId)).limit(1);
-	if (row?.desiredState) return row.desiredState;
+	if (row?.desiredState) return DesiredStateSchema.parse(row.desiredState);
 
 	/** 還沒算過就現算一次，之後就走快取的那一份。 */
 	await bumpDeviceDesiredState(ctx, deviceId);
 	const [refreshed] = await ctx.db.select({ desiredState: devices.desiredState }).from(devices).where(eq(devices.id, deviceId)).limit(1);
 	if (!refreshed?.desiredState) throw notFound("找不到這個裝置的目標狀態");
-	return refreshed.desiredState;
+	return DesiredStateSchema.parse(refreshed.desiredState);
 }
 
 export const deviceApiRoutes: FastifyPluginAsyncZod<DeviceApiRouteOptions> = async (app, options) => {
