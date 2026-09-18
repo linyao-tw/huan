@@ -45,7 +45,8 @@ export type DeviceToServerMessage = z.infer<typeof DeviceToServerMessageSchema>;
 export const AdminEventSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("hello"), serverTime: IsoDateTimeSchema }),
 	z.object({ type: z.literal("device_changed"), deviceId: z.string() }),
-	z.object({ type: z.literal("media_changed"), assetId: z.string() }),
+	/** `assetId` 為 null 代表變的是素材庫的結構（資料夾），不是某一筆素材。 */
+	z.object({ type: z.literal("media_changed"), assetId: z.string().nullable() }),
 	z.object({ type: z.literal("pong"), serverTime: IsoDateTimeSchema })
 ]);
 export type AdminEvent = z.infer<typeof AdminEventSchema>;

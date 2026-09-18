@@ -12,6 +12,23 @@ export type DeviceArch = z.infer<typeof DeviceArchSchema>;
 export const DeviceStatusSchema = z.enum(["active", "revoked"]);
 export type DeviceStatus = z.infer<typeof DeviceStatusSchema>;
 
+/**
+ * 沒有排程命中、也沒有預設版面時，螢幕上要出現什麼。
+ *
+ * - `brand`：HUAN 的待命畫面，看得出這台機器是活的、只是沒有內容。
+ * - `black`：全黑。現場的看板多半要這個，待命畫面本身也是一種內容。
+ * - `image`：指定一張圖片素材（例如公司 logo 牆）。
+ */
+export const DeviceIdleModeSchema = z.enum(["brand", "black", "image"]);
+export type DeviceIdleMode = z.infer<typeof DeviceIdleModeSchema>;
+
+export const DeviceIdleSchema = z.object({
+	mode: DeviceIdleModeSchema,
+	/** 只有 `mode` 是 `image` 時才有值。這張圖會跟著素材清單一起派送，離線時照樣顯示得出來。 */
+	imageAssetId: IdSchema.nullable()
+});
+export type DeviceIdle = z.infer<typeof DeviceIdleSchema>;
+
 /** 配對碼是 `XXXX-XXXX`，字母表刻意排除 0/O/1/I，避免現場抄錯。 */
 export const PAIRING_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 export const PairingCodeSchema = z
@@ -65,6 +82,8 @@ export const DeviceSchema = z.object({
 	online: z.boolean(),
 	defaultLayoutId: IdSchema.nullable(),
 	defaultLayoutName: z.string().nullable(),
+	idle: DeviceIdleSchema,
+	idleImageName: z.string().nullable(),
 	desiredVersion: z.number().int().min(0),
 	reported: ReportedStateSchema.nullable(),
 	lastSeenAt: IsoDateTimeSchema.nullable(),
@@ -78,7 +97,10 @@ export type Device = z.infer<typeof DeviceSchema>;
 export const UpdateDeviceRequestSchema = z
 	.object({
 		name: z.string().min(1).max(120).optional(),
-		defaultLayoutId: IdSchema.nullable().optional()
+		defaultLayoutId: IdSchema.nullable().optional(),
+		idleMode: DeviceIdleModeSchema.optional(),
+		/** 給 `null` 就是移除待命圖片。換成非 `image` 的模式時 Server 會自己清掉它。 */
+		idleImageAssetId: IdSchema.nullable().optional()
 	})
 	.refine(value => Object.keys(value).length > 0, "至少要修改一個欄位");
 export type UpdateDeviceRequest = z.infer<typeof UpdateDeviceRequestSchema>;
@@ -175,6 +197,8 @@ export const DesiredStateSchema = z.object({
 	deviceName: z.string(),
 	/** 沒有任何排程命中的時段所播放的版面。為 `null` 時 Device 顯示待命畫面。 */
 	defaultLayout: LayoutBundleSchema.nullable(),
+	/** 連版面都沒有時的待命畫面設定。`image` 指到的素材一定也在 `assets` 裡。 */
+	idle: DeviceIdleSchema,
 	layouts: z.array(LayoutBundleSchema),
 	schedules: z.array(ScheduleManifestEntrySchema),
 	assets: z.array(AssetManifestEntrySchema),

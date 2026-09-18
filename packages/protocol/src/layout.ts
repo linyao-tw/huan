@@ -81,25 +81,30 @@ export type VideoContent = z.infer<typeof VideoContentSchema>;
 /**
  * 輪播清單裡的一則素材。
  *
- * `kind` 決定怎麼播：圖片停留 `durationMs` 後換下一則；影片播完整段就換，
- * 忽略 `durationMs`。清單可以圖片影片交錯，順序就是播放順序。
+ * `kind` 決定怎麼播：圖片停留 `imageDurationMs` 後換下一則；影片播完整段就換。
+ * 清單可以圖片影片交錯，順序就是播放順序。
  */
 export const PlaylistItemSchema = z.object({
 	assetId: IdSchema,
-	kind: z.enum(["image", "video"]),
-	durationMs: z
-		.number()
-		.int()
-		.min(1000)
-		.max(10 * 60 * 1000)
-		.default(8000)
+	kind: z.enum(["image", "video"])
 });
 export type PlaylistItem = z.infer<typeof PlaylistItemSchema>;
+
+export const PLAYLIST_MIN_IMAGE_DURATION_MS = 1000;
+export const PLAYLIST_MAX_IMAGE_DURATION_MS = 10 * 60 * 1000;
+export const PLAYLIST_DEFAULT_IMAGE_DURATION_MS = 8000;
 
 export const PlaylistContentSchema = z.object({
 	type: z.literal("playlist"),
 	/** 依序輪播，播完最後一則回到第一則。 */
 	items: z.array(PlaylistItemSchema).min(1).max(50),
+	/**
+	 * 每張圖片停留多久，整份清單共用一個值。
+	 *
+	 * 曾經是逐則設定的。實際排播的人幾乎都把每一則設成同一個數字，逐則設定只是讓
+	 * 「改成 10 秒」變成要點 30 次；舊文件裡的逐則秒數會在解析時被捨棄，回到這個預設值。
+	 */
+	imageDurationMs: z.number().int().min(PLAYLIST_MIN_IMAGE_DURATION_MS).max(PLAYLIST_MAX_IMAGE_DURATION_MS).default(PLAYLIST_DEFAULT_IMAGE_DURATION_MS),
 	fit: ObjectFitSchema.default("contain"),
 	backgroundColor: ColorSchema.default("#000000")
 });

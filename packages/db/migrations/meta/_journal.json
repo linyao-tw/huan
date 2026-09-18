@@ -22,6 +22,20 @@
       "when": 1789054331737,
       "tag": "0002_sharp_post",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789702232519,
+      "tag": "0003_slow_phalanx",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789702239007,
+      "tag": "0004_melted_plazm",
+      "breakpoints": true
     }
   ]
 }

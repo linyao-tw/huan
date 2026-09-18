@@ -31,7 +31,11 @@ export const AuditActionSchema = z.enum([
 	"schedule.deleted",
 	"media.uploaded",
 	"media.updated",
-	"media.deleted"
+	"media.deleted",
+	"media.moved",
+	"media_folder.created",
+	"media_folder.updated",
+	"media_folder.deleted"
 ]);
 export type AuditAction = z.infer<typeof AuditActionSchema>;
 

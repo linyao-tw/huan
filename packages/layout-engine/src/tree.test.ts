@@ -177,9 +177,10 @@ describe("collectAssetIds", () => {
 		const withPlaylist = setSlotContent(empty, empty.root.id, {
 			type: "playlist",
 			items: [
-				{ assetId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", kind: "image", durationMs: 5000 },
-				{ assetId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", kind: "video", durationMs: 8000 }
+				{ assetId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", kind: "image" },
+				{ assetId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", kind: "video" }
 			],
+			imageDurationMs: 5000,
 			fit: "contain",
 			backgroundColor: "#000000"
 		});

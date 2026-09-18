@@ -114,6 +114,38 @@ export const loginAttempts = pgTable(
 
 /* ── 素材 ─────────────────────────────────────────────────────────────── */
 
+/**
+ * 素材資料夾。
+ *
+ * 樹狀結構用 `parent_id` 自我參照表達，而不是存一條路徑字串：改名一個上層資料夾
+ * 只要動一列，不必把底下每一筆的路徑重寫一次，也就不會出現改到一半的半套狀態。
+ */
+export const mediaFolders = pgTable(
+	"media_folders",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		name: text("name").notNull(),
+		/** `null` 代表這是最上層的資料夾。 */
+		parentId: uuid("parent_id"),
+		/**
+		 * 擁有這筆資料的使用者。同時參與下面兩條複合外鍵，因此「父資料夾必須是同一個人的」
+		 * 這件事在資料庫層就成立，服務層漏檢查也組不出跨租戶的樹。
+		 */
+		ownerId: uuid("owner_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "restrict" }),
+		createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+		...timestamps
+	},
+	table => [
+		index("media_folders_owner_idx").on(table.ownerId),
+		index("media_folders_parent_idx").on(table.parentId),
+		unique("media_folders_id_owner_key").on(table.id, table.ownerId),
+		/** restrict：還有子資料夾就刪不掉，使用者必須先清空，不會整棵樹靜靜消失。 */
+		foreignKey({ columns: [table.parentId, table.ownerId], foreignColumns: [table.id, table.ownerId], name: "media_folders_parent_same_owner_fk" }).onDelete("restrict")
+	]
+);
+
 export const mediaAssets = pgTable(
 	"media_assets",
 	{
@@ -126,6 +158,8 @@ export const mediaAssets = pgTable(
 		status: text("status").$type<"uploading" | "uploaded" | "processing" | "ready" | "failed" | "needs_reupload">().notNull().default("uploading"),
 		errorMessage: text("error_message"),
 		probe: jsonb("probe").$type<MediaProbe>(),
+		/** 所在資料夾。`null` 代表素材庫最上層。搭配 `ownerId` 組成複合外鍵，只能放進自己的資料夾。 */
+		folderId: uuid("folder_id"),
 		/**
 		 * 擁有這筆資料的使用者。
 		 *
@@ -144,7 +178,12 @@ export const mediaAssets = pgTable(
 		index("media_assets_owner_idx").on(table.ownerId),
 		index("media_assets_status_idx").on(table.status),
 		index("media_assets_kind_idx").on(table.kind),
-		index("media_assets_created_at_idx").on(table.createdAt)
+		index("media_assets_folder_idx").on(table.folderId),
+		index("media_assets_created_at_idx").on(table.createdAt),
+		/** 給裝置的待命圖片用的複合外鍵目標，理由同 `layouts_id_owner_key`。 */
+		unique("media_assets_id_owner_key").on(table.id, table.ownerId),
+		/** restrict：資料夾裡還有素材就刪不掉，避免一次刪除把整批素材的歸屬悄悄清空。 */
+		foreignKey({ columns: [table.folderId, table.ownerId], foreignColumns: [mediaFolders.id, mediaFolders.ownerId], name: "media_assets_folder_same_owner_fk" }).onDelete("restrict")
 	]
 );
 
@@ -164,9 +203,9 @@ export const mediaVariants = pgTable(
 		width: integer("width"),
 		height: integer("height"),
 		durationMs: integer("duration_ms"),
-		/** 物件被回收後轉為 false；資料列留著，讓 UI 能解釋素材為什麼需要重新上傳。 */
+		/** 原始檔在轉檔成功後轉為 false；資料列留著，讓 UI 能解釋這個產物為什麼已經不在。 */
 		available: boolean("available").notNull().default(true),
-		/** 所有目標裝置都完成 ACK 的時間，保留期從這一刻起算。 */
+		/** 所有目標裝置都完成 ACK 的時間。純粹是派送進度的紀錄，不再觸發任何回收。 */
 		distributionSettledAt: timestamp("distribution_settled_at", { withTimezone: true }),
 		removedAt: timestamp("removed_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(now)
@@ -337,6 +376,15 @@ export const devices = pgTable(
 		 * 是 null 就不檢查，所以「沒指定版面」不會被這條約束擋下來。
 		 */
 		defaultLayoutId: uuid("default_layout_id"),
+		/** 連預設版面都沒有時螢幕上要出現什麼。預設維持品牌待命畫面，看得出機器還活著。 */
+		idleMode: text("idle_mode").$type<"brand" | "black" | "image">().notNull().default("brand"),
+		/**
+		 * `idleMode` 是 `image` 時要顯示的圖片素材。
+		 *
+		 * 搭配 `ownerId` 組成複合外鍵，而且是 restrict：這張圖被刪掉時應該由素材庫那邊
+		 * 告訴使用者「有裝置正在用它」，而不是讓某台螢幕在下一次同步後突然變成黑的。
+		 */
+		idleImageAssetId: uuid("idle_image_asset_id"),
 		/** 每次目標狀態有任何變化就 +1。Device 用它判斷自己是不是落後了。 */
 		desiredVersion: integer("desired_version").notNull().default(0),
 		desiredState: jsonb("desired_state").$type<DesiredState>(),
@@ -362,7 +410,8 @@ export const devices = pgTable(
 		index("devices_status_idx").on(table.status),
 		index("devices_last_seen_idx").on(table.lastSeenAt),
 		unique("devices_id_owner_key").on(table.id, table.ownerId),
-		foreignKey({ columns: [table.defaultLayoutId, table.ownerId], foreignColumns: [layouts.id, layouts.ownerId], name: "devices_default_layout_same_owner_fk" }).onDelete("set null")
+		foreignKey({ columns: [table.defaultLayoutId, table.ownerId], foreignColumns: [layouts.id, layouts.ownerId], name: "devices_default_layout_same_owner_fk" }).onDelete("set null"),
+		foreignKey({ columns: [table.idleImageAssetId, table.ownerId], foreignColumns: [mediaAssets.id, mediaAssets.ownerId], name: "devices_idle_image_same_owner_fk" }).onDelete("restrict")
 	]
 );
 
@@ -418,7 +467,7 @@ export const workerJobs = pgTable(
 	"worker_jobs",
 	{
 		id: uuid("id").primaryKey().defaultRandom(),
-		kind: text("kind").$type<"transcode_video" | "process_image" | "process_html" | "cleanup_distribution">().notNull(),
+		kind: text("kind").$type<"transcode_video" | "process_image" | "process_html">().notNull(),
 		status: text("status").$type<"pending" | "running" | "success" | "failed">().notNull().default("pending"),
 		assetId: uuid("asset_id").references(() => mediaAssets.id, { onDelete: "cascade" }),
 		payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
@@ -464,8 +513,15 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 	recoveryCodes: many(totpRecoveryCodes)
 }));
 
+export const mediaFoldersRelations = relations(mediaFolders, ({ many, one }) => ({
+	parent: one(mediaFolders, { fields: [mediaFolders.parentId], references: [mediaFolders.id], relationName: "media_folder_parent" }),
+	children: many(mediaFolders, { relationName: "media_folder_parent" }),
+	assets: many(mediaAssets)
+}));
+
 export const mediaAssetsRelations = relations(mediaAssets, ({ many, one }) => ({
 	variants: many(mediaVariants),
+	folder: one(mediaFolders, { fields: [mediaAssets.folderId], references: [mediaFolders.id] }),
 	creator: one(users, { fields: [mediaAssets.createdBy], references: [users.id] })
 }));
 
@@ -496,5 +552,6 @@ export const scheduleDevicesRelations = relations(scheduleDevices, ({ one }) => 
 export const devicesRelations = relations(devices, ({ many, one }) => ({
 	credentials: many(deviceCredentials),
 	scheduleTargets: many(scheduleDevices),
-	defaultLayout: one(layouts, { fields: [devices.defaultLayoutId], references: [layouts.id] })
+	defaultLayout: one(layouts, { fields: [devices.defaultLayoutId], references: [layouts.id] }),
+	idleImage: one(mediaAssets, { fields: [devices.idleImageAssetId], references: [mediaAssets.id] })
 }));

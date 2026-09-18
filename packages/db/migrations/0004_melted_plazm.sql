@@ -1,0 +1,1 @@
+ALTER TABLE "devices" ADD CONSTRAINT "devices_idle_image_same_owner_fk" FOREIGN KEY ("idle_image_asset_id","owner_id") REFERENCES "public"."media_assets"("id","owner_id") ON DELETE restrict ON UPDATE no action;

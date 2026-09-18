@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { IdSchema, IsoDateTimeSchema } from "./common.js";
 
-export const WorkerJobKindSchema = z.enum(["transcode_video", "process_image", "process_html", "cleanup_distribution"]);
+export const WorkerJobKindSchema = z.enum(["transcode_video", "process_image", "process_html"]);
 export type WorkerJobKind = z.infer<typeof WorkerJobKindSchema>;
 
 export const WorkerJobStatusSchema = z.enum(["pending", "running", "success", "failed"]);

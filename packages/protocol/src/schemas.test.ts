@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ColorSchema, ExternalUrlSchema, TimeZoneSchema } from "./common.js";
 import { PairingCodeSchema } from "./device.js";
-import { LayoutDocumentSchema } from "./layout.js";
+import { LayoutDocumentSchema, PLAYLIST_DEFAULT_IMAGE_DURATION_MS } from "./layout.js";
 import { CreateScheduleRequestSchema } from "./schedule.js";
 import { PasswordSchema, UsernameSchema } from "./user.js";
 
@@ -147,7 +147,7 @@ describe("LayoutDocumentSchema", () => {
 		).toThrow();
 	});
 
-	it("接受圖片影片混排的媒體輪播", () => {
+	it("接受圖片影片混排的媒體輪播，並捨棄舊文件的逐則秒數", () => {
 		const parsed = LayoutDocumentSchema.parse({
 			...base,
 			root: {
@@ -164,8 +164,9 @@ describe("LayoutDocumentSchema", () => {
 		});
 		const content = parsed.root.type === "slot" ? parsed.root.content : null;
 		expect(content?.type).toBe("playlist");
-		/** 沒給的停留秒數補上預設值，影片端雖然用不到也要有。 */
-		expect(content?.type === "playlist" && content.items[1]?.durationMs).toBe(8000);
+		/** 停留秒數改成整份清單共用，舊文件裡的逐則秒數會被丟掉，回到預設值。 */
+		expect(content?.type === "playlist" && content.imageDurationMs).toBe(PLAYLIST_DEFAULT_IMAGE_DURATION_MS);
+		expect(content?.type === "playlist" && content.items[0]).toEqual({ assetId: "11111111-1111-4111-8111-111111111111", kind: "image" });
 	});
 
 	it("拒絕沒有任何一則的空輪播", () => {

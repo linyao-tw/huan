@@ -65,6 +65,7 @@ export function makeDesiredState(overrides: Partial<DesiredState> = {}): Desired
 		issuedAt: "2026-01-01T00:00:00.000Z",
 		deviceName: "測試裝置",
 		defaultLayout: null,
+		idle: { mode: "brand", imageAssetId: null },
 		layouts: [],
 		schedules: [],
 		assets: [],
