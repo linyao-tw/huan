@@ -161,6 +161,7 @@ pnpm --filter @huan/db db:generate
 ## Device 協定
 
 - REST 前綴 `/api/v1`，WebSocket 在 `/api/v1/devices/socket`。
+- 沒有排程命中、也沒有預設版面時要顯示什麼，由裝置的 `idleMode` 決定：`brand`（HUAN 待命畫面）、`black`（全黑）、`image`（指定一張圖片素材）。選圖片時，那張圖會跟版面素材一起進派送清單，離線也顯示得出來。
 - 裝置以 `Authorization: Bearer <deviceId>.<secret>` 驗證，Server 只保存 secret 的 SHA-256。
 - Heartbeat 約 60 秒，WebSocket 斷線後以指數退避加抖動重連（1s → 60s 上限）。
 - 即使 WebSocket 正常，Device 仍每 5 分鐘做一次完整狀態同步，不完全依賴推播。
@@ -174,13 +175,17 @@ pnpm --filter @huan/db db:generate
                                                     刪除原始檔（不長期保存）
                                                               ↓
                           指派給裝置 → 簽章網址 → Device 下載 → 校驗 → ACK
-                                                              ↓
-                            所有目標裝置 ACK 且過保留期 → 回收 playback 產物
 ```
 
-**RustFS 不是 HUAN 的永久素材庫。** 正式播放副本最終保存在 Device。當原始檔已刪除、playback 產物也被回收，而後來又有新裝置需要這份素材時，該素材會被標記為 `needs_reupload`。這是產品刻意的取捨，UI 與文件都必須誠實呈現，不要假裝伺服器還留著不存在的檔案。
+**playback、preview 與 thumbnail 長期留在 RustFS，不會被回收。** 後台的素材選擇器要靠 preview 讓人看得出「哪一支影片」，而隨時可能多一台新裝置需要同一份 playback；為了省那點空間而讓素材變成不能用，代價遠大於收益。
+
+**原始上傳檔仍然在轉檔成功後刪除。** RustFS 不是母帶庫，請自己留一份原始檔——上傳區的說明也是這樣寫的。
+
+`needs_reupload` 是舊回收機制留下的狀態，新的素材不會再落到那裡；資料庫與 UI 仍然認得它，因為既有資料還在。
 
 物件鍵一律由 UUID 組成，永遠不使用使用者提供的檔名。
+
+素材可以放進資料夾（`media_folders`，自我參照的樹，上限 8 層）。資料夾只是整理用的，和派送無關：版面引用的是素材本身，搬動資料夾不會讓任何裝置重新下載。刪除資料夾必須先清空，避免一次操作把整批素材的歸屬悄悄帶走。
 
 ## 文件
 
