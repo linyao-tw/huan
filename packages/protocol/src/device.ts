@@ -197,8 +197,14 @@ export const DesiredStateSchema = z.object({
 	deviceName: z.string(),
 	/** 沒有任何排程命中的時段所播放的版面。為 `null` 時 Device 顯示待命畫面。 */
 	defaultLayout: LayoutBundleSchema.nullable(),
-	/** 連版面都沒有時的待命畫面設定。`image` 指到的素材一定也在 `assets` 裡。 */
-	idle: DeviceIdleSchema,
+	/**
+	 * 連版面都沒有時的待命畫面設定。`image` 指到的素材一定也在 `assets` 裡。
+	 *
+	 * 一定要有預設值：裝置會用這份 schema 驗證自己快取在本機的 manifest，舊版寫下的
+	 * 檔案沒有這個欄位。少了預設值，升級後第一次開機就讀不到本機內容，而如果那時
+	 * Server 也還沒更新，連重新同步都救不回來。
+	 */
+	idle: DeviceIdleSchema.default({ mode: "brand", imageAssetId: null }),
 	layouts: z.array(LayoutBundleSchema),
 	schedules: z.array(ScheduleManifestEntrySchema),
 	assets: z.array(AssetManifestEntrySchema),

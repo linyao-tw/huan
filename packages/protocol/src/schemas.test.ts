@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ColorSchema, ExternalUrlSchema, TimeZoneSchema } from "./common.js";
-import { PairingCodeSchema } from "./device.js";
+import { DesiredStateSchema, PairingCodeSchema } from "./device.js";
 import { LayoutDocumentSchema, PLAYLIST_DEFAULT_IMAGE_DURATION_MS } from "./layout.js";
 import { CreateScheduleRequestSchema } from "./schedule.js";
 import { PasswordSchema, UsernameSchema } from "./user.js";
@@ -225,5 +225,31 @@ describe("使用者欄位", () => {
 	it("密碼長度下限為 12", () => {
 		expect(() => PasswordSchema.parse("short")).toThrow();
 		expect(PasswordSchema.parse("a-long-enough-password")).toBe("a-long-enough-password");
+	});
+});
+
+describe("DesiredStateSchema", () => {
+	/** 舊版播放器寫在本機的 manifest 長這樣：沒有 `idle`。升級後必須還讀得進來。 */
+	const legacy = {
+		deviceId: "11111111-1111-4111-8111-111111111111",
+		version: 7,
+		protocolVersion: 1,
+		issuedAt: "2026-01-01T00:00:00.000Z",
+		deviceName: "舊裝置",
+		defaultLayout: null,
+		layouts: [],
+		schedules: [],
+		assets: [],
+		settings: { heartbeatIntervalSeconds: 60, fallbackSyncIntervalSeconds: 300, maxConcurrentDownloads: 3 }
+	};
+
+	it("沒有待命設定的舊 manifest 仍然讀得進來，並當成品牌待命畫面", () => {
+		const parsed = DesiredStateSchema.parse(legacy);
+		expect(parsed.idle).toEqual({ mode: "brand", imageAssetId: null });
+	});
+
+	it("有待命設定時照原樣保留", () => {
+		const parsed = DesiredStateSchema.parse({ ...legacy, idle: { mode: "black", imageAssetId: null } });
+		expect(parsed.idle.mode).toBe("black");
 	});
 });
