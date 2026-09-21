@@ -1,0 +1,83 @@
+# HUAN 讙的可觀測性後端：Alloy 收 OTLP，Tempo／Loki／Prometheus 各存一種訊號。
+#
+# 不含 Grafana：沿用一個已經在跑的 Grafana，讓它加入 GRAFANA_NETWORK 這個網路找到這裡，
+# 再把 grafana/ 底下的資料來源與儀表板掛進它的 provisioning。怎麼部署見 README.md。
+#
+# 和 HUAN 本身的 compose.yaml 分開：這一組是選配的維運工具，HUAN 沒有它照樣運作
+# （沒設定 OTEL_EXPORTER_OTLP_ENDPOINT 時 SDK 完全不啟動）。
+name: huan-observability
+
+services:
+  alloy:
+    image: grafana/alloy:v1.19.2
+    container_name: huan-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+    # 只綁在 127.0.0.1。OTLP 收件口沒有驗證，對外一定要經過有存取控制的反向代理
+    # （正式環境是 Cloudflare Tunnel，加上只放行 HUAN 主機 IP 的 Access 規則）。
+    ports:
+      - "127.0.0.1:4318:4318"
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+
+  tempo:
+    # 停在 2.x：3.0 是架構改版，設定格式不同，監控後端求穩。
+    image: grafana/tempo:2.10.3
+    container_name: huan-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    # 不對主機開埠：只有 Grafana 需要查它。
+    networks: [default, grafana]
+
+  loki:
+    image: grafana/loki:3.7.8
+    container_name: huan-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    networks: [default, grafana]
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    container_name: huan-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=90d
+      # OTLP 給 Alloy 送應用程式指標，remote write 給 Tempo 送它從 trace 算出來的 RED 與服務圖。
+      - --web.enable-otlp-receiver
+      - --web.enable-remote-write-receiver
+      # 讓延遲圖上的點能直接跳到那一筆 trace。
+      - --enable-feature=exemplar-storage
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [default, grafana]
+
+networks:
+  grafana:
+    external: true
+    name: ${GRAFANA_NETWORK:?設定 GRAFANA_NETWORK 為 Grafana 所在的 Docker 網路}
+
+# 具名 volume 第一次掛載時會沿用映像裡目錄的擁有者，Tempo、Loki 以非 root 身分執行也寫得進去；
+# 用 bind mount 就得自己先 chown。
+volumes:
+  alloy-data:
+  tempo-data:
+  loki-data:
+  prometheus-data:

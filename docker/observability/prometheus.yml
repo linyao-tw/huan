@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+
+# OTLP 送進來的指標，把這幾個 resource 屬性升成 label，查詢時才能用服務與環境過濾。
+otlp:
+  promote_resource_attributes:
+    - service.name
+    - service.namespace
+    - service.version
+    - deployment.environment.name
+  keep_identifying_resource_attributes: true
+
+storage:
+  tsdb:
+    # Alloy 批次送出與 Tempo 產生的指標都可能晚到幾十秒，不收亂序樣本就會被丟掉。
+    out_of_order_time_window: 30m
+
+scrape_configs:
+  - job_name: huan-prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

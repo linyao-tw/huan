@@ -1,0 +1,14 @@
+# 儀表板由檔案管理：要改就改同目錄的 JSON 再覆蓋過去，在 Grafana 裡改的不會被保存。
+apiVersion: 1
+
+providers:
+  - name: HUAN
+    orgId: 1
+    folder: HUAN
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/huan
+      foldersFromFilesStructure: false

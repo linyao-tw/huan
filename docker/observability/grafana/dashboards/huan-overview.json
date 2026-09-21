@@ -1,0 +1,2700 @@
+{
+	"uid": "huan-overview",
+	"title": "HUAN 服務總覽",
+	"description": "HUAN 讙 server 與 worker 的請求、錯誤、延遲、轉檔與裝置狀態。資料來自 OpenTelemetry（trace → Tempo、log → Loki、metric → Prometheus）。",
+	"tags": ["huan", "opentelemetry"],
+	"timezone": "browser",
+	"editable": true,
+	"graphTooltip": 1,
+	"refresh": "30s",
+	"time": {
+		"from": "now-6h",
+		"to": "now"
+	},
+	"schemaVersion": 41,
+	"version": 1,
+	"links": [
+		{
+			"title": "HUAN 開發文件",
+			"type": "link",
+			"url": "https://docs.linyao.tw/huan/dev/observability",
+			"targetBlank": true,
+			"icon": "doc"
+		}
+	],
+	"templating": {
+		"list": [
+			{
+				"name": "env",
+				"label": "環境",
+				"type": "query",
+				"datasource": {
+					"type": "prometheus",
+					"uid": "huan-prometheus"
+				},
+				"query": {
+					"qryType": 1,
+					"query": "label_values(target_info{service_namespace=\"huan\"}, deployment_environment_name)",
+					"refId": "PrometheusVariableQueryEditor-VariableQuery"
+				},
+				"definition": "label_values(target_info{service_namespace=\"huan\"}, deployment_environment_name)",
+				"refresh": 2,
+				"sort": 1,
+				"current": {
+					"text": "production",
+					"value": "production"
+				},
+				"includeAll": false,
+				"multi": false
+			},
+			{
+				"name": "slow",
+				"label": "慢請求門檻",
+				"type": "custom",
+				"query": "200ms,500ms,1s,3s,10s",
+				"current": {
+					"text": "500ms",
+					"value": "500ms"
+				},
+				"options": [
+					{
+						"text": "200ms",
+						"value": "200ms",
+						"selected": false
+					},
+					{
+						"text": "500ms",
+						"value": "500ms",
+						"selected": true
+					},
+					{
+						"text": "1s",
+						"value": "1s",
+						"selected": false
+					},
+					{
+						"text": "3s",
+						"value": "3s",
+						"selected": false
+					},
+					{
+						"text": "10s",
+						"value": "10s",
+						"selected": false
+					}
+				],
+				"includeAll": false,
+				"multi": false
+			},
+			{
+				"name": "service",
+				"label": "日誌來源",
+				"type": "custom",
+				"query": "huan-server,huan-worker",
+				"current": {
+					"text": ["All"],
+					"value": ["$__all"]
+				},
+				"options": [],
+				"includeAll": true,
+				"allValue": "huan-.*",
+				"multi": true
+			},
+			{
+				"name": "search",
+				"label": "日誌搜尋",
+				"type": "textbox",
+				"query": "",
+				"current": {
+					"text": "",
+					"value": ""
+				}
+			}
+		]
+	},
+	"annotations": {
+		"list": [
+			{
+				"builtIn": 1,
+				"datasource": {
+					"type": "grafana",
+					"uid": "-- Grafana --"
+				},
+				"enable": true,
+				"hide": true,
+				"iconColor": "rgba(0, 211, 255, 1)",
+				"name": "Annotations & Alerts",
+				"type": "dashboard"
+			}
+		]
+	},
+	"panels": [
+		{
+			"type": "row",
+			"title": "總覽",
+			"id": 1,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 0
+			},
+			"panels": []
+		},
+		{
+			"type": "stat",
+			"title": "每秒請求數",
+			"description": "所有 API 請求（健康檢查不算）。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "請求",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "reqps",
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							}
+						]
+					},
+					"color": {
+						"mode": "thresholds"
+					},
+					"decimals": 2
+				},
+				"overrides": []
+			},
+			"options": {
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"colorMode": "value",
+				"graphMode": "area",
+				"textMode": "auto",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"wideLayout": true,
+				"showPercentChange": false
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 0,
+				"y": 1
+			},
+			"id": 2
+		},
+		{
+			"type": "stat",
+			"title": "5xx 錯誤率",
+			"description": "伺服器自己出錯的比例。4xx 是使用者或裝置送錯，不算在這裡。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "(sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\", http_response_status_code=~\"5..\"}[$__rate_interval])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "5xx",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit",
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "orange",
+								"value": 0.01
+							},
+							{
+								"color": "red",
+								"value": 0.05
+							}
+						]
+					},
+					"color": {
+						"mode": "thresholds"
+					},
+					"decimals": 2
+				},
+				"overrides": []
+			},
+			"options": {
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"colorMode": "value",
+				"graphMode": "area",
+				"textMode": "auto",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"wideLayout": true,
+				"showPercentChange": false
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 4,
+				"y": 1
+			},
+			"id": 3
+		},
+		{
+			"type": "stat",
+			"title": "p95 延遲",
+			"description": "95% 的請求在這個時間內完成。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval])))",
+					"legendFormat": "p95",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "orange",
+								"value": 0.5
+							},
+							{
+								"color": "red",
+								"value": 2
+							}
+						]
+					},
+					"color": {
+						"mode": "thresholds"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"colorMode": "value",
+				"graphMode": "area",
+				"textMode": "auto",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"wideLayout": true,
+				"showPercentChange": false
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 8,
+				"y": 1
+			},
+			"id": 4
+		},
+		{
+			"type": "stat",
+			"title": "在線裝置",
+			"description": "最近一次回報在有效期間內的裝置。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum(huan_devices{status=\"online\", deployment_environment_name=\"$env\"})",
+					"legendFormat": "在線",
+					"range": true,
+					"instant": false
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "sum(huan_devices{status=~\"online|offline\", deployment_environment_name=\"$env\"})",
+					"legendFormat": "全部（不含撤銷）",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "none",
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							}
+						]
+					},
+					"color": {
+						"mode": "thresholds"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"colorMode": "none",
+				"graphMode": "area",
+				"textMode": "auto",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"wideLayout": true,
+				"showPercentChange": false
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 12,
+				"y": 1
+			},
+			"id": 5
+		},
+		{
+			"type": "stat",
+			"title": "轉檔失敗（這段時間）",
+			"description": "時間範圍內失敗的轉檔工作次數（含會重試的那幾次）。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum(increase(traces_spanmetrics_calls_total{service=\"huan-worker\", span_kind=\"SPAN_KIND_CONSUMER\", deployment_environment_name=\"$env\", status_code=\"STATUS_CODE_ERROR\"}[$__range])) or vector(0)",
+					"legendFormat": "失敗",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "none",
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "red",
+								"value": 1
+							}
+						]
+					},
+					"color": {
+						"mode": "thresholds"
+					},
+					"decimals": 0
+				},
+				"overrides": []
+			},
+			"options": {
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"colorMode": "value",
+				"graphMode": "area",
+				"textMode": "auto",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"wideLayout": true,
+				"showPercentChange": false
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 16,
+				"y": 1
+			},
+			"id": 6
+		},
+		{
+			"type": "stat",
+			"title": "佇列最久等待",
+			"description": "已經可以執行、卻還沒被 worker 撿走的工作等了多久。一直長大代表 worker 停了或卡住。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "max(huan_worker_queue_oldest_pending_age_seconds{deployment_environment_name=\"$env\"})",
+					"legendFormat": "等待",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"thresholds": {
+						"mode": "absolute",
+						"steps": [
+							{
+								"color": "green",
+								"value": null
+							},
+							{
+								"color": "orange",
+								"value": 60
+							},
+							{
+								"color": "red",
+								"value": 600
+							}
+						]
+					},
+					"color": {
+						"mode": "thresholds"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"reduceOptions": {
+					"calcs": ["lastNotNull"],
+					"fields": "",
+					"values": false
+				},
+				"colorMode": "value",
+				"graphMode": "area",
+				"textMode": "auto",
+				"justifyMode": "auto",
+				"orientation": "auto",
+				"wideLayout": true,
+				"showPercentChange": false
+			},
+			"gridPos": {
+				"h": 4,
+				"w": 4,
+				"x": 20,
+				"y": 1
+			},
+			"id": 7
+		},
+		{
+			"type": "row",
+			"title": "API 請求",
+			"id": 8,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 5
+			},
+			"panels": []
+		},
+		{
+			"type": "timeseries",
+			"title": "每秒請求數（依狀態碼）",
+			"description": "2xx 成功、4xx 請求內容或權限有問題、5xx 伺服器出錯。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (status_class) (label_replace(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval]), \"status_class\", \"${1}xx\", \"http_response_status_code\", \"([0-9])[0-9][0-9]\"))",
+					"legendFormat": "{{status_class}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "reqps",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "normal",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "2xx"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "green"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "3xx"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "blue"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "4xx"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "orange"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "5xx"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "red"
+								}
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 6
+			},
+			"id": 9
+		},
+		{
+			"type": "timeseries",
+			"title": "延遲",
+			"description": "從收到請求到回應送出的時間。p99 突然拉高而 p50 沒動，通常是少數幾個端點變慢。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval])))",
+					"legendFormat": "p50",
+					"range": true,
+					"instant": false
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval])))",
+					"legendFormat": "p95",
+					"range": true,
+					"instant": false
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "C",
+					"expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval])))",
+					"legendFormat": "p99",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 6
+			},
+			"id": 10
+		},
+		{
+			"type": "timeseries",
+			"title": "錯誤率",
+			"description": "4xx 平常就會有（登入失敗、session 過期、找不到素材），要看的是它突然變多。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "(sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\", http_response_status_code=~\"5..\"}[$__rate_interval])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "5xx",
+					"range": true,
+					"instant": false
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "(sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\", http_response_status_code=~\"4..\"}[$__rate_interval])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "4xx",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "5xx"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "red"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "4xx"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "orange"
+								}
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 14
+			},
+			"id": 11
+		},
+		{
+			"type": "timeseries",
+			"title": "最慢的 10 個端點（p95）",
+			"description": "依路由樣板分組（/media/:id），不是實際網址。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "topk(10, histogram_quantile(0.95, sum by (le, http_request_method, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__rate_interval]))))",
+					"legendFormat": "{{http_request_method}} {{http_route}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 14
+			},
+			"id": 12
+		},
+		{
+			"type": "table",
+			"title": "各 API 端點（整段時間）",
+			"description": "每個路由在目前時間範圍內的請求數、錯誤率與延遲。點欄位標題排序；想看某個端點卡在哪，到下方「慢請求」用它的路由找 trace。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "round(sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range]))) > 0",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "(sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\", http_response_status_code=~\"5..\"}[$__range])) or sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range])) * 0) / (sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range])) > 0)",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "C",
+					"expr": "(sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\", http_response_status_code=~\"4..\"}[$__range])) or sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range])) * 0) / (sum by (http_request_method, http_route) (increase(http_server_request_duration_seconds_count{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range])) > 0)",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "D",
+					"expr": "histogram_quantile(0.5, sum by (le, http_request_method, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range]))) >= 0",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "E",
+					"expr": "histogram_quantile(0.95, sum by (le, http_request_method, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range]))) >= 0",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "F",
+					"expr": "histogram_quantile(0.99, sum by (le, http_request_method, http_route) (rate(http_server_request_duration_seconds_bucket{service_name=\"huan-server\", deployment_environment_name=\"$env\"}[$__range]))) >= 0",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				}
+			],
+			"transformations": [
+				{
+					"id": "merge",
+					"options": {}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time": true
+						},
+						"indexByName": {
+							"http_request_method": 0,
+							"http_route": 1,
+							"Value #A": 2,
+							"Value #B": 3,
+							"Value #C": 4,
+							"Value #D": 5,
+							"Value #E": 6,
+							"Value #F": 7
+						},
+						"renameByName": {
+							"http_request_method": "方法",
+							"http_route": "路由",
+							"Value #A": "請求數",
+							"Value #B": "5xx",
+							"Value #C": "4xx",
+							"Value #D": "p50",
+							"Value #E": "p95",
+							"Value #F": "p99"
+						}
+					}
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						},
+						"filterable": true
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "方法"
+						},
+						"properties": [
+							{
+								"id": "custom.width",
+								"value": 80
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "請求數"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "none"
+							},
+							{
+								"id": "decimals",
+								"value": 0
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "5xx"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "percentunit"
+							},
+							{
+								"id": "decimals",
+								"value": 1
+							},
+							{
+								"id": "thresholds",
+								"value": {
+									"mode": "absolute",
+									"steps": [
+										{
+											"color": "green",
+											"value": null
+										},
+										{
+											"color": "orange",
+											"value": 0.01
+										},
+										{
+											"color": "red",
+											"value": 0.05
+										}
+									]
+								}
+							},
+							{
+								"id": "custom.cellOptions",
+								"value": {
+									"type": "color-text"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "4xx"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "percentunit"
+							},
+							{
+								"id": "decimals",
+								"value": 1
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "p50"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "s"
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "p95"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "s"
+							},
+							{
+								"id": "thresholds",
+								"value": {
+									"mode": "absolute",
+									"steps": [
+										{
+											"color": "green",
+											"value": null
+										},
+										{
+											"color": "orange",
+											"value": 0.5
+										},
+										{
+											"color": "red",
+											"value": 2
+										}
+									]
+								}
+							},
+							{
+								"id": "custom.cellOptions",
+								"value": {
+									"type": "color-text"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "p99"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "s"
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"showHeader": true,
+				"cellHeight": "sm",
+				"sortBy": [
+					{
+						"displayName": "p95",
+						"desc": true
+					}
+				],
+				"footer": {
+					"show": false,
+					"reducer": ["sum"],
+					"fields": ""
+				}
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 24,
+				"x": 0,
+				"y": 22
+			},
+			"id": 13
+		},
+		{
+			"type": "row",
+			"title": "慢請求與錯誤（點 trace ID 看每一段花了多久）",
+			"id": 14,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 32
+			},
+			"panels": []
+		},
+		{
+			"type": "table",
+			"title": "慢請求（超過 $slow）",
+			"description": "花超過門檻的 API 請求。展開 trace 會看到裡面每一段資料庫查詢、S3 呼叫各花了多久。門檻在上方「慢請求門檻」調整。",
+			"datasource": {
+				"type": "tempo",
+				"uid": "huan-tempo"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "tempo",
+						"uid": "huan-tempo"
+					},
+					"refId": "A",
+					"queryType": "traceql",
+					"query": "{resource.service.namespace=\"huan\" && resource.deployment.environment.name=\"$env\" && kind=server && duration > $slow}",
+					"limit": 20,
+					"spss": 3,
+					"tableType": "traces"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						}
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"showHeader": true,
+				"cellHeight": "sm"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 0,
+				"y": 33
+			},
+			"id": 15
+		},
+		{
+			"type": "table",
+			"title": "失敗的請求與轉檔工作",
+			"description": "標記為錯誤的 span：5xx 請求、失敗的轉檔工作與出錯的資料庫查詢。4xx 不算錯誤。",
+			"datasource": {
+				"type": "tempo",
+				"uid": "huan-tempo"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "tempo",
+						"uid": "huan-tempo"
+					},
+					"refId": "A",
+					"queryType": "traceql",
+					"query": "{resource.service.namespace=\"huan\" && resource.deployment.environment.name=\"$env\" && status=error}",
+					"limit": 20,
+					"spss": 3,
+					"tableType": "traces"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						}
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"showHeader": true,
+				"cellHeight": "sm"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 12,
+				"y": 33
+			},
+			"id": 16
+		},
+		{
+			"type": "logs",
+			"title": "警告與錯誤日誌",
+			"description": "server 與 worker 的 warn 以上日誌。展開一行，trace_id 旁的連結會直接開那一筆 trace。",
+			"datasource": {
+				"type": "loki",
+				"uid": "huan-loki"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "loki",
+						"uid": "huan-loki"
+					},
+					"refId": "A",
+					"expr": "{service_namespace=\"huan\", deployment_environment_name=\"$env\"} | severity_number >= 13",
+					"queryType": "range"
+				}
+			],
+			"options": {
+				"showTime": true,
+				"wrapLogMessage": true,
+				"enableLogDetails": true,
+				"sortOrder": "Descending",
+				"dedupStrategy": "none",
+				"prettifyLogMessage": false,
+				"showLabels": false,
+				"showCommonLabels": false,
+				"enableInfiniteScrolling": true
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 24,
+				"x": 0,
+				"y": 43
+			},
+			"id": 17
+		},
+		{
+			"type": "row",
+			"title": "資料庫與 S3（請求卡在哪）",
+			"id": 18,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 53
+			},
+			"panels": []
+		},
+		{
+			"type": "timeseries",
+			"title": "最慢的資料庫查詢（p95）",
+			"description": "依「操作 資料表」分組。只算在請求或轉檔工作裡發生的查詢；背景統計的查詢不追蹤。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "topk(10, histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=~\"huan-server|huan-worker\", span_kind=\"SPAN_KIND_CLIENT\", deployment_environment_name=\"$env\", span_name!~\"S3\\\\..*\"}[$__rate_interval]))))",
+					"legendFormat": "{{span_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 54
+			},
+			"id": 19
+		},
+		{
+			"type": "timeseries",
+			"title": "S3（RustFS）呼叫延遲（p95）",
+			"description": "PutObject、GetObject 的時間跟檔案大小有關；HeadObject 這種小呼叫變慢才代表 RustFS 本身出問題。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=~\"huan-server|huan-worker\", span_kind=\"SPAN_KIND_CLIENT\", deployment_environment_name=\"$env\", span_name=~\"S3\\\\..*\"}[$__rate_interval])))",
+					"legendFormat": "{{span_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 54
+			},
+			"id": 20
+		},
+		{
+			"type": "timeseries",
+			"title": "每秒資料庫查詢數",
+			"description": "一個請求打太多查詢（N+1）時，這條線會跟著請求數一起暴增。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (service) (rate(traces_spanmetrics_calls_total{service=~\"huan-server|huan-worker\", span_kind=\"SPAN_KIND_CLIENT\", span_name!~\"S3\\\\..*\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "{{service}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "ops",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 62
+			},
+			"id": 21
+		},
+		{
+			"type": "timeseries",
+			"title": "資料庫與 S3 錯誤",
+			"description": "查詢失敗或 S3 回錯誤。平常應該是一條貼地的線。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (span_name) (rate(traces_spanmetrics_calls_total{service=~\"huan-server|huan-worker\", span_kind=\"SPAN_KIND_CLIENT\", status_code=\"STATUS_CODE_ERROR\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "{{span_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "ops",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 62
+			},
+			"id": 22
+		},
+		{
+			"type": "row",
+			"title": "轉檔 Worker",
+			"id": 23,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 70
+			},
+			"panels": []
+		},
+		{
+			"type": "timeseries",
+			"title": "工作耗時（p95，依種類）",
+			"description": "一支工作從開始到結束的時間。影片轉檔本來就以分鐘計，看的是趨勢。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "histogram_quantile(0.95, sum by (le, huan_job_kind) (rate(traces_spanmetrics_latency_bucket{service=\"huan-worker\", span_kind=\"SPAN_KIND_CONSUMER\", deployment_environment_name=\"$env\"}[$__rate_interval])))",
+					"legendFormat": "{{huan_job_kind}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 71
+			},
+			"id": 24
+		},
+		{
+			"type": "timeseries",
+			"title": "完成與失敗的工作",
+			"description": "失敗的工作會依退避重試，連續失敗才會讓素材停在「失敗」。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (huan_job_kind) (increase(traces_spanmetrics_calls_total{service=\"huan-worker\", span_kind=\"SPAN_KIND_CONSUMER\", deployment_environment_name=\"$env\", status_code!=\"STATUS_CODE_ERROR\"}[$__interval]))",
+					"legendFormat": "{{huan_job_kind}} 成功",
+					"range": true,
+					"instant": false
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "sum by (huan_job_kind) (increase(traces_spanmetrics_calls_total{service=\"huan-worker\", span_kind=\"SPAN_KIND_CONSUMER\", deployment_environment_name=\"$env\", status_code=\"STATUS_CODE_ERROR\"}[$__interval]))",
+					"legendFormat": "{{huan_job_kind}} 失敗",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "none",
+					"custom": {
+						"drawStyle": "bars",
+						"lineWidth": 1,
+						"fillOpacity": 80,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "normal",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 71
+			},
+			"id": 25
+		},
+		{
+			"type": "timeseries",
+			"title": "各步驟耗時（p95）",
+			"description": "下載、分析、轉檔、產生縮圖、上傳：工作變慢時看是哪一步。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "topk(10, histogram_quantile(0.95, sum by (le, span_name) (rate(traces_spanmetrics_latency_bucket{service=\"huan-worker\", span_kind=\"SPAN_KIND_INTERNAL\", deployment_environment_name=\"$env\"}[$__rate_interval]))))",
+					"legendFormat": "{{span_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 79
+			},
+			"id": 26
+		},
+		{
+			"type": "timeseries",
+			"title": "佇列",
+			"description": "pending 一直堆、最久等待一直長大：worker 沒在消化。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (status) (huan_worker_jobs{status=~\"pending|running\", deployment_environment_name=\"$env\"})",
+					"legendFormat": "{{status}}",
+					"range": true,
+					"instant": false
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "max(huan_worker_queue_oldest_pending_age_seconds{deployment_environment_name=\"$env\"})",
+					"legendFormat": "最久等待（秒）",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "none",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "最久等待（秒）"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "s"
+							},
+							{
+								"id": "custom.axisPlacement",
+								"value": "right"
+							},
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "red"
+								}
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 79
+			},
+			"id": 27
+		},
+		{
+			"type": "row",
+			"title": "裝置",
+			"id": 28,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 87
+			},
+			"panels": []
+		},
+		{
+			"type": "timeseries",
+			"title": "裝置數（依狀態）",
+			"description": "online／offline 依最後一次回報時間判定；revoked 是已撤銷的裝置。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (status) (huan_devices{deployment_environment_name=\"$env\"})",
+					"legendFormat": "{{status}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "none",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "normal",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "online"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "green"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "offline"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "red"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "revoked"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "text"
+								}
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 8,
+				"x": 0,
+				"y": 88
+			},
+			"id": 29
+		},
+		{
+			"type": "table",
+			"title": "各裝置狀態",
+			"description": "落後版本 > 0 代表裝置還沒套用最新的目標狀態（正在下載，或下載一直失敗）。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "max by (device_id, device_name) (huan_device_online{deployment_environment_name=\"$env\"})",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "B",
+					"expr": "max by (device_id, device_name) (huan_device_version_lag{deployment_environment_name=\"$env\"})",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "C",
+					"expr": "max by (device_id, device_name) (huan_device_storage_error{deployment_environment_name=\"$env\"})",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				},
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "D",
+					"expr": "max by (device_id, device_name) (huan_device_last_seen_age_seconds{deployment_environment_name=\"$env\"})",
+					"legendFormat": "__auto",
+					"range": false,
+					"instant": true,
+					"format": "table"
+				}
+			],
+			"transformations": [
+				{
+					"id": "merge",
+					"options": {}
+				},
+				{
+					"id": "organize",
+					"options": {
+						"excludeByName": {
+							"Time": true,
+							"device_id": true
+						},
+						"indexByName": {
+							"device_name": 0,
+							"Value #A": 1,
+							"Value #B": 2,
+							"Value #C": 3,
+							"Value #D": 4
+						},
+						"renameByName": {
+							"device_name": "裝置",
+							"Value #A": "連線",
+							"Value #B": "落後版本",
+							"Value #C": "儲存",
+							"Value #D": "最後回報"
+						}
+					}
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"custom": {
+						"align": "auto",
+						"cellOptions": {
+							"type": "auto"
+						}
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "連線"
+						},
+						"properties": [
+							{
+								"id": "mappings",
+								"value": [
+									{
+										"type": "value",
+										"options": {
+											"0": {
+												"text": "離線",
+												"color": "red",
+												"index": 0
+											},
+											"1": {
+												"text": "在線",
+												"color": "green",
+												"index": 1
+											}
+										}
+									}
+								]
+							},
+							{
+								"id": "custom.cellOptions",
+								"value": {
+									"type": "color-text"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "落後版本"
+						},
+						"properties": [
+							{
+								"id": "thresholds",
+								"value": {
+									"mode": "absolute",
+									"steps": [
+										{
+											"color": "green",
+											"value": null
+										},
+										{
+											"color": "orange",
+											"value": 1
+										}
+									]
+								}
+							},
+							{
+								"id": "custom.cellOptions",
+								"value": {
+									"type": "color-text"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "儲存"
+						},
+						"properties": [
+							{
+								"id": "mappings",
+								"value": [
+									{
+										"type": "value",
+										"options": {
+											"0": {
+												"text": "正常",
+												"color": "green",
+												"index": 0
+											},
+											"1": {
+												"text": "錯誤",
+												"color": "red",
+												"index": 1
+											}
+										}
+									}
+								]
+							},
+							{
+								"id": "custom.cellOptions",
+								"value": {
+									"type": "color-text"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "最後回報"
+						},
+						"properties": [
+							{
+								"id": "unit",
+								"value": "s"
+							},
+							{
+								"id": "thresholds",
+								"value": {
+									"mode": "absolute",
+									"steps": [
+										{
+											"color": "green",
+											"value": null
+										},
+										{
+											"color": "orange",
+											"value": 180
+										},
+										{
+											"color": "red",
+											"value": 900
+										}
+									]
+								}
+							},
+							{
+								"id": "custom.cellOptions",
+								"value": {
+									"type": "color-text"
+								}
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"showHeader": true,
+				"cellHeight": "sm",
+				"sortBy": [
+					{
+						"displayName": "連線",
+						"desc": false
+					}
+				],
+				"footer": {
+					"show": false,
+					"reducer": ["sum"],
+					"fields": ""
+				}
+			},
+			"gridPos": {
+				"h": 9,
+				"w": 16,
+				"x": 8,
+				"y": 88
+			},
+			"id": 30
+		},
+		{
+			"type": "row",
+			"title": "執行環境（Node.js）",
+			"id": 31,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 97
+			},
+			"panels": []
+		},
+		{
+			"type": "timeseries",
+			"title": "Event loop 延遲（p99）",
+			"description": "請求變慢但 trace 裡每一段都不長時，通常是 event loop 被同步工作塞住了。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "max by (service_name) (nodejs_eventloop_delay_p99_seconds{service_namespace=\"huan\", deployment_environment_name=\"$env\"})",
+					"legendFormat": "{{service_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 0,
+				"y": 98
+			},
+			"id": 32
+		},
+		{
+			"type": "timeseries",
+			"title": "Heap 使用量",
+			"description": "只增不減代表有東西沒被釋放。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (service_name) (v8js_memory_heap_used_bytes{service_namespace=\"huan\", deployment_environment_name=\"$env\"})",
+					"legendFormat": "{{service_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "bytes",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 8,
+				"y": 98
+			},
+			"id": 33
+		},
+		{
+			"type": "timeseries",
+			"title": "GC 佔用時間",
+			"description": "每秒有多少比例花在垃圾回收。",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "huan-prometheus"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "prometheus",
+						"uid": "huan-prometheus"
+					},
+					"refId": "A",
+					"expr": "sum by (service_name) (rate(v8js_gc_duration_seconds_sum{service_namespace=\"huan\", deployment_environment_name=\"$env\"}[$__rate_interval]))",
+					"legendFormat": "{{service_name}}",
+					"range": true,
+					"instant": false
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit",
+					"custom": {
+						"drawStyle": "line",
+						"lineWidth": 1,
+						"fillOpacity": 10,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "none",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": []
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 8,
+				"x": 16,
+				"y": 98
+			},
+			"id": 34
+		},
+		{
+			"type": "row",
+			"title": "日誌",
+			"id": 35,
+			"collapsed": false,
+			"gridPos": {
+				"h": 1,
+				"w": 24,
+				"x": 0,
+				"y": 106
+			},
+			"panels": []
+		},
+		{
+			"type": "timeseries",
+			"title": "日誌量（依等級）",
+			"description": "",
+			"datasource": {
+				"type": "loki",
+				"uid": "huan-loki"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "loki",
+						"uid": "huan-loki"
+					},
+					"refId": "A",
+					"expr": "sum by (detected_level) (count_over_time({service_namespace=\"huan\", deployment_environment_name=\"$env\"} [$__auto]))",
+					"legendFormat": "{{detected_level}}",
+					"queryType": "range"
+				}
+			],
+			"fieldConfig": {
+				"defaults": {
+					"unit": "none",
+					"custom": {
+						"drawStyle": "bars",
+						"lineWidth": 1,
+						"fillOpacity": 80,
+						"showPoints": "never",
+						"spanNulls": true,
+						"axisSoftMin": 0,
+						"stacking": {
+							"mode": "normal",
+							"group": "A"
+						}
+					},
+					"color": {
+						"mode": "palette-classic"
+					}
+				},
+				"overrides": [
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "info"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "green"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "warn"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "orange"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "error"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "red"
+								}
+							}
+						]
+					},
+					{
+						"matcher": {
+							"id": "byName",
+							"options": "fatal"
+						},
+						"properties": [
+							{
+								"id": "color",
+								"value": {
+									"mode": "fixed",
+									"fixedColor": "purple"
+								}
+							}
+						]
+					}
+				]
+			},
+			"options": {
+				"legend": {
+					"displayMode": "table",
+					"placement": "bottom",
+					"calcs": ["mean", "max"],
+					"showLegend": true
+				},
+				"tooltip": {
+					"mode": "multi",
+					"sort": "desc"
+				}
+			},
+			"gridPos": {
+				"h": 6,
+				"w": 24,
+				"x": 0,
+				"y": 107
+			},
+			"id": 36
+		},
+		{
+			"type": "logs",
+			"title": "全部日誌",
+			"description": "上方「日誌搜尋」可以輸入關鍵字（例如素材 ID、裝置 ID、reqId）。",
+			"datasource": {
+				"type": "loki",
+				"uid": "huan-loki"
+			},
+			"targets": [
+				{
+					"datasource": {
+						"type": "loki",
+						"uid": "huan-loki"
+					},
+					"refId": "A",
+					"expr": "{service_namespace=\"huan\", deployment_environment_name=\"$env\", service_name=~\"$service\"} |= `$search`",
+					"queryType": "range"
+				}
+			],
+			"options": {
+				"showTime": true,
+				"wrapLogMessage": true,
+				"enableLogDetails": true,
+				"sortOrder": "Descending",
+				"dedupStrategy": "none",
+				"prettifyLogMessage": false,
+				"showLabels": false,
+				"showCommonLabels": false,
+				"enableInfiniteScrolling": true
+			},
+			"gridPos": {
+				"h": 14,
+				"w": 24,
+				"x": 0,
+				"y": 113
+			},
+			"id": 37
+		}
+	]
+}

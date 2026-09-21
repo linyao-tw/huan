@@ -1,0 +1,85 @@
+# HUAN 的三個資料來源，彼此互相連結：
+#   trace → 同一段時間、同一個 trace_id 的 log，以及那個服務的請求率與延遲
+#   log   → 從 trace_id 直接開 trace
+#   指標  → 延遲圖上的 exemplar 點直接開 trace
+#
+# 網址是 huan-observability 那組容器的名稱，Grafana 要和它們在同一個 Docker 網路上。
+# 這個檔案由 Grafana 的 provisioning 讀取，`$` 要寫成 `$$`，否則會被當成環境變數展開。
+apiVersion: 1
+
+datasources:
+  - name: HUAN Traces
+    uid: huan-tempo
+    type: tempo
+    access: proxy
+    url: http://huan-tempo:3200
+    editable: false
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: huan-loki
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        filterByTraceID: true
+        filterBySpanID: false
+        tags:
+          - key: service.name
+            value: service_name
+      tracesToMetrics:
+        datasourceUid: huan-prometheus
+        spanStartTimeShift: "-15m"
+        spanEndTimeShift: "15m"
+        tags:
+          - key: service.name
+            value: service
+        queries:
+          - name: 這個 span 的每秒次數
+            query: sum(rate(traces_spanmetrics_calls_total{$$__tags, span_name="$${__span.name}"}[5m]))
+          - name: 這個 span 的 p95 延遲
+            query: histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{$$__tags, span_name="$${__span.name}"}[5m])))
+      serviceMap:
+        datasourceUid: huan-prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      traceQuery:
+        timeShiftEnabled: true
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+      streamingEnabled:
+        search: true
+        metrics: true
+
+  - name: HUAN Logs
+    uid: huan-loki
+    type: loki
+    access: proxy
+    url: http://huan-loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+      # OTLP 送來的 trace_id 存在結構化 metadata，不是 log 內文，所以用 label 比對，不用正規表示式。
+      derivedFields:
+        - name: trace_id
+          matcherType: label
+          matcherRegex: trace_id
+          datasourceUid: huan-tempo
+          url: "$${__value.raw}"
+          urlDisplayLabel: 開啟 trace
+
+  - name: HUAN Metrics
+    uid: huan-prometheus
+    type: prometheus
+    access: proxy
+    url: http://huan-prometheus:9090
+    editable: false
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      prometheusVersion: 3.14.0
+      # 應用程式每 30 秒匯出一次；比這短的間隔只會畫出一格一格的階梯。
+      timeInterval: 30s
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: huan-tempo
+          urlDisplayLabel: 開啟 trace

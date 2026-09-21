@@ -1,0 +1,60 @@
+// HUAN 的 OTLP 收件口。
+//
+// server 與 worker 用 OpenTelemetry SDK 直接把三種訊號送到這裡，這裡只做批次與分流：
+// trace → Tempo、log → Loki、metric → Prometheus。沒有取樣也沒有改寫——HUAN 的流量
+// 小到全收都沒有負擔，而少收的那一筆往往正是要查的那一筆。
+
+otelcol.receiver.otlp "huan" {
+	http {
+		endpoint = "0.0.0.0:4318"
+	}
+
+	output {
+		metrics = [otelcol.processor.memory_limiter.huan.input]
+		logs    = [otelcol.processor.memory_limiter.huan.input]
+		traces  = [otelcol.processor.memory_limiter.huan.input]
+	}
+}
+
+// 後端卡住時先擋住收件，不要讓 Alloy 自己把記憶體吃光、連帶影響 emfox 上的其他服務。
+otelcol.processor.memory_limiter "huan" {
+	check_interval = "1s"
+	limit          = "512MiB"
+	spike_limit    = "128MiB"
+
+	output {
+		metrics = [otelcol.processor.batch.huan.input]
+		logs    = [otelcol.processor.batch.huan.input]
+		traces  = [otelcol.processor.batch.huan.input]
+	}
+}
+
+otelcol.processor.batch "huan" {
+	output {
+		metrics = [otelcol.exporter.otlphttp.prometheus.input]
+		logs    = [otelcol.exporter.otlphttp.loki.input]
+		traces  = [otelcol.exporter.otlp.tempo.input]
+	}
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "huan-tempo:4317"
+
+		tls {
+			insecure = true
+		}
+	}
+}
+
+otelcol.exporter.otlphttp "loki" {
+	client {
+		endpoint = "http://huan-loki:3100/otlp"
+	}
+}
+
+otelcol.exporter.otlphttp "prometheus" {
+	client {
+		endpoint = "http://huan-prometheus:9090/api/v1/otlp"
+	}
+}
