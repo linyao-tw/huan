@@ -1,5 +1,6 @@
 import { buildServer } from "@/app";
 import { loadEnv, loadEnvFile } from "@/env";
+import { registerBusinessMetrics } from "@/lib/metrics";
 import { EnvValidationError } from "@huan/config";
 
 async function main(): Promise<void> {
@@ -17,6 +18,7 @@ async function main(): Promise<void> {
 	}
 
 	const app = await buildServer({ env });
+	registerBusinessMetrics(app.ctx);
 
 	/**
 	 * 先停止接受新請求，再關閉連線池。

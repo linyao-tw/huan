@@ -35,6 +35,17 @@ RUN corepack enable
 WORKDIR /app
 COPY --from=builder --chown=node:node /app /app
 
+# OpenTelemetry 要在應用程式之前載入，才攔得到 http、pino 與 AWS SDK。
+# 用 NODE_OPTIONS 而不是寫進 CMD：Zeabur 會用自己的啟動指令覆蓋 CMD，環境變數不受影響。
+# 同一個容器裡的其他 node 行程（migration、健康檢查）也會載入它，但只有主程式會真的啟動；
+# 沒有設定 OTEL_EXPORTER_OTLP_ENDPOINT 時什麼都不做。
+ENV NODE_OPTIONS="--import=/app/apps/server/dist/instrumentation.js"
+
+# 放在最後：每個 commit 都不同，放前面會讓後面每一層的快取都失效。
+# 它會成為 trace 與指標上的 service.version，查「這個錯誤是哪一版開始的」用得到。
+ARG HUAN_VERSION=dev
+ENV HUAN_VERSION=${HUAN_VERSION}
+
 # 以非 root 執行。Server 只需要讀取自己的檔案，不需要任何寫入權限。
 USER node
 

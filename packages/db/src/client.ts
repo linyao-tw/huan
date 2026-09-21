@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema.js";
+import { traceQueries } from "./tracing.js";
 
 export type Database = ReturnType<typeof createDatabase>["db"];
 
@@ -18,6 +19,7 @@ export interface DatabaseOptions {
  * 少了它，`vitest` 會因為還有開著的 socket 而卡住不退出。
  */
 export function createDatabase({ url, max = 10, onNotice }: DatabaseOptions) {
+	traceQueries();
 	const sql = postgres(url, {
 		max,
 		onnotice: onNotice ?? (() => {}),

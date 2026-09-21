@@ -9,9 +9,12 @@ import type { ObjectStorage } from "@/storage";
 import type { WorkerEnv } from "@huan/config";
 import type { Database } from "@huan/db";
 import type { WorkerJobKind } from "@huan/protocol";
+import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+const tracer = trace.getTracer("huan-worker");
 
 /** 卡住的工作要多久掃一次。比 stale 門檻密集得多，被砍掉的工作才不會等上半小時。 */
 const DEFAULT_STALE_SWEEP_INTERVAL_MS = 60_000;
@@ -118,33 +121,45 @@ export class WorkerRunner {
 		return claimed;
 	}
 
+	/**
+	 * 每個工作一段 span，底下每個步驟（見 `runStep`）各一段子 span。
+	 *
+	 * 取件的查詢刻意留在 span 外面：它每兩秒就跑一次，放進來的話每筆工作的 trace 前面都會
+	 * 先掛一段毫無資訊的輪詢。工作裡的日誌都在這段 span 裡，會自動帶上同一個 trace_id。
+	 */
 	private async runJob(job: ClaimedJob): Promise<void> {
-		const logger = this.options.logger.child({ jobId: job.id, assetId: job.assetId, kind: job.kind, attempt: job.attempt });
-		const startedAt = Date.now();
-		const workDir = await mkdtemp(join(this.tmpRoot, "huan-job-"));
-		logger.info("開始處理工作");
+		const attributes = { "huan.job.kind": job.kind, "huan.job.id": job.id, "huan.job.attempt": job.attempt, ...(job.assetId ? { "huan.asset.id": job.assetId } : {}) };
+		await tracer.startActiveSpan(`worker.job ${job.kind}`, { kind: SpanKind.CONSUMER, attributes }, async span => {
+			const logger = this.options.logger.child({ jobId: job.id, assetId: job.assetId, kind: job.kind, attempt: job.attempt });
+			const startedAt = Date.now();
+			const workDir = await mkdtemp(join(this.tmpRoot, "huan-job-"));
+			logger.info("開始處理工作");
 
-		try {
-			const handler: JobHandler | undefined = this.handlers[job.kind];
-			if (!handler) throw new JobError(`未知的工作類型 ${job.kind}`, USER_MESSAGES.unexpected);
-			await handler({
-				db: this.options.db,
-				storage: this.options.storage,
-				binaries: this.binaries,
-				env: this.options.env,
-				logger,
-				job,
-				workDir
-			});
-			await this.options.queue.markSuccess(job.id);
-			logger.info({ durationMs: Date.now() - startedAt }, "工作完成");
-		} catch (error) {
-			await this.handleFailure(job, logger, error);
-		} finally {
-			await rm(workDir, { recursive: true, force: true }).catch((error: unknown) => {
-				logger.warn({ err: describeError(error) }, "清除暫存目錄失敗");
-			});
-		}
+			try {
+				const handler: JobHandler | undefined = this.handlers[job.kind];
+				if (!handler) throw new JobError(`未知的工作類型 ${job.kind}`, USER_MESSAGES.unexpected);
+				await handler({
+					db: this.options.db,
+					storage: this.options.storage,
+					binaries: this.binaries,
+					env: this.options.env,
+					logger,
+					job,
+					workDir
+				});
+				await this.options.queue.markSuccess(job.id);
+				logger.info({ durationMs: Date.now() - startedAt }, "工作完成");
+			} catch (error) {
+				span.setStatus({ code: SpanStatusCode.ERROR, message: describeError(error) });
+				if (error instanceof Error) span.recordException(error);
+				await this.handleFailure(job, logger, error);
+			} finally {
+				await rm(workDir, { recursive: true, force: true }).catch((error: unknown) => {
+					logger.warn({ err: describeError(error) }, "清除暫存目錄失敗");
+				});
+				span.end();
+			}
+		});
 	}
 
 	private async handleFailure(job: ClaimedJob, logger: WorkerLogger, error: unknown): Promise<void> {

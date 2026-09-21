@@ -53,7 +53,9 @@ packages/
   layout-engine/ @huan/layout-engine — 分割樹幾何與樹狀操作
   config/        @huan/config — 環境變數結構
   device-core/   @huan/device-core — 裝置同步引擎（Electron 與模擬裝置共用）
+  telemetry/     @huan/telemetry — OpenTelemetry SDK 啟動（server 與 worker 共用）
 docker/          compose.yaml 與各服務的 Dockerfile
+  observability/ 選配的 Tempo／Loki／Prometheus 收件端與 Grafana 儀表板
 scripts/         開發與發布腳本
 ```
 
@@ -214,6 +216,7 @@ pnpm docs:screenshots
 - 密碼使用 Argon2id，絕不明文儲存。
 - 瀏覽器登入狀態使用 HttpOnly + SameSite cookie 承載不透明 session token；長期憑證不放 localStorage。
 - 稽核日誌與應用程式日誌**絕不**寫入密碼、TOTP 密鑰、復原碼、session token、裝置憑證或簽章網址的查詢字串。
+- 同一條規則適用於 OpenTelemetry 的 span 與指標屬性：不記查詢字串、SQL 參數、標頭與內文，路徑上的祕密（例如配對碼）要遮掉。span 名稱與指標標籤不放會無限增長的值（素材 ID、請求 ID），那些放在 span 的 attribute。
 - FFmpeg 一律以 `spawn` 加參數陣列呼叫，不拼接 shell 字串。
 - 上傳的 HTML 只能在 sandbox iframe 中執行，不得取得任何 Node 或 Electron API。
 - Electron 維持 `nodeIntegration: false`、`contextIsolation: true`、`sandbox: true`，preload 只暴露最小介面。播放 HTML 不是關閉這些設定的理由。

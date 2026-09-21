@@ -49,6 +49,8 @@ jobs:
           # Zeabur 的 OVH 專屬伺服器是 x86_64，只需要 amd64。
           platforms: linux/amd64
           push: true
+          build-args: |
+            HUAN_VERSION=${{ github.sha }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/huan-${{ matrix.name }}:latest
             ghcr.io/${{ github.repository_owner }}/huan-${{ matrix.name }}:${{ github.sha }}

@@ -2,7 +2,10 @@ import { JobError, USER_MESSAGES, describeError } from "@/errors";
 import { FfmpegError, ffprobe } from "@/ffmpeg";
 import type { JobContext } from "@/jobs/types";
 import { StorageError } from "@/storage";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { stat } from "node:fs/promises";
+
+const tracer = trace.getTracer("huan-worker");
 
 export function requireAssetId(context: JobContext): string {
 	const assetId = context.job.assetId;
@@ -15,8 +18,25 @@ export function requireAssetId(context: JobContext): string {
  *
  * FFmpeg 的 stderr 與物件鍵只寫進結構化日誌；丟給上層的 `JobError` 只帶一句
  * 可以直接顯示給使用者的中文說明。
+ *
+ * 每個步驟也是一段 span：一支影片轉了三分鐘，要看得出是下載、產生預覽還是
+ * 產生播放版本卡住。
  */
 export async function runStep<T>(context: JobContext, step: string, userMessage: string, action: () => Promise<T>): Promise<T> {
+	return tracer.startActiveSpan(step, async span => {
+		try {
+			return await runStepUntraced(context, step, userMessage, action);
+		} catch (error) {
+			span.setStatus({ code: SpanStatusCode.ERROR, message: step });
+			if (error instanceof Error) span.recordException(error);
+			throw error;
+		} finally {
+			span.end();
+		}
+	});
+}
+
+async function runStepUntraced<T>(context: JobContext, step: string, userMessage: string, action: () => Promise<T>): Promise<T> {
 	try {
 		return await action();
 	} catch (error) {

@@ -7,6 +7,8 @@ allowBuilds:
   electron: true
   electron-winstaller: false
   esbuild: true
+  # OTLP protobuf 匯出器的相依；它的 postinstall 只做版本檢查，執行期用不到。
+  protobufjs: false
   sharp: true
 
 minimumReleaseAgeExclude:

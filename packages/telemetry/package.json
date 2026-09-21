@@ -1,0 +1,43 @@
+{
+	"name": "@huan/telemetry",
+	"version": "0.1.0",
+	"private": true,
+	"description": "HUAN Server 與 Worker 共用的 OpenTelemetry 啟動：trace、log、metric 以 OTLP 送出",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"clean": "rm -rf dist",
+		"test": "vitest run",
+		"typecheck": "tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"@opentelemetry/api": "1.9.1",
+		"@opentelemetry/exporter-logs-otlp-proto": "0.222.0",
+		"@opentelemetry/exporter-metrics-otlp-proto": "0.222.0",
+		"@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
+		"@opentelemetry/instrumentation": "0.222.0",
+		"@opentelemetry/instrumentation-aws-sdk": "0.77.0",
+		"@opentelemetry/instrumentation-http": "0.222.0",
+		"@opentelemetry/instrumentation-pino": "0.68.0",
+		"@opentelemetry/instrumentation-runtime-node": "0.35.0",
+		"@opentelemetry/resources": "2.11.0",
+		"@opentelemetry/sdk-logs": "0.222.0",
+		"@opentelemetry/sdk-metrics": "2.11.0",
+		"@opentelemetry/sdk-node": "0.222.0",
+		"@opentelemetry/sdk-trace-base": "2.11.0",
+		"@opentelemetry/semantic-conventions": "1.43.0",
+		"import-in-the-middle": "3.5.1"
+	}
+}

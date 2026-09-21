@@ -1,6 +1,8 @@
 import { createContext, type AppContext } from "@/context";
 import { loadEnv } from "@/env";
 import { clientIp } from "@/lib/request-ip";
+import { recordRouteForTelemetry } from "@/lib/telemetry";
+import { sanitizeLoggedUrl } from "@/lib/url-safety";
 import { registerDocs } from "@/plugins/docs";
 import { registerErrorHandler, sendNotFound } from "@/plugins/error-handler";
 import { DEFAULT_RATE_LIMITS, registerRateLimit, type RateLimitTuning } from "@/plugins/rate-limit";
@@ -44,19 +46,6 @@ export interface BuildServerOptions {
  * 因為連「這個請求有帶 cookie」都不是日誌需要知道的事。
  */
 const REDACT_PATHS = ["req.headers.cookie", "req.headers.authorization", 'req.headers["x-huan-pairing-token"]', 'res.headers["set-cookie"]'];
-
-/**
- * 請求 URL 進日誌前先洗掉祕密。
- *
- * 查詢字串裡可能帶著裝置 token 或簽章網址的簽名，路徑上的配對碼本身就是祕密。
- * 路由層的日誌只需要知道打了哪個端點，不需要那些值，因此整段查詢字串直接丟掉，
- * 再把 `/pairing/<code>` 的配對碼遮成 `***`（只遮後台那條，裝置端的 pairing 路徑
- * 沒有把碼放在網址上）。
- */
-function sanitizeLoggedUrl(url: string): string {
-	const path = url.split("?")[0] ?? url;
-	return path.replace(/(\/api\/v1\/pairing\/)[^/]+/, "$1***");
-}
 
 /**
  * 把 `TRUST_PROXY` 字串轉成 Fastify 認得的形態。
@@ -116,6 +105,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Hua
 	app.setValidatorCompiler(validatorCompiler);
 	app.setSerializerCompiler(serializerCompiler);
 	registerErrorHandler(app);
+	app.addHook("onRequest", recordRouteForTelemetry);
 
 	await app.register(fastifyCookie);
 	await app.register(fastifyCors, { origin: env.CORS_ORIGINS, credentials: true });
