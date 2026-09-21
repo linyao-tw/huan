@@ -417,7 +417,7 @@
 		},
 		{
 			"type": "stat",
-			"title": "轉檔失敗（這段時間）",
+			"title": "轉檔失敗",
 			"description": "時間範圍內失敗的轉檔工作次數（含會重試的那幾次）。",
 			"datasource": {
 				"type": "prometheus",
@@ -815,7 +815,8 @@
 						"stacking": {
 							"mode": "none",
 							"group": "A"
-						}
+						},
+						"axisSoftMax": 0.05
 					},
 					"color": {
 						"mode": "palette-classic"
@@ -1088,6 +1089,10 @@
 							{
 								"id": "decimals",
 								"value": 0
+							},
+							{
+								"id": "custom.width",
+								"value": 100
 							}
 						]
 					},
@@ -1097,6 +1102,10 @@
 							"options": "5xx"
 						},
 						"properties": [
+							{
+								"id": "custom.width",
+								"value": 90
+							},
 							{
 								"id": "unit",
 								"value": "percentunit"
@@ -1140,6 +1149,10 @@
 						},
 						"properties": [
 							{
+								"id": "custom.width",
+								"value": 90
+							},
+							{
 								"id": "unit",
 								"value": "percentunit"
 							},
@@ -1156,6 +1169,10 @@
 						},
 						"properties": [
 							{
+								"id": "custom.width",
+								"value": 110
+							},
+							{
 								"id": "unit",
 								"value": "s"
 							}
@@ -1167,6 +1184,10 @@
 							"options": "p95"
 						},
 						"properties": [
+							{
+								"id": "custom.width",
+								"value": 110
+							},
 							{
 								"id": "unit",
 								"value": "s"
@@ -1205,6 +1226,10 @@
 							"options": "p99"
 						},
 						"properties": [
+							{
+								"id": "custom.width",
+								"value": 110
+							},
 							{
 								"id": "unit",
 								"value": "s"
@@ -1579,7 +1604,7 @@
 		{
 			"type": "timeseries",
 			"title": "資料庫與 S3 錯誤",
-			"description": "查詢失敗或 S3 回錯誤。平常應該是一條貼地的線。",
+			"description": "查詢失敗或 S3 回錯誤。",
 			"datasource": {
 				"type": "prometheus",
 				"uid": "huan-prometheus"
@@ -1614,7 +1639,8 @@
 					},
 					"color": {
 						"mode": "palette-classic"
-					}
+					},
+					"noValue": "沒有錯誤"
 				},
 				"overrides": []
 			},
@@ -1689,7 +1715,8 @@
 					},
 					"color": {
 						"mode": "palette-classic"
-					}
+					},
+					"noValue": "這段時間沒有轉檔工作"
 				},
 				"overrides": []
 			},
@@ -1762,7 +1789,8 @@
 					},
 					"color": {
 						"mode": "palette-classic"
-					}
+					},
+					"noValue": "這段時間沒有轉檔工作"
 				},
 				"overrides": []
 			},
@@ -1824,7 +1852,8 @@
 					},
 					"color": {
 						"mode": "palette-classic"
-					}
+					},
+					"noValue": "這段時間沒有轉檔工作"
 				},
 				"overrides": []
 			},
@@ -2340,7 +2369,7 @@
 		{
 			"type": "timeseries",
 			"title": "Event loop 延遲（p99）",
-			"description": "請求變慢但 trace 裡每一段都不長時，通常是 event loop 被同步工作塞住了。",
+			"description": "event loop 被同步工作卡住多久（已扣掉 10ms 的取樣間隔）。請求變慢但 trace 裡每一段都不長時，答案通常在這裡。",
 			"datasource": {
 				"type": "prometheus",
 				"uid": "huan-prometheus"
@@ -2352,7 +2381,7 @@
 						"uid": "huan-prometheus"
 					},
 					"refId": "A",
-					"expr": "max by (service_name) (nodejs_eventloop_delay_p99_seconds{service_namespace=\"huan\", deployment_environment_name=\"$env\"})",
+					"expr": "clamp_min(max by (service_name) (nodejs_eventloop_delay_p99_seconds{service_namespace=\"huan\", deployment_environment_name=\"$env\"}) - 0.01, 0)",
 					"legendFormat": "{{service_name}}",
 					"range": true,
 					"instant": false
