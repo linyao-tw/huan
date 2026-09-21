@@ -26,6 +26,8 @@ export interface AssetPickerProps {
 	/** 多選模式會出現勾選框與「全選」；單選模式是一組單選鈕。 */
 	multiple?: boolean;
 	initialSelectedIds?: readonly string[];
+	/** 最多能確定幾個。超過時確定鈕停用並說明原因，而不是讓呼叫端拿到一份存不進去的清單。 */
+	maxSelection?: number;
 	confirmLabel?: string;
 	onConfirm: (assets: MediaAsset[]) => void;
 }
@@ -80,7 +82,7 @@ function AssetPreview({ asset }: { asset: MediaAsset | null }) {
 	);
 }
 
-export function AssetPicker({ open, onOpenChange, title, description, kinds, multiple = false, initialSelectedIds, confirmLabel = "選好了", onConfirm }: AssetPickerProps) {
+export function AssetPicker({ open, onOpenChange, title, description, kinds, multiple = false, initialSelectedIds, maxSelection, confirmLabel = "選好了", onConfirm }: AssetPickerProps) {
 	const queryClient = useQueryClient();
 	const folders = useMediaFoldersQuery();
 	const folderItems = useMemo(() => folders.data?.items ?? [], [folders.data]);
@@ -140,6 +142,8 @@ export function AssetPicker({ open, onOpenChange, title, description, kinds, mul
 	};
 
 	const allListedSelected = assets.length > 0 && assets.every(asset => selected.has(asset.id));
+	/** 超過上限不清掉使用者的選擇：他自己決定要拿掉哪幾個，比系統替他砍掉安全。 */
+	const overLimit = maxSelection !== undefined && selected.size > maxSelection;
 
 	const toggleAllListed = (checked: boolean): void => {
 		setSelected(current => {
@@ -317,11 +321,16 @@ export function AssetPicker({ open, onOpenChange, title, description, kinds, mul
 						</Dialog.Body>
 						<Dialog.Footer>
 							<span className="huan-picker__count">
-								<Badge variant={selected.size > 0 ? "accent" : "neutral"}>已選 {selected.size} 個</Badge>
+								<Badge variant={overLimit ? "danger" : selected.size > 0 ? "accent" : "neutral"}>已選 {selected.size} 個</Badge>
+								{overLimit ? (
+									<span className="huan-caption">
+										最多 {maxSelection} 個，請先取消 {selected.size - (maxSelection ?? 0)} 個
+									</span>
+								) : null}
 							</span>
 							<Dialog.Close render={<Button variant="secondary">取消</Button>} />
 							<Button
-								disabled={selected.size === 0}
+								disabled={selected.size === 0 || overLimit}
 								onClick={() => {
 									onConfirm([...selected.values()]);
 									onOpenChange(false);

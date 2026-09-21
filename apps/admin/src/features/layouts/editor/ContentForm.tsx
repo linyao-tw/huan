@@ -4,6 +4,7 @@ import { ColorControl } from "@/shared/components/ColorControl";
 import {
 	ExternalUrlSchema,
 	PLAYLIST_MAX_IMAGE_DURATION_MS,
+	PLAYLIST_MAX_ITEMS,
 	PLAYLIST_MIN_IMAGE_DURATION_MS,
 	type MediaAsset,
 	type MediaKind,
@@ -212,6 +213,7 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 				description="可以一次勾很多個，也可以把整個資料夾一次加進來。順序照勾選的清單排，加完再上下調整。"
 				kinds={["image", "video"]}
 				multiple
+				maxSelection={PLAYLIST_MAX_ITEMS - content.items.length}
 				confirmLabel="加入清單"
 				onConfirm={addMany}
 			/>

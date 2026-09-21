@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ColorSchema, ExternalUrlSchema, TimeZoneSchema } from "./common.js";
 import { DesiredStateSchema, PairingCodeSchema } from "./device.js";
-import { LayoutDocumentSchema, PLAYLIST_DEFAULT_IMAGE_DURATION_MS } from "./layout.js";
+import { LayoutDocumentSchema, PLAYLIST_DEFAULT_IMAGE_DURATION_MS, PLAYLIST_MAX_ITEMS } from "./layout.js";
 import { CreateScheduleRequestSchema } from "./schedule.js";
 import { PasswordSchema, UsernameSchema } from "./user.js";
 
@@ -167,6 +167,17 @@ describe("LayoutDocumentSchema", () => {
 		/** 停留秒數改成整份清單共用，舊文件裡的逐則秒數會被丟掉，回到預設值。 */
 		expect(content?.type === "playlist" && content.imageDurationMs).toBe(PLAYLIST_DEFAULT_IMAGE_DURATION_MS);
 		expect(content?.type === "playlist" && content.items[0]).toEqual({ assetId: "11111111-1111-4111-8111-111111111111", kind: "image" });
+	});
+
+	it("容得下整個資料夾一次加進來的量", () => {
+		const items = Array.from({ length: 120 }, (_, index) => ({ assetId: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`, kind: "image" }));
+		const parsed = LayoutDocumentSchema.parse({ ...base, root: { type: "slot", id: "s1", content: { type: "playlist", items } } });
+		expect(parsed.root.type === "slot" && parsed.root.content?.type === "playlist" && parsed.root.content.items).toHaveLength(120);
+	});
+
+	it("超過上限還是擋下來，避免一個區塊把整個素材庫倒進去", () => {
+		const items = Array.from({ length: PLAYLIST_MAX_ITEMS + 1 }, (_, index) => ({ assetId: `11111111-1111-4111-8111-${String(index).padStart(12, "0")}`, kind: "image" }));
+		expect(() => LayoutDocumentSchema.parse({ ...base, root: { type: "slot", id: "s1", content: { type: "playlist", items } } })).toThrow();
 	});
 
 	it("拒絕沒有任何一則的空輪播", () => {

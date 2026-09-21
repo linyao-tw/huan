@@ -90,6 +90,15 @@ export const PlaylistItemSchema = z.object({
 });
 export type PlaylistItem = z.infer<typeof PlaylistItemSchema>;
 
+/**
+ * 一份輪播最多幾則。
+ *
+ * 限制的理由是派送：清單本身只是 id，但每一則都代表一個要下載到裝置上的檔案。
+ * 原本的 50 太緊——整個資料夾一次加進來，幾十張海報就滿了。500 則對現場排播
+ * 來說遠遠夠用，而且仍然攔得住「把整個素材庫倒進一個區塊」這種操作。
+ */
+export const PLAYLIST_MAX_ITEMS = 500;
+
 export const PLAYLIST_MIN_IMAGE_DURATION_MS = 1000;
 export const PLAYLIST_MAX_IMAGE_DURATION_MS = 10 * 60 * 1000;
 export const PLAYLIST_DEFAULT_IMAGE_DURATION_MS = 8000;
@@ -97,7 +106,7 @@ export const PLAYLIST_DEFAULT_IMAGE_DURATION_MS = 8000;
 export const PlaylistContentSchema = z.object({
 	type: z.literal("playlist"),
 	/** 依序輪播，播完最後一則回到第一則。 */
-	items: z.array(PlaylistItemSchema).min(1).max(50),
+	items: z.array(PlaylistItemSchema).min(1).max(PLAYLIST_MAX_ITEMS),
 	/**
 	 * 每張圖片停留多久，整份清單共用一個值。
 	 *
