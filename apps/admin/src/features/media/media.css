@@ -256,17 +256,37 @@
 	max-inline-size: min(76rem, 100%);
 }
 
-/* 格狀要的是寬度：縮圖一放大，清單那一欄就得分到大部分的空間，預覽窗格退到三分之一。 */
+/*
+ * 格狀要的是寬度：縮圖一放大，清單那一欄就得分到大部分的空間，預覽窗格退到三分之一。
+ *
+ * 高度固定，而且兩欄都 min-block-size: 0。對話框本體自己是 `overflow: auto`，
+ * 內容只要比它高就會長出第二條捲軸——捲外層和捲清單看起來一樣，但捲到的東西不同。
+ * 把整塊的高度釘死，外層就永遠不需要捲，只剩左邊的清單在捲。
+ */
 .huan-picker {
 	display: grid;
 	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 	gap: var(--space-4);
-	min-block-size: 24rem;
+	block-size: min(28rem, 50vh);
+	min-block-size: 0;
 }
 
 @media (max-width: 52rem) {
+	/*
+	 * 窄螢幕改成上下排，高度交還給內容：兩欄疊起來之後再釘死高度，清單和預覽會一起被壓扁。
+	 * 這時候由對話框本體捲，一樣只有一條捲軸。
+	 */
 	.huan-picker {
 		grid-template-columns: minmax(0, 1fr);
+		block-size: auto;
+	}
+
+	.huan-picker__scroll {
+		max-block-size: 60vh;
+	}
+
+	.huan-picker__preview-stage {
+		min-block-size: 12rem;
 	}
 
 	/* 窄螢幕上預覽排在清單後面，先看得到選項比先看得到預覽重要。 */
@@ -280,6 +300,7 @@
 	flex-direction: column;
 	gap: var(--space-3);
 	min-inline-size: 0;
+	min-block-size: 0;
 }
 
 .huan-picker__toolbar {
@@ -326,7 +347,9 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-3);
-	max-block-size: min(32rem, 60vh);
+	/* 吃掉工具列與全選之外剩下的高度；唯一的捲動範圍就是這裡。 */
+	flex: 1;
+	min-block-size: 0;
 	overflow-y: auto;
 	padding: var(--space-05);
 }
@@ -496,12 +519,17 @@
 	justify-content: center;
 }
 
+/* 預覽窗格不捲：它只有一張圖和幾行字，捲起來只會讓人以為自己在捲清單。 */
 .huan-picker__preview {
+	display: flex;
+	flex-direction: column;
 	border: var(--border-width-hairline) solid var(--divider-subtle);
 	border-radius: var(--radius-sm);
 	padding: var(--space-3);
 	background: var(--background-main);
 	min-inline-size: 0;
+	min-block-size: 0;
+	overflow: hidden;
 }
 
 .huan-picker__preview-empty {
@@ -509,7 +537,7 @@
 	align-items: center;
 	justify-content: center;
 	block-size: 100%;
-	min-block-size: 12rem;
+	min-block-size: 0;
 	text-align: center;
 }
 
@@ -518,10 +546,17 @@
 	flex-direction: column;
 	gap: var(--space-3);
 	min-inline-size: 0;
+	min-block-size: 0;
+	flex: 1;
 }
 
+/*
+ * 用剩下的高度，而不是固定的 16:9。
+ * 寫死長寬比的話，窗格一矮就撐破外框；素材本身的比例由 object-fit: contain 保住。
+ */
 .huan-picker__preview-stage {
-	aspect-ratio: 16 / 9;
+	flex: 1;
+	min-block-size: 0;
 	border-radius: var(--radius-sm);
 	background: var(--background-sunken);
 	overflow: hidden;
