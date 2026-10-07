@@ -11,6 +11,12 @@ body,
 	background: #000000;
 }
 
+/* 由 cursor.ts 在滑鼠閒置時加上；iframe 內的內容自己決定游標，這裡管不到也不該管。 */
+.huan-cursor-hidden,
+.huan-cursor-hidden * {
+	cursor: none !important;
+}
+
 .huan-stage {
 	position: relative;
 	width: 100vw;
