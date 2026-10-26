@@ -1,6 +1,7 @@
 import { contentForAsset } from "@/features/layouts/editor/content";
 import { Inspector } from "@/features/layouts/editor/Inspector";
 import { LayoutCanvas } from "@/features/layouts/editor/LayoutCanvas";
+import { LayoutPreviewDialog } from "@/features/layouts/editor/LayoutPreview";
 import { useDocumentHistory } from "@/features/layouts/editor/useDocumentHistory";
 import { useLayoutDetailQuery, usePublishLayoutMutation, useUpdateLayoutMutation } from "@/features/layouts/hooks";
 import "@/features/layouts/layouts.css";
@@ -15,6 +16,7 @@ import { ArrowClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowClockwis
 import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
 import { CloudCheckIcon } from "@phosphor-icons/react/dist/csr/CloudCheck";
 import { CloudWarningIcon } from "@phosphor-icons/react/dist/csr/CloudWarning";
+import { MonitorPlayIcon } from "@phosphor-icons/react/dist/csr/MonitorPlay";
 import { RocketLaunchIcon } from "@phosphor-icons/react/dist/csr/RocketLaunch";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router";
@@ -60,6 +62,9 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => collectSlots(layout.draft.root)[0]?.id ?? null);
 	const [publishOpen, setPublishOpen] = useState(false);
 	const [publishNote, setPublishNote] = useState("");
+	const [previewOpen, setPreviewOpen] = useState(false);
+	/** 輪播清單上點到哪一則，畫布就顯示哪一則；只記一個區塊，換區塊時自然回到第一則。 */
+	const [playlistFocus, setPlaylistFocus] = useState<{ slotId: string; index: number } | null>(null);
 
 	const savedSignature = useRef(`${layout.name} ${layout.description ?? ""} ${serializeLayoutDocument(layout.draft)}`);
 	const [saveState, setSaveState] = useState<SaveState>("saved");
@@ -198,6 +203,9 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 						<Button size="sm" variant="quiet" startIcon={<ArrowClockwiseIcon weight="bold" />} onClick={history.redo} disabled={!history.canRedo}>
 							重做
 						</Button>
+						<Button size="sm" variant="secondary" startIcon={<MonitorPlayIcon weight="bold" />} onClick={() => setPreviewOpen(true)}>
+							預覽
+						</Button>
 						<Button size="sm" startIcon={<RocketLaunchIcon weight="bold" />} onClick={() => setPublishOpen(true)} disabled={saveState === "invalid"}>
 							發布
 						</Button>
@@ -221,6 +229,7 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 							if (asset) applyDocument(current => setSlotContent(current, slotId, contentForAsset(asset)));
 						}}
 						onSwapSlots={(sourceId, targetId) => applyDocument(current => swapSlotContent(current, sourceId, targetId))}
+						playlistFocus={playlistFocus}
 					/>
 
 					{/* 提示原本是一整塊 Alert，在工作介面裡它每一次開啟都在跟畫布搶高度。 */}
@@ -250,8 +259,12 @@ function LayoutEditor({ layout }: { layout: LayoutDetail }) {
 					onRatioChange={(splitId, ratio) => applyDocument(current => setSplitRatio(current, splitId, ratio), `ratio-field:${splitId}`)}
 					onDirectionChange={(splitId, direction) => applyDocument(current => setSplitDirection(current, splitId, direction))}
 					onDocumentChange={updater => applyDocument(updater, "layout-settings")}
+					playlistIndex={playlistFocus !== null && playlistFocus.slotId === activeSlotId ? playlistFocus.index : 0}
+					onPlaylistIndexChange={index => activeSlotId && setPlaylistFocus({ slotId: activeSlotId, index })}
 				/>
 			</div>
+
+			<LayoutPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} document={history.document} assets={assetMap} />
 
 			<Dialog.Root open={publishOpen} onOpenChange={setPublishOpen}>
 				<Dialog.Portal>

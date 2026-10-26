@@ -496,14 +496,42 @@
 
 .huan-playlist__item {
 	display: grid;
-	/* 序號、縮圖、內容、操作。縮圖那一軌是 auto，沒有縮圖的舊資料也不會空出一塊。 */
-	grid-template-columns: auto auto minmax(0, 1fr) auto;
+	/* 「預覽這一則」的按鈕（序號、縮圖、內容）與操作。 */
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
 	gap: var(--space-2);
 	padding: var(--space-2);
 	border: var(--border-width-hairline) solid var(--divider-subtle);
 	border-radius: var(--radius-sm);
 	background: var(--background-main);
+}
+
+.huan-playlist__item[data-active] {
+	border-color: var(--control-primary);
+	box-shadow: 0 0 0 var(--border-width-hairline) var(--control-primary);
+}
+
+/* 序號、縮圖與名稱一起當成「預覽這一則」的按鈕，操作鈕留在外面各管各的。 */
+.huan-playlist__select {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: auto auto minmax(0, 1fr);
+	align-items: center;
+	gap: var(--space-2);
+	min-inline-size: 0;
+	text-align: start;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	border-radius: var(--radius-xs);
+}
+
+.huan-playlist__select:focus-visible {
+	outline: var(--border-width-strong) solid var(--focus-ring);
+	outline-offset: var(--space-05);
 }
 
 .huan-playlist__index {
@@ -602,4 +630,39 @@
 	block-size: 100%;
 	object-fit: cover;
 	display: block;
+}
+
+/* ── 版面預覽 ─────────────────────────────────────────────── */
+
+.huan-layout-preview__popup {
+	inline-size: min(80rem, 100%);
+	max-inline-size: min(80rem, 100%);
+}
+
+/*
+ * 黑底就是播放裝置在版面外露出來的樣子。高度由視窗扣掉對話框的標題列與按鈕列
+ * 決定，而不是跟著版面比例：直式版面照比例撐開會比螢幕還高，對話框就得捲動。
+ */
+.huan-layout-preview {
+	position: relative;
+	block-size: clamp(14rem, calc(100dvh - 27rem), 40rem);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	background: var(--palette-always-dark);
+}
+
+.huan-layout-preview:fullscreen {
+	block-size: 100%;
+	inline-size: 100%;
+	border-radius: 0;
+}
+
+.huan-layout-preview__viewport {
+	position: absolute;
+	inset: 0;
+}
+
+.huan-layout-preview__stage {
+	position: absolute;
+	overflow: hidden;
 }

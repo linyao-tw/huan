@@ -16,6 +16,8 @@ export interface LayoutCanvasProps {
 	onRatioChange: (nodeId: string, ratio: number, coalesceKey?: string) => void;
 	onDropAsset: (slotId: string, assetId: string) => void;
 	onSwapSlots: (sourceSlotId: string, targetSlotId: string) => void;
+	/** 輪播區塊在清單上被點到的那一則，畫布就顯示那一則。 */
+	playlistFocus?: { slotId: string; index: number } | null;
 }
 
 interface DropState {
@@ -23,7 +25,7 @@ interface DropState {
 	mode: "fill" | "swap";
 }
 
-function useViewportSize(ref: RefObject<HTMLDivElement | null>): { width: number; height: number } {
+export function useViewportSize(ref: RefObject<HTMLDivElement | null>): { width: number; height: number } {
 	const [size, setSize] = useState({ width: 0, height: 0 });
 
 	useEffect(() => {
@@ -42,7 +44,7 @@ function useViewportSize(ref: RefObject<HTMLDivElement | null>): { width: number
 	return size;
 }
 
-export function LayoutCanvas({ document: layoutDocument, assets, selectedNodeId, onSelectNode, onRatioChange, onDropAsset, onSwapSlots }: LayoutCanvasProps) {
+export function LayoutCanvas({ document: layoutDocument, assets, selectedNodeId, onSelectNode, onRatioChange, onDropAsset, onSwapSlots, playlistFocus = null }: LayoutCanvasProps) {
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const viewport = useViewportSize(viewportRef);
 	const [dropState, setDropState] = useState<DropState | null>(null);
@@ -107,7 +109,7 @@ export function LayoutCanvas({ document: layoutDocument, assets, selectedNodeId,
 							style={{ left: `${slot.x * fit.scale}px`, top: `${slot.y * fit.scale}px`, width: `${slot.width * fit.scale}px`, height: `${slot.height * fit.scale}px` }}
 						>
 							<div className="huan-canvas-slot__content">
-								<SlotPreview content={slot.content} assets={assets} scale={fit.scale} />
+								<SlotPreview content={slot.content} assets={assets} scale={fit.scale} playlistIndex={playlistFocus?.slotId === slot.nodeId ? playlistFocus.index : undefined} />
 							</div>
 
 							<button

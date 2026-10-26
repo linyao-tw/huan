@@ -1,5 +1,5 @@
 import "@/features/layouts/layouts.css";
-import type { MediaAsset, SlotContent, TickerContent } from "@huan/protocol";
+import type { MediaAsset, PlaylistContent, SlotContent, TickerContent } from "@huan/protocol";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 const ALIGN_TO_FLEX: Record<"start" | "center" | "end", CSSProperties["justifyContent"]> = { start: "flex-start", center: "center", end: "flex-end" };
@@ -10,6 +10,10 @@ export interface SlotPreviewProps {
 	assets: Map<string, MediaAsset>;
 	/** 設計 px → 畫面 px 的倍率。所有來自版面文件的長度都要乘上它才會與實機一致。 */
 	scale: number;
+	/** 編輯時在清單上點到的那一則；沒有指定就是第一則。 */
+	playlistIndex?: number | undefined;
+	/** 預覽模式：輪播真的會依秒數與影片長度往下換，跟實機一樣。 */
+	live?: boolean;
 }
 
 function TickerPreview({ content, scale }: { content: TickerContent; scale: number }) {
@@ -55,7 +59,62 @@ function TickerPreview({ content, scale }: { content: TickerContent; scale: numb
 	);
 }
 
-export function SlotPreview({ content, assets, scale }: SlotPreviewProps) {
+/**
+ * 編輯時顯示清單上點到的那一則，預覽模式才真的跑計時器。
+ *
+ * 換則的規則和播放器一致：圖片停 `imageDurationMs`，影片播完整段才換。只有一則
+ * 影片時直接循環，否則 `ended` 之後同一支影片不會再觸發任何事件，畫面會停在最後一格。
+ */
+function PlaylistPreview({ content, assets, index, live }: { content: PlaylistContent; assets: Map<string, MediaAsset>; index: number; live: boolean }) {
+	const [liveIndex, setLiveIndex] = useState(0);
+	const count = content.items.length;
+	const current = Math.min(Math.max(live ? liveIndex : index, 0), Math.max(count - 1, 0));
+	const item = content.items[current];
+	const asset = item ? assets.get(item.assetId) : undefined;
+	const advance = (): void => setLiveIndex(value => (count > 0 ? (value + 1) % count : 0));
+
+	/** 影片靠 `ended` 換下一則；預覽檔還沒產生的影片沒有 `ended` 可等，改用圖片的秒數，免得卡住。 */
+	const waitsForEnded = item?.kind === "video" && Boolean(asset?.previewUrl);
+
+	// 依賴 current 而不是 item：同一張圖連續出現在清單兩處時，計時器也要重新開始。
+	useEffect(() => {
+		if (!live || !item || waitsForEnded || count <= 1) return;
+		const timer = setTimeout(() => setLiveIndex(value => (value + 1) % count), content.imageDurationMs);
+		return () => clearTimeout(timer);
+	}, [live, item, waitsForEnded, current, count, content.imageDurationMs]);
+
+	return (
+		<div className="huan-preview-playlist" style={{ background: content.backgroundColor }}>
+			{asset?.previewUrl ? (
+				item?.kind === "video" ? (
+					<video
+						key={`${current}-${asset.id}`}
+						className="huan-preview-media"
+						src={asset.previewUrl}
+						style={{ objectFit: content.fit }}
+						muted
+						autoPlay
+						playsInline
+						loop={!live || count <= 1}
+						preload="metadata"
+						onEnded={live ? advance : undefined}
+					/>
+				) : (
+					<img className="huan-preview-media" src={asset.previewUrl} alt="" style={{ objectFit: content.fit }} />
+				)
+			) : (
+				<div className="huan-preview-placeholder">{item ? "預覽尚未產生" : "尚未加入素材"}</div>
+			)}
+			{live ? null : (
+				<span className="huan-preview-playlist__count">
+					輪播 · 第 {current + 1} / {count} 則
+				</span>
+			)}
+		</div>
+	);
+}
+
+export function SlotPreview({ content, assets, scale, playlistIndex, live = false }: SlotPreviewProps) {
 	if (!content) return null;
 
 	if (content.type === "text") {
@@ -105,25 +164,7 @@ export function SlotPreview({ content, assets, scale }: SlotPreviewProps) {
 		);
 	}
 
-	if (content.type === "playlist") {
-		/** 預覽只顯示第一則加上一個「共 N 則」的角標；實機才會依序輪播，編輯時不必真的跑計時器。 */
-		const first = content.items[0];
-		const asset = first ? assets.get(first.assetId) : undefined;
-		return (
-			<div className="huan-preview-playlist" style={{ background: content.backgroundColor }}>
-				{asset?.previewUrl ? (
-					first?.kind === "video" ? (
-						<video className="huan-preview-media" src={asset.previewUrl} style={{ objectFit: content.fit }} muted autoPlay playsInline loop preload="metadata" />
-					) : (
-						<img className="huan-preview-media" src={asset.previewUrl} alt="" style={{ objectFit: content.fit }} />
-					)
-				) : (
-					<div className="huan-preview-placeholder">{first ? "預覽尚未產生" : "尚未加入素材"}</div>
-				)}
-				<span className="huan-preview-playlist__count">輪播 · {content.items.length} 則</span>
-			</div>
-		);
-	}
+	if (content.type === "playlist") return <PlaylistPreview content={content} assets={assets} index={playlistIndex ?? 0} live={live} />;
 
 	if (content.type === "url") {
 		return <iframe className="huan-preview-frame" src={content.url} title="網頁內容預覽" sandbox="allow-scripts allow-same-origin" referrerPolicy="no-referrer" loading="lazy" />;

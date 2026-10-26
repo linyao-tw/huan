@@ -80,6 +80,8 @@ export interface InspectorProps {
 	onRatioChange: (splitId: string, ratio: number) => void;
 	onDirectionChange: (splitId: string, direction: SplitDirection) => void;
 	onDocumentChange: (updater: (current: LayoutDocument) => LayoutDocument) => void;
+	playlistIndex: number;
+	onPlaylistIndexChange: (index: number) => void;
 }
 
 export function Inspector({
@@ -93,7 +95,9 @@ export function Inspector({
 	onContentChange,
 	onRatioChange,
 	onDirectionChange,
-	onDocumentChange
+	onDocumentChange,
+	playlistIndex,
+	onPlaylistIndexChange
 }: InspectorProps) {
 	/** 已選型別但還沒挑素材時的暫存。綁在節點上，換區塊時就自然失效。 */
 	const [pending, setPending] = useState<{ nodeId: string; type: SlotContentType } | null>(null);
@@ -212,7 +216,14 @@ export function Inspector({
 								/>
 
 								{selectedSlot.content ? (
-									<ContentForm key={selectedSlot.nodeId} content={selectedSlot.content} assets={kindAssets} onChange={onContentChange} />
+									<ContentForm
+										key={selectedSlot.nodeId}
+										content={selectedSlot.content}
+										assets={kindAssets}
+										onChange={onContentChange}
+										playlistIndex={playlistIndex}
+										onPlaylistIndexChange={onPlaylistIndexChange}
+									/>
 								) : activeType === "playlist" ? (
 									playableAssets.length === 0 ? (
 										<Alert status="info">

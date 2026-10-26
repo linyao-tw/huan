@@ -45,6 +45,9 @@ export interface ContentFormProps {
 	content: SlotContent;
 	assets: MediaAsset[];
 	onChange: (next: SlotContent) => void;
+	/** 輪播清單上目前在畫布預覽的那一則。 */
+	playlistIndex?: number;
+	onPlaylistIndexChange?: (index: number) => void;
 }
 
 function SwitchRow({ label, description, checked, onCheckedChange }: { label: string; description?: string; checked: boolean; onCheckedChange: (checked: boolean) => void }) {
@@ -123,7 +126,19 @@ function TextStyleFields({ content, onChange }: { content: Extract<SlotContent, 
  * 人幾乎都讓每一則停一樣久，逐則設定只是把「改成 10 秒」變成要點很多次。影片不受它
  * 影響，一律播完整段才換。
  */
-function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent; assets: MediaAsset[]; onChange: (next: SlotContent) => void }) {
+function PlaylistForm({
+	content,
+	assets,
+	onChange,
+	previewIndex,
+	onPreviewIndexChange
+}: {
+	content: PlaylistContent;
+	assets: MediaAsset[];
+	onChange: (next: SlotContent) => void;
+	previewIndex: number;
+	onPreviewIndexChange: (index: number) => void;
+}) {
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const nameOf = new Map(assets.map(asset => [asset.id, asset.name]));
 	const thumbOf = new Map(assets.map(asset => [asset.id, asset.thumbnailUrl]));
@@ -136,11 +151,15 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 		if (target < 0 || target >= next.length) return;
 		[next[index], next[target]] = [next[target]!, next[index]!];
 		setItems(next);
+		// 畫布正在看的那一則被搬走時跟著它走，否則一按上下箭頭預覽就跳到別張。
+		if (previewIndex === index) onPreviewIndexChange(target);
+		else if (previewIndex === target) onPreviewIndexChange(index);
 	};
 
 	const remove = (index: number): void => {
 		if (content.items.length <= 1) return; // 至少留一則，否則會變成不合法的空輪播
 		setItems(content.items.filter((_item, current) => current !== index));
+		if (previewIndex >= index && previewIndex > 0) onPreviewIndexChange(previewIndex - 1);
 	};
 
 	/** 已經在清單裡的素材不重複加入：同一則連播兩次是輸入錯誤，不是需求。 */
@@ -155,22 +174,42 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 
 	return (
 		<div className="huan-stack">
+			{/* 設定放在清單上面：清單動輒幾十則，放下面就得捲過整串才找得到秒數。 */}
+			<NumberField
+				label="每張圖片停留秒數"
+				min={Math.round(PLAYLIST_MIN_IMAGE_DURATION_MS / 1000)}
+				max={Math.round(PLAYLIST_MAX_IMAGE_DURATION_MS / 1000)}
+				step={1}
+				value={Math.round(content.imageDurationMs / 1000)}
+				onValueChange={value => {
+					if (value === null) return;
+					onChange({ ...content, imageDurationMs: value * 1000 });
+				}}
+				description="整份清單共用這個秒數。影片不受影響，一律播完整段才換下一則。"
+			/>
+
+			<Select label="縮放方式" value={content.fit} onValueChange={value => value && onChange({ ...content, fit: value })} options={FIT_OPTIONS} />
+			<ColorControl label="背景色" value={content.backgroundColor} onChange={value => onChange({ ...content, backgroundColor: value })} description="素材沒填滿這一塊時，露出來的顏色。" />
+
 			<ol className="huan-playlist">
 				{content.items.map((item, index) => (
-					<li key={`${item.assetId}-${index}`} className="huan-playlist__item">
-						<span className="huan-playlist__index huan-numeric">{index + 1}</span>
-						<span className="huan-playlist__thumb">
-							{thumbOf.get(item.assetId) ? <img src={thumbOf.get(item.assetId) ?? ""} alt="" loading="lazy" /> : <ImagesSquareIcon weight="bold" aria-hidden="true" />}
-						</span>
-						<span className="huan-playlist__body">
-							<span className="huan-row huan-row--tight">
-								<Badge variant="neutral" size="sm">
-									{item.kind === "video" ? "影片" : "圖片"}
-								</Badge>
-								<span className="huan-truncate">{nameOf.get(item.assetId) ?? "素材已不存在"}</span>
+					<li key={`${item.assetId}-${index}`} className="huan-playlist__item" data-active={index === previewIndex || undefined}>
+						{/* 點一下就讓畫布切到這一則，看它在版面裡實際的樣子。 */}
+						<button type="button" className="huan-playlist__select" aria-pressed={index === previewIndex} aria-label={`在畫布上預覽第 ${index + 1} 則`} onClick={() => onPreviewIndexChange(index)}>
+							<span className="huan-playlist__index huan-numeric">{index + 1}</span>
+							<span className="huan-playlist__thumb">
+								{thumbOf.get(item.assetId) ? <img src={thumbOf.get(item.assetId) ?? ""} alt="" loading="lazy" /> : <ImagesSquareIcon weight="bold" aria-hidden="true" />}
 							</span>
-							<span className="huan-caption">{item.kind === "video" ? "播完整段才換" : `停留 ${Math.round(content.imageDurationMs / 1000)} 秒`}</span>
-						</span>
+							<span className="huan-playlist__body">
+								<span className="huan-row huan-row--tight huan-row--nowrap">
+									<Badge variant="neutral" size="sm">
+										{item.kind === "video" ? "影片" : "圖片"}
+									</Badge>
+									<span className="huan-truncate">{nameOf.get(item.assetId) ?? "素材已不存在"}</span>
+								</span>
+								<span className="huan-caption">{item.kind === "video" ? "播完整段才換" : `停留 ${Math.round(content.imageDurationMs / 1000)} 秒`}</span>
+							</span>
+						</button>
 						<span className="huan-playlist__actions">
 							<IconButton aria-label="往前移" variant="quiet" size="sm" disabled={index === 0} onClick={() => move(index, -1)}>
 								<ArrowUpIcon weight="bold" />
@@ -190,22 +229,6 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 				加入素材
 			</Button>
 
-			<NumberField
-				label="每張圖片停留秒數"
-				min={Math.round(PLAYLIST_MIN_IMAGE_DURATION_MS / 1000)}
-				max={Math.round(PLAYLIST_MAX_IMAGE_DURATION_MS / 1000)}
-				step={1}
-				value={Math.round(content.imageDurationMs / 1000)}
-				onValueChange={value => {
-					if (value === null) return;
-					onChange({ ...content, imageDurationMs: value * 1000 });
-				}}
-				description="整份清單共用這個秒數。影片不受影響，一律播完整段才換下一則。"
-			/>
-
-			<Select label="縮放方式" value={content.fit} onValueChange={value => value && onChange({ ...content, fit: value })} options={FIT_OPTIONS} />
-			<ColorControl label="背景色" value={content.backgroundColor} onChange={value => onChange({ ...content, backgroundColor: value })} description="素材沒填滿這一塊時，露出來的顏色。" />
-
 			<AssetPicker
 				open={pickerOpen}
 				onOpenChange={setPickerOpen}
@@ -221,7 +244,7 @@ function PlaylistForm({ content, assets, onChange }: { content: PlaylistContent;
 	);
 }
 
-export function ContentForm({ content, assets, onChange }: ContentFormProps) {
+export function ContentForm({ content, assets, onChange, playlistIndex = 0, onPlaylistIndexChange = () => {} }: ContentFormProps) {
 	const volumeLabelId = useId();
 	const [urlDraft, setUrlDraft] = useState(content.type === "url" ? content.url : "");
 
@@ -307,7 +330,7 @@ export function ContentForm({ content, assets, onChange }: ContentFormProps) {
 	}
 
 	if (content.type === "playlist") {
-		return <PlaylistForm content={content} assets={assets} onChange={onChange} />;
+		return <PlaylistForm content={content} assets={assets} onChange={onChange} previewIndex={playlistIndex} onPreviewIndexChange={onPlaylistIndexChange} />;
 	}
 
 	if (content.type === "url") {
