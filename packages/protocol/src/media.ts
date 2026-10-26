@@ -190,3 +190,21 @@ export const MoveMediaRequestSchema = z.object({
 	folderId: IdSchema.nullable()
 });
 export type MoveMediaRequest = z.infer<typeof MoveMediaRequestSchema>;
+
+/** 一次刪除多個素材。上限和搬移一樣，因為兩者都來自同一個「勾選」列。 */
+export const DeleteMediaRequestSchema = z.object({
+	assetIds: z.array(IdSchema).min(1).max(200)
+});
+export type DeleteMediaRequest = z.infer<typeof DeleteMediaRequestSchema>;
+
+/**
+ * 批次刪除不是全有全無：還在用的素材留下來並列出名字，其餘照刪。
+ *
+ * 勾了二十個、其中一個還掛在版面上就整批不動，使用者只能一個一個試出是哪個；
+ * 搬移則不同，搬一半的結果會讓人搞不清楚素材在哪，所以那裡維持全有全無。
+ */
+export const DeleteMediaResponseSchema = z.object({
+	deletedIds: z.array(IdSchema),
+	inUse: z.array(z.object({ id: IdSchema, name: z.string() }))
+});
+export type DeleteMediaResponse = z.infer<typeof DeleteMediaResponseSchema>;

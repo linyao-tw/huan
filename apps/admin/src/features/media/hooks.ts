@@ -5,6 +5,8 @@ import type {
 	CreateMediaFolderRequest,
 	CreateUploadRequest,
 	CreateUploadResponse,
+	DeleteMediaRequest,
+	DeleteMediaResponse,
 	MediaAsset,
 	MediaFolder,
 	MediaListQuery,
@@ -94,6 +96,17 @@ export function useDeleteMediaMutation() {
 	const queryClient = useQueryClient();
 	return useMutation<void, ApiError, string>({
 		mutationFn: id => apiRequest<void>(`/media/${id}`, { method: "DELETE" }),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey: queryKeys.media.all });
+			void queryClient.invalidateQueries({ queryKey: queryKeys.layouts.all });
+		}
+	});
+}
+
+export function useDeleteMediaBatchMutation() {
+	const queryClient = useQueryClient();
+	return useMutation<DeleteMediaResponse, ApiError, DeleteMediaRequest>({
+		mutationFn: variables => apiRequest<DeleteMediaResponse>("/media/delete", { method: "POST", body: variables }),
 		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: queryKeys.media.all });
 			void queryClient.invalidateQueries({ queryKey: queryKeys.layouts.all });

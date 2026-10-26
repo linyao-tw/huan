@@ -215,6 +215,38 @@ suite("素材生命週期", () => {
 		expect(missing.statusCode).toBe(404);
 	});
 
+	it("批次刪除會刪掉沒人用的素材，還在用的留下並列出名字", async () => {
+		const used = await createReadyAsset(harness, owner.id, "image", "還在播的海報");
+		const freeA = await createReadyAsset(harness, owner.id, "image", "舊海報 A");
+		const freeB = await createReadyAsset(harness, owner.id, "image", "舊海報 B");
+		const layout = await harness.app.inject({
+			method: "POST",
+			url: harness.url("/layouts"),
+			headers: { cookie },
+			payload: { name: "海報版面", description: null, canvas: { width: 1920, height: 1080 } }
+		});
+		const layoutId = layout.json().id;
+		await harness.app.inject({ method: "PATCH", url: harness.url(`/layouts/${layoutId}`), headers: { cookie }, payload: { draft: singleAssetDocument(used.assetId, "image") } });
+
+		const response = await harness.app.inject({
+			method: "POST",
+			url: harness.url("/media/delete"),
+			headers: { cookie },
+			payload: { assetIds: [used.assetId, freeA.assetId, freeB.assetId] }
+		});
+		expect(response.statusCode).toBe(200);
+		expect(response.json().deletedIds.sort()).toEqual([freeA.assetId, freeB.assetId].sort());
+		expect(response.json().inUse).toEqual([{ id: used.assetId, name: "還在播的海報" }]);
+		expect(await harness.ctx.storage.head(freeA.objectKey)).toBeNull();
+		expect(await harness.ctx.storage.head(used.objectKey)).not.toBeNull();
+
+		const other = await createUser(harness, { role: "user" });
+		const theirs = await createReadyAsset(harness, other.id, "image", "別人的海報");
+		const forbidden = await harness.app.inject({ method: "POST", url: harness.url("/media/delete"), headers: { cookie }, payload: { assetIds: [theirs.assetId] } });
+		expect(forbidden.statusCode).toBe(404);
+		expect(await harness.ctx.storage.head(theirs.objectKey)).not.toBeNull();
+	});
+
 	it("素材列表支援種類、狀態與名稱篩選，並附上簽章的縮圖網址", async () => {
 		const video = await createReadyAsset(harness, owner.id, "video", "宣傳影片");
 		await createReadyAsset(harness, owner.id, "image", "宣傳海報");

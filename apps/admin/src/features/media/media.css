@@ -98,11 +98,92 @@
 	font-weight: var(--font-weight-medium);
 }
 
+/*
+ * 寬度不夠時整段換到下一行，而不是讓狀態標籤自己斷字。
+ * 「需重新上傳」加上 3840×2160 塞不進窄卡片，原本會把標籤擠成兩行。
+ */
 .huan-media-card__meta {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--space-2);
+	gap: var(--space-1) var(--space-2);
 	justify-content: space-between;
+}
+
+.huan-media-card__meta > :first-child {
+	flex: none;
+	white-space: nowrap;
+}
+
+/* ── 上傳區 ───────────────────────────────────────────────── */
+
+/*
+ * 一行置中的「把檔案拖到這裡，或選擇檔案」，整塊都能點。
+ *
+ * 設計系統的 DropZone 是左文右鈕的兩欄；這裡把「選擇檔案」那顆按鈕（其實是指向
+ * file input 的 label）改成連結色的字，再用 ::after 把它的可點範圍撐滿整塊，
+ * 點框裡任何地方都等於點那個 label，拖放事件仍然由外層 div 接手。
+ */
+.huan-upload-zone .lyds-drop-zone {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	align-content: center;
+	justify-content: center;
+	gap: 0;
+	text-align: center;
+	cursor: pointer;
+}
+
+.huan-upload-zone .lyds-drop-zone__copy {
+	display: inline;
+}
+
+.huan-upload-zone .lyds-drop-zone__secondary:empty {
+	display: none;
+}
+
+/*
+ * 按下時的縮放（transform）必須關掉：有 transform 的元素會變成 ::after 的定位基準，
+ * 按下那一瞬間可點範圍縮回字的大小，mouseup 落在外框上，click 就不會傳到 label。
+ */
+.huan-upload-zone .lyds-drop-zone__button,
+.huan-upload-zone .lyds-drop-zone__button:active:not(:disabled) {
+	display: inline;
+	position: static;
+	transform: none;
+	min-block-size: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--text-link);
+	font-size: var(--font-size-md);
+	line-height: var(--line-height-control-md);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+
+.huan-upload-zone .lyds-drop-zone__button:hover:not(:disabled) {
+	background: none;
+	color: var(--text-link-hover);
+}
+
+.huan-upload-zone .lyds-drop-zone__button .lyds-button__icon {
+	display: none;
+}
+
+.huan-upload-zone .lyds-drop-zone__button::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+}
+
+/* 選好的檔案會立刻出現在下面的上傳清單，框裡再列一次縮圖只是重複。 */
+.huan-upload-zone .lyds-drop-zone > .lyds-file-selection {
+	display: none;
 }
 
 /*

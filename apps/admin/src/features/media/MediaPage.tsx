@@ -1,6 +1,6 @@
 import { CreateFolderDialog, MoveAssetsDialog, RenameFolderDialog } from "@/features/media/FolderDialogs";
 import { childFolders, folderPath, folderSummary } from "@/features/media/folders";
-import { useDeleteMediaFolderMutation, useMediaFoldersQuery, useMediaListQuery, type MediaListFilters } from "@/features/media/hooks";
+import { useDeleteMediaBatchMutation, useDeleteMediaFolderMutation, useMediaFoldersQuery, useMediaListQuery, type MediaListFilters } from "@/features/media/hooks";
 import "@/features/media/media.css";
 import { MediaDetailDialog } from "@/features/media/MediaDetailDialog";
 import { MediaStatusBadge, mediaStatusDetail } from "@/features/media/MediaStatus";
@@ -98,10 +98,12 @@ export function MediaPage() {
 	const [moveOpen, setMoveOpen] = useState(false);
 	const [editingFolder, setEditingFolder] = useState<MediaFolder | null>(null);
 	const [deletingFolder, setDeletingFolder] = useState<MediaFolder | null>(null);
+	const [deleteAssetsOpen, setDeleteAssetsOpen] = useState(false);
 
 	const uploader = useMediaUploader(folderId);
 	const folders = useMediaFoldersQuery();
 	const deleteFolder = useDeleteMediaFolderMutation();
+	const deleteAssets = useDeleteMediaBatchMutation();
 	const folderItems = useMemo(() => folders.data?.items ?? [], [folders.data]);
 
 	const searching = search.trim().length > 0;
@@ -238,6 +240,9 @@ export function MediaPage() {
 						<Button size="sm" variant="secondary" disabled={selectedIds.length === 0} onClick={() => setMoveOpen(true)}>
 							搬移到…
 						</Button>
+						<Button size="sm" variant="secondary" startIcon={<TrashIcon weight="bold" />} disabled={selectedIds.length === 0} onClick={() => setDeleteAssetsOpen(true)}>
+							刪除…
+						</Button>
 						<Button size="sm" variant="quiet" disabled={selectedIds.length === 0} onClick={() => setSelectedIds([])}>
 							取消選取
 						</Button>
@@ -331,6 +336,40 @@ export function MediaPage() {
 			<CreateFolderDialog open={createFolderOpen} onOpenChange={setCreateFolderOpen} parentId={folderId} parentName={currentFolderName} />
 			<RenameFolderDialog open={editingFolder !== null} onOpenChange={open => !open && setEditingFolder(null)} folder={editingFolder} folders={folderItems} />
 			<MoveAssetsDialog open={moveOpen} onOpenChange={setMoveOpen} assetIds={selectedIds} folders={folderItems} currentFolderId={folderId} onMoved={() => setSelectedIds([])} />
+
+			<ConfirmDialog
+				open={deleteAssetsOpen}
+				onOpenChange={open => {
+					setDeleteAssetsOpen(open);
+					if (!open) deleteAssets.reset();
+				}}
+				destructive
+				title={`刪除選取的 ${selectedIds.length} 個素材？`}
+				description="刪除後無法復原。還在版面、排程或裝置上使用的素材會保留下來，並列出名稱讓你處理。"
+				confirmLabel="刪除"
+				pending={deleteAssets.isPending}
+				errorMessage={deleteAssets.error?.message ?? null}
+				onConfirm={() => {
+					deleteAssets.mutate(
+						{ assetIds: selectedIds },
+						{
+							onSuccess: result => {
+								setDeleteAssetsOpen(false);
+								setSelectedIds(result.inUse.map(asset => asset.id));
+								if (result.deletedIds.length > 0) toast.add({ title: `已刪除 ${result.deletedIds.length} 個素材`, data: { status: "success" } });
+								if (result.inUse.length > 0) {
+									/** 留下來的素材維持勾選，使用者處理完引用後可以直接再按一次刪除。 */
+									toast.add({
+										title: `${result.inUse.length} 個素材還在使用中，沒有刪除`,
+										description: result.inUse.map(asset => asset.name).join("、"),
+										data: { status: "warning" }
+									});
+								}
+							}
+						}
+					);
+				}}
+			/>
 
 			<ConfirmDialog
 				open={deletingFolder !== null}

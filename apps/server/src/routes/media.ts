@@ -10,6 +10,8 @@ import {
 	CreateMediaFolderRequestSchema,
 	CreateUploadRequestSchema,
 	CreateUploadResponseSchema,
+	DeleteMediaRequestSchema,
+	DeleteMediaResponseSchema,
 	IdSchema,
 	MEDIA_ACCEPTED_CONTENT_TYPES,
 	MEDIA_FOLDER_MAX_DEPTH,
@@ -283,6 +285,52 @@ export const mediaRoutes: FastifyPluginAsyncZod = async app => {
 		hub.broadcastAdmin(asset.ownerId, { type: "media_changed", assetId: asset.id });
 		return { ok: true as const };
 	});
+	app.post(
+		"/media/delete",
+		{ preHandler: requireResourceOwner, schema: { tags: ["media"], summary: "批次刪除素材", body: DeleteMediaRequestSchema, response: { 200: DeleteMediaResponseSchema } } },
+		async request => {
+			const actor = sessionOf(request);
+			const ownerId = actor.user.id;
+			const assetIds = [...new Set(request.body.assetIds)];
+
+			const assets = await db
+				.select()
+				.from(mediaAssets)
+				.where(and(inArray(mediaAssets.id, assetIds), eq(mediaAssets.ownerId, ownerId)));
+			/** 有一筆不是自己的就整批拒絕：那代表請求本身有問題，不是「部分可刪」的情況。 */
+			if (assets.length !== assetIds.length) throw notFound("有素材不存在或不屬於你");
+
+			const deletable: MediaAssetRow[] = [];
+			const inUse: { id: string; name: string }[] = [];
+			for (const asset of assets) {
+				const usage = await computeMediaUsage(db, asset.id, ownerId);
+				if (usageIsEmpty(usage)) deletable.push(asset);
+				else inUse.push({ id: asset.id, name: asset.name });
+			}
+
+			if (deletable.length > 0) {
+				const deletableIds = deletable.map(asset => asset.id);
+				const variants = await db.select({ objectKey: mediaVariants.objectKey }).from(mediaVariants).where(inArray(mediaVariants.assetId, deletableIds));
+				await storage.remove(variants.map(variant => variant.objectKey));
+				await db.delete(mediaAssets).where(and(inArray(mediaAssets.id, deletableIds), eq(mediaAssets.ownerId, ownerId)));
+
+				await recordAudit(db, {
+					action: "media.deleted",
+					actorUserId: actor.user.id,
+					actorLabel: actor.user.username,
+					targetType: "media_asset",
+					targetId: null,
+					targetLabel: null,
+					ipAddress: clientIp(request),
+					metadata: { assetIds: deletableIds, count: deletableIds.length, variants: variants.length }
+				});
+				hub.broadcastAdmin(ownerId, { type: "media_changed", assetId: null });
+			}
+
+			return { deletedIds: deletable.map(asset => asset.id), inUse };
+		}
+	);
+
 	/* ── 資料夾 ───────────────────────────────────────────────────────── */
 
 	function serializeFolder(row: MediaFolderRow, counts: { assets: number; children: number } | undefined): MediaFolder {

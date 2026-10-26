@@ -79,6 +79,7 @@ export function MediaDetailDialog({ asset, open, onOpenChange, folders = [] }: {
 	if (!asset) return null;
 
 	const inUse = usageTotal(usage.data) > 0;
+	const hasStatusAlert = asset.status === "needs_reupload" || (asset.status === "failed" && Boolean(asset.errorMessage));
 	const playbackAvailable = asset.variants.some(variant => variant.role === "playback" && variant.available);
 	/** 整條路徑而不是只有最後一層：兩個不同上層底下常常會有同名的「影片」資料夾。 */
 	const location =
@@ -97,11 +98,14 @@ export function MediaDetailDialog({ asset, open, onOpenChange, folders = [] }: {
 						<Dialog.Popup closeButton={false}>
 							<Dialog.Header>
 								<Dialog.Title>{asset.name}</Dialog.Title>
-								<Dialog.Description>{mediaStatusDetail(asset)}</Dialog.Description>
+								{/* 需重新上傳與轉檔失敗底下各有一塊提示在講同一件事，標題下再寫一次只是重複。 */}
+								{hasStatusAlert ? null : <Dialog.Description>{mediaStatusDetail(asset)}</Dialog.Description>}
 							</Dialog.Header>
 
 							<Dialog.Body>
 								<div className="huan-stack">
+									<TextField label="素材名稱" value={name} onChange={event => setName(event.target.value)} disabled={rename.isPending} description="只改後台看到的名稱，不影響已經在播的內容。" />
+
 									<div className="huan-row huan-row--tight">
 										<MediaStatusBadge status={asset.status} />
 										<Badge variant="neutral">{KIND_LABELS[asset.kind]}</Badge>
@@ -147,8 +151,6 @@ export function MediaDetailDialog({ asset, open, onOpenChange, folders = [] }: {
 										<dt>最後更新</dt>
 										<dd>{formatDateTime(asset.updatedAt)}</dd>
 									</dl>
-
-									<TextField label="素材名稱" value={name} onChange={event => setName(event.target.value)} disabled={rename.isPending} description="只改後台看到的名稱，不影響已經在播的內容。" />
 
 									<div className="huan-stack huan-stack--sm">
 										<span className="huan-muted">使用情形</span>

@@ -16,8 +16,9 @@ export function MediaUploadPanel({ uploader, folderName }: { uploader: MediaUplo
 			<DropZone
 				label={folderName ? `上傳素材到「${folderName}」` : "上傳素材"}
 				description="支援 MP4、MOV、MKV、WebM、JPEG、PNG、WebP、AVIF、GIF 與 HTML，單檔上限 4 GB。上傳的原始檔轉檔完就會刪除，請自己留一份。"
-				primaryLabel="把檔案拖到這裡"
-				secondaryLabel="或"
+				className="huan-upload-zone"
+				primaryLabel="把檔案拖到這裡，或"
+				secondaryLabel=""
 				browseLabel="選擇檔案"
 				multiple
 				accept={ACCEPTED_UPLOAD_TYPES}
