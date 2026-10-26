@@ -1,5 +1,6 @@
 import { DeviceActions } from "@/features/devices/DeviceActions";
 import "@/features/devices/devices.css";
+import { DeviceScreenCard } from "@/features/devices/DeviceScreen";
 import { DeviceContentBadge, deviceContentState, DeviceOnlineBadge, DiskMeter, PlatformLabel } from "@/features/devices/DeviceStatus";
 import { useDeviceQuery } from "@/features/devices/hooks";
 import { useLayoutListQuery } from "@/features/layouts/hooks";
@@ -146,6 +147,8 @@ export function DeviceDetailPage() {
 					</dl>
 				</CardBody>
 			</Card>
+
+			<DeviceScreenCard key={current.id} device={current} />
 
 			<div className="huan-device-grid">
 				<Card variant="material">

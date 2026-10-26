@@ -21,6 +21,23 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 let window: BrowserWindow | null = null;
+
+/** 後台的即時畫面只是用來確認「現在播什麼」，縮到 960 寬、中等畫質，一張大約 50–150 KB。 */
+const SCREEN_CAPTURE_WIDTH = 960;
+const SCREEN_CAPTURE_QUALITY = 60;
+
+/**
+ * 截的是播放器自己的視窗內容，不是整個桌面：不需要額外的螢幕錄製權限，
+ * 也不會把同一台機器上其他程式的畫面帶出去。
+ */
+async function captureScreen(): Promise<Uint8Array<ArrayBuffer> | null> {
+	if (!window || window.isDestroyed()) return null;
+	const image = await window.webContents.capturePage();
+	if (image.isEmpty()) return null;
+	const size = image.getSize();
+	const scaled = size.width > SCREEN_CAPTURE_WIDTH ? image.resize({ width: SCREEN_CAPTURE_WIDTH, quality: "good" }) : image;
+	return new Uint8Array(scaled.toJPEG(SCREEN_CAPTURE_QUALITY));
+}
 let tray: Tray | null = null;
 let agent: DeviceAgent | null = null;
 let pairing: PairingSnapshot | null = null;
@@ -166,7 +183,8 @@ async function createAgent(): Promise<DeviceAgent> {
 		},
 		logger,
 		/** 由播放器自己的畫面主導配對流程，不要在背景默默開始。 */
-		autoPair: false
+		autoPair: false,
+		captureScreen
 	});
 
 	instance.events.on("status", next => {

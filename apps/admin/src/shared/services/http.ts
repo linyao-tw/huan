@@ -157,3 +157,27 @@ export interface Paginated<Item> {
 	limit: number;
 	offset: number;
 }
+
+/**
+ * 取回圖片之類的二進位內容。錯誤處理與 `apiRequest` 相同；204 代表「現在還沒有」，回傳 null。
+ * 回應標頭一併交出去，呼叫端常常需要像擷取時間這種放在標頭裡的資訊。
+ */
+export async function apiRequestBlob(path: string, options: { signal?: AbortSignal } = {}): Promise<{ blob: Blob; headers: Headers } | null> {
+	let response: Response;
+	try {
+		response = await fetch(buildUrl(path, undefined), { credentials: "include", ...(options.signal ? { signal: options.signal } : {}) });
+	} catch (error) {
+		if (error instanceof DOMException && error.name === "AbortError") throw error;
+		throw networkError(error);
+	}
+
+	if (response.status === 401) unauthorizedHandler?.();
+
+	if (!response.ok) {
+		const errorBody = await parseErrorBody(response);
+		throw new ApiError({ status: response.status, code: errorBody.code, message: errorBody.message, ...(errorBody.details ? { details: errorBody.details } : {}) });
+	}
+
+	if (response.status === 204) return null;
+	return { blob: await response.blob(), headers: response.headers };
+}

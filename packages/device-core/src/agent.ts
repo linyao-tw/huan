@@ -54,6 +54,12 @@ export interface DeviceAgentOptions {
 	maxDownloadAttempts?: number;
 	pairingPollIntervalMs?: number;
 	requestTimeoutMs?: number;
+	/**
+	 * 擷取目前畫面成 JPEG，給後台的即時畫面用。沒有畫面可截的環境（模擬裝置）不提供，
+	 * 收到 `screen_watch` 時就什麼都不做。
+	 */
+	captureScreen?: () => Promise<Uint8Array<ArrayBuffer> | null>;
+	screenIntervalMs?: number;
 }
 
 export interface PairOptions {
@@ -63,6 +69,8 @@ export interface PairOptions {
 
 const DEFAULT_HEARTBEAT_SECONDS = 60;
 const DEFAULT_FALLBACK_SYNC_SECONDS = 300;
+/** 即時畫面一秒一張就夠看出現在播什麼；樹莓派上截圖加壓縮也不便宜，不追求流暢。 */
+const DEFAULT_SCREEN_INTERVAL_MS = 1_000;
 
 /**
  * 把儲存、憑證、REST、WebSocket、下載佇列、調和器與排程器接成一台可運作的裝置。
@@ -102,6 +110,7 @@ export class DeviceAgent {
 	private timerIntervals: { heartbeatMs: number; fallbackMs: number } | null = null;
 	private syncing: Promise<ReconcileResult | null> | null = null;
 	private syncQueued = false;
+	private screenStreaming = false;
 
 	constructor(options: DeviceAgentOptions) {
 		this.options = options;
@@ -445,6 +454,34 @@ export class DeviceAgent {
 				break;
 			case "pong":
 				break;
+			case "screen_watch":
+				void this.streamScreen();
+				break;
+		}
+	}
+
+	/**
+	 * 有人在後台看畫面時，一秒一張往上傳，直到伺服器說沒人在看。
+	 *
+	 * 迴圈只會有一個：伺服器在畫面中斷時會再推 `screen_watch`，那時候迴圈可能還在跑。
+	 * 任何錯誤都直接停下，等下一次 `screen_watch` 再開始，播放比即時畫面重要。
+	 */
+	private async streamScreen(): Promise<void> {
+		const capture = this.options.captureScreen;
+		if (!capture || this.screenStreaming) return;
+		this.screenStreaming = true;
+		try {
+			while (this.operating && !this.unbindManager.revoked) {
+				const jpeg = await capture();
+				if (!jpeg) break;
+				const response = await this.api.uploadScreen(jpeg);
+				if (!response.watching) break;
+				await this.sleep(this.options.screenIntervalMs ?? DEFAULT_SCREEN_INTERVAL_MS);
+			}
+		} catch (error) {
+			this.logger.warn("即時畫面上傳中斷", { error: describeError(error) });
+		} finally {
+			this.screenStreaming = false;
 		}
 	}
 

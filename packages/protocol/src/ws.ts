@@ -22,7 +22,13 @@ export const ServerToDeviceMessageSchema = z.discriminatedUnion("type", [
 		commandId: z.string(),
 		command: DeviceCommandKindSchema
 	}),
-	z.object({ type: z.literal("pong"), serverTime: IsoDateTimeSchema })
+	z.object({ type: z.literal("pong"), serverTime: IsoDateTimeSchema }),
+	/**
+	 * 後台有人正在看這台裝置的即時畫面。裝置收到後開始定時把截圖 PUT 到
+	 * `/device/screen`，直到回應說沒人在看為止；截圖本身不走 WebSocket。
+	 * 舊版裝置不認得這個型別，會照 socket 的規則靜靜丟掉。
+	 */
+	z.object({ type: z.literal("screen_watch") })
 ]);
 export type ServerToDeviceMessage = z.infer<typeof ServerToDeviceMessageSchema>;
 

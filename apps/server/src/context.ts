@@ -1,3 +1,4 @@
+import { ScreenRelay } from "@/lib/screen-relay";
 import { createStorage, type StorageService } from "@/lib/storage";
 import { resolveTotpKey } from "@/lib/totp-key";
 import { SocketHub } from "@/ws/hub";
@@ -13,6 +14,8 @@ export interface AppContext {
 	readonly sql: DatabaseHandle["sql"];
 	readonly storage: StorageService;
 	readonly hub: SocketHub;
+	/** 即時畫面的最新截圖。只在單一 Server 行程內有效，正式環境也只跑一份 server。 */
+	readonly screens: ScreenRelay;
 	/** 加密 TOTP 密鑰用的 32-byte 金鑰，啟動時從環境變數解析一次。 */
 	readonly totpKey: Buffer;
 	close(): Promise<void>;
@@ -37,6 +40,7 @@ export function createContext({ env, database, storage }: CreateContextOptions):
 		sql: handle.sql,
 		storage: storageService,
 		hub: new SocketHub(),
+		screens: new ScreenRelay(),
 		totpKey: resolveTotpKey(env, message => console.warn(`[huan] ${message}`)),
 		async close() {
 			if (ownsStorage) storageService.destroy();

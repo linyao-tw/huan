@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeviceAgent } from "./agent.js";
 import type { CredentialStore } from "./credentials.js";
 import { createStubFetch, FakeClock, jsonResponse, makeDesiredState } from "./fixtures.js";
@@ -91,5 +91,54 @@ describe("DeviceAgent 配對後自動接上運作", () => {
 		// 首次同步確實發生了：抓過 desired state 並啟用 v1。
 		expect(fetch.calls.some(call => call.url.endsWith("/device/state"))).toBe(true);
 		expect(agent.activeVersion).toBe(1);
+	});
+
+	it("收到 screen_watch 就一秒一張上傳截圖，伺服器說沒人在看就停", async () => {
+		const deviceId = randomUUID();
+		let deliver: ((data: string) => void) | null = null;
+		const socketFactory: SocketFactory = () => ({
+			...noopSocketFactory("", {}),
+			onMessage: listener => {
+				deliver = listener;
+			}
+		});
+		let uploads = 0;
+		const fetch = createStubFetch(request => {
+			if (request.url.endsWith("/device/pairing/start")) {
+				return jsonResponse({ code: "ABCD2345", pairingToken: "tok-123", expiresAt: "2026-01-01T00:10:00.000Z", pairingUrl: "https://huan.example/pair?code=ABCD2345" }, 201);
+			}
+			if (request.url.includes("/device/pairing/status")) return jsonResponse({ status: "paired", deviceId, deviceName: "門口電視", credential: "secret-xyz" });
+			if (request.url.endsWith("/device/state")) return jsonResponse(makeDesiredState({ deviceId, version: 1 }));
+			if (request.url.endsWith("/device/screen")) {
+				uploads += 1;
+				return jsonResponse({ watching: uploads < 3 });
+			}
+			return null;
+		});
+		const captureScreen = vi.fn(async () => new Uint8Array([0xff, 0xd8, 0xff]));
+
+		agent = new DeviceAgent({
+			appDataDir: dir,
+			serverUrl: "https://huan.example",
+			deviceName: "門口電視",
+			appVersion: "0.1.0",
+			platform,
+			credentials: memoryCredentials(),
+			fetch,
+			socketFactory,
+			clock: new FakeClock(new Date("2026-01-01T00:00:00.000Z")),
+			sleep: async () => {},
+			autoPair: false,
+			captureScreen
+		});
+		await agent.start();
+		await agent.pair({ pollIntervalMs: 1 });
+		await vi.waitFor(() => expect(deliver).not.toBeNull());
+
+		deliver!(JSON.stringify({ type: "screen_watch" }));
+		await vi.waitFor(() => expect(uploads).toBe(3));
+		const screenCalls = fetch.calls.filter(call => call.url.endsWith("/device/screen"));
+		expect(screenCalls.every(call => call.method === "PUT" && call.headers["content-type"] === "image/jpeg")).toBe(true);
+		expect(captureScreen).toHaveBeenCalledTimes(3);
 	});
 });

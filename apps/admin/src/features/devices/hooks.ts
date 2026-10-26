@@ -1,4 +1,4 @@
-import { apiRequest, type ApiError, type Paginated } from "@/shared/services/http";
+import { apiRequest, apiRequestBlob, type ApiError, type Paginated } from "@/shared/services/http";
 import { queryKeys } from "@/shared/services/query-keys";
 import type { ConfirmPairingRequest, Device, PairingLookupResponse, UpdateDeviceRequest } from "@huan/protocol";
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
@@ -20,6 +20,32 @@ export function useDeviceQuery(id: string | null): UseQueryResult<Device, ApiErr
 		enabled: Boolean(id),
 		staleTime: 10_000,
 		refetchInterval: 15_000
+	});
+}
+
+export interface DeviceScreenFrame {
+	blob: Blob;
+	capturedAt: string | null;
+}
+
+/** 輪詢就是「我還在看」的訊號：停止輪詢，裝置十秒內就會停止上傳截圖。 */
+export const DEVICE_SCREEN_POLL_MS = 1_000;
+
+export function useDeviceScreenQuery(id: string, enabled: boolean): UseQueryResult<DeviceScreenFrame | null, ApiError> {
+	return useQuery<DeviceScreenFrame | null, ApiError>({
+		queryKey: queryKeys.devices.screen(id),
+		queryFn: async ({ signal }) => {
+			const result = await apiRequestBlob(`/devices/${id}/screen`, { signal });
+			return result ? { blob: result.blob, capturedAt: result.headers.get("x-huan-captured-at") } : null;
+		},
+		enabled,
+		refetchInterval: enabled ? DEVICE_SCREEN_POLL_MS : false,
+		// 分頁在背景時不看畫面，也就不必讓裝置一直傳。
+		refetchIntervalInBackground: false,
+		// 截圖過了幾秒就沒有價值，不留快取，下次打開不會先閃一張舊畫面。
+		gcTime: 0,
+		staleTime: 0,
+		retry: false
 	});
 }
 

@@ -33,7 +33,8 @@ export const queryKeys = {
 	devices: {
 		all: ["devices"] as const,
 		list: () => ["devices", "list"] as const,
-		detail: (id: string) => ["devices", "detail", id] as const
+		detail: (id: string) => ["devices", "detail", id] as const,
+		screen: (id: string) => ["devices", "screen", id] as const
 	},
 
 	users: {

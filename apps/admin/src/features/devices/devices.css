@@ -191,3 +191,44 @@
 	padding: var(--space-2);
 	border: var(--border-width-hairline) solid var(--divider-subtle);
 }
+
+/* ── 即時畫面 ─────────────────────────────────────────────── */
+
+/* 卡片標頭是靠左對齊的 grid，不撐滿的話「暫停」會黏在標題旁邊。 */
+.huan-device-screen__header {
+	inline-size: 100%;
+}
+
+/*
+ * 外框先用 16:9 撐出位置，截圖到了之後由圖片自己的比例決定，直式螢幕也不會被壓扁。
+ * 黑底是螢幕在畫面外露出來的顏色，和版面預覽一致。
+ */
+.huan-device-screen {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-block-size: 12rem;
+	aspect-ratio: 16 / 9;
+	max-block-size: 70vh;
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	background: var(--palette-always-dark);
+}
+
+.huan-device-screen img {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: contain;
+	display: block;
+}
+
+.huan-device-screen[data-paused] img {
+	opacity: 0.4;
+}
+
+.huan-device-screen__overlay {
+	position: absolute;
+	color: var(--text-always-white);
+	font-size: var(--font-size-sm);
+}

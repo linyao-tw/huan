@@ -9,7 +9,9 @@ import {
 	AssetAckRequestSchema,
 	DesiredStateSchema,
 	DesiredStateVersionSchema,
+	DEVICE_SCREEN_MAX_BYTES,
 	DeviceDownloadUrlResponseSchema,
+	DeviceScreenUploadResponseSchema,
 	HeartbeatRequestSchema,
 	HeartbeatResponseSchema,
 	IdSchema,
@@ -237,6 +239,22 @@ export const deviceApiRoutes: FastifyPluginAsyncZod<DeviceApiRouteOptions> = asy
 		const [owner] = await db.select({ ownerId: mediaAssets.ownerId }).from(mediaAssets).where(eq(mediaAssets.id, assetId)).limit(1);
 		if (owner) hub.broadcastAdmin(owner.ownerId, { type: "media_changed", assetId });
 		return { ok: true as const };
+	});
+
+	/**
+	 * 截圖是原始的 JPEG，不包成 JSON：base64 會多三分之一的流量，而這條路徑每秒一張。
+	 * 解析器只註冊在這個 plugin 裡，其他路由仍然只收 JSON。
+	 */
+	app.addContentTypeParser("image/jpeg", { parseAs: "buffer", bodyLimit: DEVICE_SCREEN_MAX_BYTES }, (_request, body, done) => done(null, body));
+
+	app.put("/device/screen", { preHandler: requireDevice, schema: { tags: ["device"], summary: "上傳即時畫面截圖", response: { 200: DeviceScreenUploadResponseSchema } } }, async request => {
+		const { device } = deviceOf(request);
+		const body: unknown = request.body;
+		/** 只認 JPEG 的檔頭：這張圖會原樣交給瀏覽器顯示，不能讓裝置端塞任意內容進來。 */
+		if (!Buffer.isBuffer(body) || body.length < 3 || body[0] !== 0xff || body[1] !== 0xd8 || body[2] !== 0xff) {
+			throw new ApiProblem(415, "unsupported_media_type", "截圖必須是 JPEG");
+		}
+		return { watching: ctx.screens.store(device.id, body) };
 	});
 
 	app.post("/device/unbind", { preHandler: requireDevice, schema: { tags: ["device"], summary: "裝置主動解除綁定", response: { 200: OkSchema } } }, async request => {

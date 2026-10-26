@@ -4,6 +4,7 @@ import {
 	DesiredStateSchema,
 	DesiredStateVersionSchema,
 	DeviceDownloadUrlResponseSchema,
+	DeviceScreenUploadResponseSchema,
 	HeartbeatResponseSchema,
 	OkSchema,
 	PairingStatusResponseSchema,
@@ -12,6 +13,7 @@ import {
 	type DesiredState,
 	type DesiredStateVersion,
 	type DeviceDownloadUrlResponse,
+	type DeviceScreenUploadResponse,
 	type HeartbeatResponse,
 	type Ok,
 	type PairingStatusResponse,
@@ -64,10 +66,12 @@ export interface DeviceApiClientOptions {
 }
 
 interface RequestOptions<T> {
-	method: "GET" | "POST";
+	method: "GET" | "POST" | "PUT";
 	path: string;
 	schema: JsonValidator<T>;
 	body?: unknown;
+	/** 不經過 JSON 的原始內容，目前只有即時畫面的 JPEG。 */
+	rawBody?: { contentType: string; data: Uint8Array<ArrayBuffer> };
 	/** 預設帶 Bearer；配對相關端點傳 `false`。 */
 	auth?: boolean;
 	headers?: Record<string, string>;
@@ -147,6 +151,11 @@ export class DeviceApiClient {
 		return this.send({ method: "POST", path: "/device/unbind", schema: OkSchema });
 	}
 
+	/** 回應的 `watching` 為 false 時代表後台已經沒人在看，上傳迴圈應該停下來。 */
+	uploadScreen(jpeg: Uint8Array<ArrayBuffer>): Promise<DeviceScreenUploadResponse> {
+		return this.send({ method: "PUT", path: "/device/screen", rawBody: { contentType: "image/jpeg", data: jpeg }, schema: DeviceScreenUploadResponseSchema });
+	}
+
 	/**
 	 * 解除綁定時憑證已經先在本機清掉了，但伺服器端的撤銷還沒完成。
 	 * 這個方法讓上層用「保留在記憶體裡的那份憑證」補打一次，不必把密文寫回任何檔案。
@@ -158,7 +167,8 @@ export class DeviceApiClient {
 	private async send<T>(options: RequestOptions<T>): Promise<T> {
 		const url = joinUrl(this.baseUrl, API_PREFIX, options.path);
 		const headers: Record<string, string> = { accept: "application/json", ...options.headers };
-		if (options.body !== undefined) headers["content-type"] = "application/json";
+		if (options.rawBody) headers["content-type"] = options.rawBody.contentType;
+		else if (options.body !== undefined) headers["content-type"] = "application/json";
 
 		if (options.auth !== false) {
 			const token = await this.token();
@@ -173,7 +183,7 @@ export class DeviceApiClient {
 			response = await this.fetchImpl(url, {
 				method: options.method,
 				headers,
-				body: options.body === undefined ? undefined : JSON.stringify(options.body),
+				body: options.rawBody ? options.rawBody.data : options.body === undefined ? undefined : JSON.stringify(options.body),
 				signal: AbortSignal.timeout(this.timeoutMs)
 			});
 		} catch (error) {

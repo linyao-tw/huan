@@ -253,3 +253,10 @@ export type DeviceDownloadUrlResponse = z.infer<typeof DeviceDownloadUrlResponse
 
 export const DeviceCommandKindSchema = z.enum(["force_sync", "restart_player", "unbind"]);
 export type DeviceCommandKind = z.infer<typeof DeviceCommandKindSchema>;
+
+/** 即時畫面的截圖上限。960 寬的 JPEG 通常在 100 KB 上下，留足空間給畫面很花的影片。 */
+export const DEVICE_SCREEN_MAX_BYTES = 1_000_000;
+
+/** 裝置上傳一張截圖後，伺服器告訴它還要不要繼續傳。 */
+export const DeviceScreenUploadResponseSchema = z.object({ watching: z.boolean() });
+export type DeviceScreenUploadResponse = z.infer<typeof DeviceScreenUploadResponseSchema>;

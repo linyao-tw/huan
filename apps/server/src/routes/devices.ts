@@ -203,6 +203,20 @@ export const deviceAdminRoutes: FastifyPluginAsyncZod<DeviceAdminRouteOptions> =
 		}
 	);
 
+	/**
+	 * 後台輪詢即時畫面。每一次請求同時是「我還在看」的訊號；有新截圖就直接回 JPEG，
+	 * 還沒有就回 204，讓後台顯示「等待裝置傳送畫面」。
+	 */
+	app.get("/devices/:id/screen", { preHandler: requireResourceOwner, schema: { tags: ["devices"], summary: "取得即時畫面截圖", params: z.object({ id: IdSchema }) } }, async (request, reply) => {
+		const { device } = await loadOrThrow(request.params.id, ownerOf(request));
+		if (ctx.screens.watch(device.id)) hub.sendToDevice(device.id, { type: "screen_watch" });
+
+		const frame = ctx.screens.latest(device.id);
+		void reply.header("cache-control", "no-store");
+		if (!frame) return reply.code(204).send();
+		return reply.header("x-huan-captured-at", frame.capturedAt.toISOString()).type("image/jpeg").send(frame.jpeg);
+	});
+
 	app.post(
 		"/devices/:id/restart-player",
 		{ preHandler: requireResourceOwner, schema: { tags: ["devices"], summary: "重新啟動播放器", params: z.object({ id: IdSchema }), response: { 200: OkSchema } } },
